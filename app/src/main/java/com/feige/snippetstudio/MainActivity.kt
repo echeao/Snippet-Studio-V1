@@ -2,6 +2,7 @@ package com.feige.snippetstudio
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,7 +32,10 @@ class MainActivity : ComponentActivity() {
                 LocaleHelper.setLocale(this@MainActivity, settings.lang)
             }
 
-            CompositionLocalProvider(LocalContext provides localeContext) {
+            CompositionLocalProvider(
+                LocalContext provides localeContext,
+                LocalActivityResultRegistryOwner provides this@MainActivity
+            ) {
                 SnippetStudioTheme(themeSetting = settings.theme) {
                     val navController = rememberNavController()
                     val snackbarHostState = remember { SnackbarHostState() }
