@@ -25,6 +25,14 @@ data class EditorUiState(
     val selectedTab: Int = 0, // 0 = Code, 1 = Preview
     val saveState: SaveState = SaveState.SAVED,
     val fontSp: Float = 13.5f,
+    val isWordWrap: Boolean = true,
+    val encoding: String = "UTF-8",
+    val lineEnding: String = "LF",
+    val showLineNumbers: Boolean = true,
+    val highlightCurrentLine: Boolean = true,
+    val tabSize: Int = 4,
+    val autoPairBrackets: Boolean = true,
+    val isFullscreen: Boolean = false,
     val currentLineIndex: Int = 0,
     val currentColumnIndex: Int = 0,
     val lineCount: Int = 1,
@@ -46,10 +54,21 @@ class EditorViewModel(
     private val _autoSaveTrigger = MutableSharedFlow<Unit>(replay = 1)
 
     init {
-        // Observe settings font size
+        // Observe settings
         viewModelScope.launch {
             settingsRepository.settingsFlow.collect { settings ->
-                _uiState.update { it.copy(fontSp = settings.editorFontSp) }
+                _uiState.update {
+                    it.copy(
+                        fontSp = settings.editorFontSp,
+                        isWordWrap = settings.isWordWrap,
+                        encoding = settings.encoding,
+                        lineEnding = settings.lineEnding,
+                        showLineNumbers = settings.showLineNumbers,
+                        highlightCurrentLine = settings.highlightCurrentLine,
+                        tabSize = settings.tabSize,
+                        autoPairBrackets = settings.autoPairBrackets
+                    )
+                }
             }
         }
 
@@ -148,11 +167,74 @@ class EditorViewModel(
         _uiState.update { it.copy(selectedTab = tabIndex) }
     }
 
+    fun setFullscreen(fullscreen: Boolean) {
+        _uiState.update { it.copy(isFullscreen = fullscreen) }
+    }
+
+    fun toggleFullscreen() {
+        _uiState.update { it.copy(isFullscreen = !it.isFullscreen) }
+    }
+
+    fun setWordWrap(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { it.copy(isWordWrap = enabled) }
+        }
+    }
+
+    fun setEncoding(encoding: String) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { it.copy(encoding = encoding) }
+        }
+    }
+
+    fun setLineEnding(lineEnding: String) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { it.copy(lineEnding = lineEnding) }
+        }
+    }
+
+    fun setShowLineNumbers(show: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { it.copy(showLineNumbers = show) }
+        }
+    }
+
+    fun setHighlightCurrentLine(highlight: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { it.copy(highlightCurrentLine = highlight) }
+        }
+    }
+
+    fun setTabSize(size: Int) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { it.copy(tabSize = size) }
+        }
+    }
+
+    fun setAutoPairBrackets(autoPair: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { it.copy(autoPairBrackets = autoPair) }
+        }
+    }
+
+    fun setSnippetType(type: SnippetType) {
+        _uiState.update {
+            it.copy(type = type, saveState = SaveState.UNSAVED)
+        }
+        triggerAutoSave()
+    }
+
     fun adjustFontSize(deltaSp: Float) {
         val current = _uiState.value.fontSp
         val next = (current + deltaSp).coerceIn(11f, 22f)
         viewModelScope.launch {
             settingsRepository.updateSettings { it.copy(editorFontSp = next) }
+        }
+    }
+
+    fun forceSaveNow() {
+        viewModelScope.launch {
+            performSave()
         }
     }
 

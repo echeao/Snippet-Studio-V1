@@ -1,6 +1,7 @@
 package com.feige.snippetstudio.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -25,6 +26,9 @@ fun CodeEditor(
     onValueChange: (TextFieldValue) -> Unit,
     fontSp: Float,
     currentLineIndex: Int,
+    isWordWrap: Boolean = true,
+    showLineNumbers: Boolean = true,
+    highlightCurrentLine: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val isDark = LocalIsDarkTheme.current
@@ -34,7 +38,8 @@ fun CodeEditor(
     val editorBg = if (isDark) SurfaceDark else SurfaceLight
     val highlightLineBg = if (isDark) PrimarySoft.copy(alpha = 0.15f) else PrimarySoft
 
-    val scrollState = rememberScrollState()
+    val verticalScrollState = rememberScrollState()
+    val horizontalScrollState = rememberScrollState()
 
     val linesCount = remember(textFieldValue.text) {
         val count = textFieldValue.text.count { it == '\n' } + 1
@@ -47,31 +52,33 @@ fun CodeEditor(
             .background(editorBg)
     ) {
         // Line number Gutter
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(44.dp)
-                .background(gutterBg)
-                .verticalScroll(scrollState)
-                .padding(vertical = Spacing.S3),
-            horizontalAlignment = Alignment.End
-        ) {
-            for (i in 0 until linesCount) {
-                val isCurrent = (i == currentLineIndex)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height((fontSp * 1.6f).dp)
-                        .padding(end = Spacing.S2),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Text(
-                        text = "${i + 1}",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = (fontSp * 0.85f).sp,
-                        fontWeight = if (isCurrent) FontWeight.W800 else FontWeight.W400,
-                        color = if (isCurrent) Primary else gutterText
-                    )
+        if (showLineNumbers) {
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(44.dp)
+                    .background(gutterBg)
+                    .verticalScroll(verticalScrollState)
+                    .padding(vertical = Spacing.S3),
+                horizontalAlignment = Alignment.End
+            ) {
+                for (i in 0 until linesCount) {
+                    val isCurrent = (i == currentLineIndex)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height((fontSp * 1.6f).dp)
+                            .padding(end = Spacing.S2),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Text(
+                            text = "${i + 1}",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = (fontSp * 0.85f).sp,
+                            fontWeight = if (isCurrent) FontWeight.W800 else FontWeight.W400,
+                            color = if (isCurrent) Primary else gutterText
+                        )
+                    }
                 }
             }
         }
@@ -81,11 +88,11 @@ fun CodeEditor(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .verticalScroll(scrollState)
+                .verticalScroll(verticalScrollState)
                 .padding(vertical = Spacing.S3, horizontal = Spacing.S3)
         ) {
             // Current line highlight background layer
-            if (currentLineIndex in 0 until linesCount) {
+            if (highlightCurrentLine && currentLineIndex in 0 until linesCount) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -95,20 +102,44 @@ fun CodeEditor(
                 )
             }
 
-            BasicTextField(
-                value = textFieldValue,
-                onValueChange = onValueChange,
-                textStyle = TextStyle(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = fontSp.sp,
-                    lineHeight = (fontSp * 1.6f).sp,
-                    color = textPrimary
-                ),
-                cursorBrush = SolidColor(Primary),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag("code_editor_input")
-            )
+            if (isWordWrap) {
+                BasicTextField(
+                    value = textFieldValue,
+                    onValueChange = onValueChange,
+                    textStyle = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = fontSp.sp,
+                        lineHeight = (fontSp * 1.6f).sp,
+                        color = textPrimary
+                    ),
+                    cursorBrush = SolidColor(Primary),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("code_editor_input")
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .horizontalScroll(horizontalScrollState)
+                ) {
+                    BasicTextField(
+                        value = textFieldValue,
+                        onValueChange = onValueChange,
+                        textStyle = TextStyle(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = fontSp.sp,
+                            lineHeight = (fontSp * 1.6f).sp,
+                            color = textPrimary
+                        ),
+                        cursorBrush = SolidColor(Primary),
+                        modifier = Modifier
+                            .widthIn(min = 1200.dp)
+                            .fillMaxHeight()
+                            .testTag("code_editor_input")
+                    )
+                }
+            }
         }
     }
 }
