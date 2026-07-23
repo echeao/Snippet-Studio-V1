@@ -12,13 +12,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
+import com.feige.snippetstudio.util.SyntaxHighlighter
 
 @Composable
 fun CodeEditor(
@@ -26,6 +32,7 @@ fun CodeEditor(
     onValueChange: (TextFieldValue) -> Unit,
     fontSp: Float,
     currentLineIndex: Int,
+    snippetType: SnippetType = SnippetType.HTML,
     isWordWrap: Boolean = true,
     showLineNumbers: Boolean = true,
     highlightCurrentLine: Boolean = true,
@@ -37,6 +44,13 @@ fun CodeEditor(
     val gutterBg = if (isDark) Surface2Dark else Surface2Light
     val editorBg = if (isDark) SurfaceDark else SurfaceLight
     val highlightLineBg = if (isDark) PrimarySoft.copy(alpha = 0.15f) else PrimarySoft
+
+    val syntaxTransformation = remember(snippetType, isDark) {
+        VisualTransformation { text ->
+            val highlighted = SyntaxHighlighter.highlight(text.text, snippetType, isDark)
+            TransformedText(highlighted, OffsetMapping.Identity)
+        }
+    }
 
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
@@ -106,6 +120,7 @@ fun CodeEditor(
                 BasicTextField(
                     value = textFieldValue,
                     onValueChange = onValueChange,
+                    visualTransformation = syntaxTransformation,
                     textStyle = TextStyle(
                         fontFamily = FontFamily.Monospace,
                         fontSize = fontSp.sp,
@@ -126,6 +141,7 @@ fun CodeEditor(
                     BasicTextField(
                         value = textFieldValue,
                         onValueChange = onValueChange,
+                        visualTransformation = syntaxTransformation,
                         textStyle = TextStyle(
                             fontFamily = FontFamily.Monospace,
                             fontSize = fontSp.sp,

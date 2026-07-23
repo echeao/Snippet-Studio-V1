@@ -1,14 +1,25 @@
 package com.feige.snippetstudio.data.repo
 
+import android.content.Context
 import com.feige.snippetstudio.data.local.SnippetDao
 import com.feige.snippetstudio.data.local.SnippetEntity
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
+import com.feige.snippetstudio.util.LocalFileManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
-class SnippetRepository(private val snippetDao: SnippetDao) {
+class SnippetRepository(
+    private val snippetDao: SnippetDao,
+    private val context: Context? = null
+) {
+
+    suspend fun syncWithLocalRepository(context: Context, repoTreeUriStr: String) = withContext(Dispatchers.IO) {
+        LocalFileManager.syncRepositoryToDatabase(context, repoTreeUriStr, snippetDao)
+    }
 
     fun observeActive(): Flow<List<Snippet>> = snippetDao.observeActive().map { list ->
         list.map { it.toDomain() }
@@ -33,7 +44,8 @@ class SnippetRepository(private val snippetDao: SnippetDao) {
     suspend fun create(
         type: SnippetType,
         initialContent: String? = null,
-        initialTitle: String? = null
+        initialTitle: String? = null,
+        repoTreeUriStr: String = ""
     ): Snippet {
         val now = System.currentTimeMillis()
         val title = initialTitle ?: Snippet.generateDefaultTitle(type)
@@ -53,10 +65,15 @@ class SnippetRepository(private val snippetDao: SnippetDao) {
         )
 
         snippetDao.upsert(SnippetEntity.fromDomain(snippet))
+        context?.let { ctx ->
+            withContext(Dispatchers.IO) {
+                LocalFileManager.writeSnippetToFile(ctx, snippet, repoTreeUriStr)
+            }
+        }
         return snippet
     }
 
-    suspend fun saveOrUpdate(snippet: Snippet) {
+    suspend fun saveOrUpdate(snippet: Snippet, repoTreeUriStr: String = "") {
         val now = System.currentTimeMillis()
         val sizeBytes = snippet.content.toByteArray(Charsets.UTF_8).size
         val updated = snippet.copy(
@@ -65,6 +82,11 @@ class SnippetRepository(private val snippetDao: SnippetDao) {
             fileName = if (snippet.fileName.isBlank()) snippet.defaultFileName else snippet.fileName
         )
         snippetDao.upsert(SnippetEntity.fromDomain(updated))
+        context?.let { ctx ->
+            withContext(Dispatchers.IO) {
+                LocalFileManager.writeSnippetToFile(ctx, updated, repoTreeUriStr)
+            }
+        }
     }
 
     suspend fun toggleStar(id: String, currentStarred: Boolean) {
@@ -79,7 +101,13 @@ class SnippetRepository(private val snippetDao: SnippetDao) {
         snippetDao.restore(id)
     }
 
-    suspend fun purge(id: String) {
+    suspend fun purge(id: String, repoTreeUriStr: String = "") {
+        val snippet = getById(id)
+        if (snippet != null && context != null) {
+            withContext(Dispatchers.IO) {
+                LocalFileManager.deleteSnippetFile(context, snippet, repoTreeUriStr)
+            }
+        }
         snippetDao.purge(id)
     }
 

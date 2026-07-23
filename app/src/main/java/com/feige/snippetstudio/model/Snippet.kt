@@ -14,6 +14,16 @@ enum class SnippetType(val code: String, val displayName: String, val extension:
         fun fromCode(code: String): SnippetType {
             return entries.firstOrNull { it.code.lowercase() == code.lowercase() } ?: HTML
         }
+
+        fun fromFileName(fileName: String): SnippetType {
+            val ext = if (fileName.contains('.')) ".${fileName.substringAfterLast('.').lowercase()}" else ""
+            return when (ext) {
+                ".html", ".htm" -> HTML
+                ".js", ".jsx", ".ts", ".tsx" -> JS
+                ".md", ".markdown" -> MARKDOWN
+                else -> PROMPT
+            }
+        }
     }
 }
 

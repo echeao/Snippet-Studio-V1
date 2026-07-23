@@ -72,9 +72,15 @@ class SubPageViewModel(
         initialValue = SubPageUiState(key = key, isLoading = true)
     )
 
-    fun updateRepoPath(path: String) {
+    fun updateRepoPath(context: Context, pathDisplay: String, treeUriStr: String) {
         viewModelScope.launch {
-            settingsRepository.updateSettings { it.copy(repoPath = path) }
+            settingsRepository.updateSettings {
+                it.copy(
+                    repoPath = pathDisplay,
+                    repoTreeUri = treeUriStr
+                )
+            }
+            snippetRepository.syncWithLocalRepository(context, treeUriStr)
         }
     }
 

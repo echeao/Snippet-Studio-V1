@@ -28,6 +28,7 @@ class SettingsDataStore(private val context: Context) {
         val TAB_SIZE = intPreferencesKey("tab_size")
         val AUTO_PAIR_BRACKETS = booleanPreferencesKey("auto_pair_brackets")
         val REPO_PATH = stringPreferencesKey("repo_path")
+        val REPO_TREE_URI = stringPreferencesKey("repo_tree_uri")
         val GIT_URL = stringPreferencesKey("git_url")
         val GIT_BRANCH = stringPreferencesKey("git_branch")
         val GIT_PAT = stringPreferencesKey("git_pat")
@@ -47,6 +48,7 @@ class SettingsDataStore(private val context: Context) {
             tabSize = prefs[Keys.TAB_SIZE] ?: 4,
             autoPairBrackets = prefs[Keys.AUTO_PAIR_BRACKETS] ?: true,
             repoPath = prefs[Keys.REPO_PATH] ?: "Internal App Storage",
+            repoTreeUri = prefs[Keys.REPO_TREE_URI] ?: "",
             gitUrl = prefs[Keys.GIT_URL] ?: "",
             gitBranch = prefs[Keys.GIT_BRANCH] ?: "main",
             gitPat = prefs[Keys.GIT_PAT] ?: "",
@@ -68,6 +70,7 @@ class SettingsDataStore(private val context: Context) {
                 tabSize = prefs[Keys.TAB_SIZE] ?: 4,
                 autoPairBrackets = prefs[Keys.AUTO_PAIR_BRACKETS] ?: true,
                 repoPath = prefs[Keys.REPO_PATH] ?: "Internal App Storage",
+                repoTreeUri = prefs[Keys.REPO_TREE_URI] ?: "",
                 gitUrl = prefs[Keys.GIT_URL] ?: "",
                 gitBranch = prefs[Keys.GIT_BRANCH] ?: "main",
                 gitPat = prefs[Keys.GIT_PAT] ?: "",
@@ -85,6 +88,7 @@ class SettingsDataStore(private val context: Context) {
             prefs[Keys.TAB_SIZE] = updated.tabSize
             prefs[Keys.AUTO_PAIR_BRACKETS] = updated.autoPairBrackets
             prefs[Keys.REPO_PATH] = updated.repoPath
+            prefs[Keys.REPO_TREE_URI] = updated.repoTreeUri
             prefs[Keys.GIT_URL] = updated.gitUrl
             prefs[Keys.GIT_BRANCH] = updated.gitBranch
             prefs[Keys.GIT_PAT] = updated.gitPat

@@ -28,6 +28,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by appContainer.settingsRepository.settingsFlow.collectAsState(initial = com.feige.snippetstudio.model.AppSettings())
 
+            val context = LocalContext.current
+            LaunchedEffect(settings.repoTreeUri) {
+                appContainer.snippetRepository.syncWithLocalRepository(context, settings.repoTreeUri)
+            }
+
             val localeContext = remember(settings.lang) {
                 LocaleHelper.setLocale(this@MainActivity, settings.lang)
             }

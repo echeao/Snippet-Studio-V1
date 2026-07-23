@@ -60,9 +60,11 @@ fun SubPageScreen(
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 )
                 val pathName = uri.lastPathSegment ?: uri.toString()
-                viewModel.updateRepoPath(pathName)
+                viewModel.updateRepoPath(context, pathName, uri.toString())
                 onShowSnackbar(context.getString(R.string.toast_saved))
             } catch (e: Exception) {
+                val pathName = uri.lastPathSegment ?: uri.toString()
+                viewModel.updateRepoPath(context, pathName, uri.toString())
                 onShowSnackbar("Updated path: ${uri.lastPathSegment}")
             }
         }

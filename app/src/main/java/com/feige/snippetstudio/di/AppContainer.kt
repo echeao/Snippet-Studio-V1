@@ -13,7 +13,7 @@ class AppContainer(private val context: Context) {
     }
 
     val snippetRepository: SnippetRepository by lazy {
-        SnippetRepository(database.snippetDao())
+        SnippetRepository(database.snippetDao(), context)
     }
 
     val settingsDataStore: SettingsDataStore by lazy {

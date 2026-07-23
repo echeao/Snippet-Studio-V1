@@ -52,6 +52,7 @@ fun AppScaffold(
     val borderColor = if (isDark) LineDark else LineLight
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             if (showBottomBarAndFab) {
                 NavigationBar(

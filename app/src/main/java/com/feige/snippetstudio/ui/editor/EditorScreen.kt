@@ -117,22 +117,27 @@ fun EditorScreen(
                     onSelect = { viewModel.selectTab(it) }
                 )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     // Font Size - / +
-                    TextButton(
-                        onClick = { viewModel.adjustFontSize(-1f) },
-                        contentPadding = PaddingValues(horizontal = 6.dp)
-                    ) {
-                        Text("A−", style = CaptionStyle, color = textSecondary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(
+                            onClick = { viewModel.adjustFontSize(-1f) },
+                            contentPadding = PaddingValues(horizontal = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("A−", style = CaptionStyle, color = textSecondary)
+                        }
+                        TextButton(
+                            onClick = { viewModel.adjustFontSize(+1f) },
+                            contentPadding = PaddingValues(horizontal = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("A+", style = CaptionStyle, color = textSecondary)
+                        }
                     }
-                    TextButton(
-                        onClick = { viewModel.adjustFontSize(+1f) },
-                        contentPadding = PaddingValues(horizontal = 6.dp)
-                    ) {
-                        Text("A+", style = CaptionStyle, color = textSecondary)
-                    }
-
-                    Spacer(modifier = Modifier.width(Spacing.S1))
 
                     // Fullscreen Button
                     IconButton(
@@ -142,16 +147,12 @@ fun EditorScreen(
                             .testTag("fullscreen_toggle_btn")
                     ) {
                         Icon(
-                            painter = painterResource(
-                                id = if (uiState.isFullscreen) R.drawable.ic_maximize else R.drawable.ic_maximize
-                            ),
+                            imageVector = if (uiState.isFullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
                             contentDescription = if (uiState.isFullscreen) "Exit Fullscreen" else "Fullscreen",
                             tint = if (uiState.isFullscreen) Primary else textSecondary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(Spacing.S1))
 
                     // Run Button
                     IconButton(
@@ -187,6 +188,7 @@ fun EditorScreen(
                         onValueChange = { viewModel.onTextFieldValueChange(it) },
                         fontSp = uiState.fontSp,
                         currentLineIndex = uiState.currentLineIndex,
+                        snippetType = uiState.type,
                         isWordWrap = uiState.isWordWrap,
                         showLineNumbers = uiState.showLineNumbers,
                         highlightCurrentLine = uiState.highlightCurrentLine,

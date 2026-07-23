@@ -12,6 +12,7 @@ data class AppSettings(
     val tabSize: Int = 4,
     val autoPairBrackets: Boolean = true,
     val repoPath: String = "Internal App Storage",
+    val repoTreeUri: String = "",
     val gitUrl: String = "",
     val gitBranch: String = "main",
     val gitPat: String = "",

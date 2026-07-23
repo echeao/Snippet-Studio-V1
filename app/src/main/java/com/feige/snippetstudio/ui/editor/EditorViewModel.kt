@@ -74,16 +74,17 @@ class EditorViewModel(
 
         // Load or create snippet
         viewModelScope.launch {
+            val currentSettings = settingsRepository.settingsFlow.first()
             if (snippetId == "new") {
                 val type = SnippetType.fromCode(initialTypeStr ?: "html")
-                val snippet = snippetRepository.create(type)
+                val snippet = snippetRepository.create(type, repoTreeUriStr = currentSettings.repoTreeUri)
                 initFromSnippet(snippet)
             } else {
                 val snippet = snippetRepository.getById(snippetId)
                 if (snippet != null) {
                     initFromSnippet(snippet)
                 } else {
-                    val fallback = snippetRepository.create(SnippetType.HTML)
+                    val fallback = snippetRepository.create(SnippetType.HTML, repoTreeUriStr = currentSettings.repoTreeUri)
                     initFromSnippet(fallback)
                 }
             }
@@ -248,12 +249,13 @@ class EditorViewModel(
     private suspend fun performSave() {
         val state = _uiState.value
         val snippet = state.snippet ?: return
+        val currentSettings = settingsRepository.settingsFlow.first()
         val updated = snippet.copy(
             title = state.title,
             content = state.textFieldValue.text,
             type = state.type
         )
-        snippetRepository.saveOrUpdate(updated)
+        snippetRepository.saveOrUpdate(updated, currentSettings.repoTreeUri)
         _uiState.update {
             it.copy(
                 snippet = updated,
