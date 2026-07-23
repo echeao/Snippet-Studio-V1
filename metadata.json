@@ -1,0 +1,6 @@
+{
+  "name": "Snippet Studio",
+  "description": "Local code snippet studio for creating, editing, running, and managing HTML, JS, Markdown, and Prompt snippets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
