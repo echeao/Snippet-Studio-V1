@@ -18,5 +18,6 @@ data class AppSettings(
     val gitPat: String = "",
     val gitConnected: Boolean = false,
     val lastSyncTime: Long = 0L,
-    val autoSyncEnabled: Boolean = true
+    val autoSyncEnabled: Boolean = true,
+    val customTags: List<String> = emptyList()
 )

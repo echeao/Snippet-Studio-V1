@@ -33,7 +33,7 @@ import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.SizeUtil
 import com.feige.snippetstudio.util.TimeUtil
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(
     viewModel: DetailViewModel,
@@ -52,6 +52,7 @@ fun DetailScreen(
     val borderColor = if (isDark) LineDark else LineLight
 
     var showTrashDialog by remember { mutableStateOf(false) }
+    var showTagDialog by remember { mutableStateOf(false) }
 
     val snippet = uiState.snippet
 
@@ -164,6 +165,75 @@ fun DetailScreen(
                             modifier = Modifier.padding(horizontal = Spacing.S3, vertical = Spacing.S2)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(Spacing.S3))
+
+                    // Tags Display / Add Section
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        if (snippet.tags.isEmpty()) {
+                            Surface(
+                                color = PrimarySoft,
+                                shape = RoundedCornerShape(R_SM),
+                                modifier = Modifier.clickable { showTagDialog = true }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = Spacing.S3, vertical = Spacing.S1)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Add,
+                                        contentDescription = "Add Tag",
+                                        tint = Primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "添加标签",
+                                        style = CaptionStyle,
+                                        color = Primary
+                                    )
+                                }
+                            }
+                        } else {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { showTagDialog = true }
+                            ) {
+                                snippet.tags.forEach { tag ->
+                                    Surface(
+                                        color = C_TagBg,
+                                        shape = RoundedCornerShape(R_SM)
+                                    ) {
+                                        Text(
+                                            text = "# $tag",
+                                            style = BadgeStyle,
+                                            color = C_Tag,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { showTagDialog = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Edit,
+                                    contentDescription = "Edit Tags",
+                                    tint = textSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -260,6 +330,18 @@ fun DetailScreen(
                 }
             }
         }
+
+        // Tag Edit Dialog
+        TagEditDialog(
+            show = showTagDialog,
+            initialTags = snippet.tags,
+            allAvailableTags = uiState.allAvailableTags,
+            onDismiss = { showTagDialog = false },
+            onSave = { updatedTags ->
+                viewModel.updateTags(updatedTags)
+                onShowSnackbar("标签已更新")
+            }
+        )
 
         // Confirmation Dialog
         ConfirmDialog(

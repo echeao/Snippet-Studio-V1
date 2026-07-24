@@ -53,6 +53,7 @@ fun EditorScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showTypeDialog by remember { mutableStateOf(false) }
+    var showTagDialog by remember { mutableStateOf(false) }
 
     val handleBack = {
         if (uiState.saveState == SaveState.UNSAVED) {
@@ -334,6 +335,14 @@ fun EditorScreen(
                                     }
                                 )
                                 DropdownMenuItem(
+                                    text = { Text("编辑片段标签", style = CaptionStyle) },
+                                    leadingIcon = { Icon(Icons.Filled.Tag, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showTagDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
                                     text = { Text("复制全部代码", style = CaptionStyle) },
                                     leadingIcon = { Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(20.dp)) },
                                     onClick = {
@@ -421,7 +430,11 @@ fun EditorScreen(
             EditorSettingsContent(
                 uiState = uiState,
                 viewModel = viewModel,
-                onClose = { showSettingsSheet = false }
+                onClose = { showSettingsSheet = false },
+                onOpenTagsDialog = {
+                    showSettingsSheet = false
+                    showTagDialog = true
+                }
             )
         }
     }
@@ -468,6 +481,18 @@ fun EditorScreen(
         )
     }
 
+    // Tag Edit Dialog
+    TagEditDialog(
+        show = showTagDialog,
+        initialTags = uiState.tags,
+        allAvailableTags = uiState.allAvailableTags,
+        onDismiss = { showTagDialog = false },
+        onSave = { updatedTags ->
+            viewModel.updateTags(updatedTags)
+            onShowSnackbar("标签已更新")
+        }
+    )
+
     // Discard Confirmation Dialog
     ConfirmDialog(
         show = showDiscardDialog,
@@ -486,7 +511,8 @@ fun EditorScreen(
 private fun EditorSettingsContent(
     uiState: EditorUiState,
     viewModel: EditorViewModel,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onOpenTagsDialog: () -> Unit
 ) {
     val isDark = LocalIsDarkTheme.current
     val textPrimary = if (isDark) TextDark else TextLight
@@ -513,6 +539,31 @@ private fun EditorSettingsContent(
             IconButton(onClick = onClose) {
                 Icon(Icons.Filled.Close, contentDescription = "Close", tint = textSecondary)
             }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Section 0: Fragment Tags
+        Text("片段属性", style = CaptionStyle, color = Primary, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenTagsDialog() }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "管理代码标签", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = textPrimary)
+                Text(
+                    text = if (uiState.tags.isEmpty()) "暂无标签，点击添加" else uiState.tags.joinToString(", ") { "#$it" },
+                    style = CaptionStyle,
+                    color = textSecondary
+                )
+            }
+            Icon(imageVector = Icons.Filled.ChevronRight, contentDescription = null, tint = textSecondary)
         }
 
         Spacer(modifier = Modifier.height(12.dp))

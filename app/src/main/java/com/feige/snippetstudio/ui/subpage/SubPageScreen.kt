@@ -32,7 +32,10 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SubPageScreen(
     viewModel: SubPageViewModel,
@@ -297,32 +300,98 @@ fun SubPageScreen(
                 }
 
                 "tags" -> {
+                    var newTagInput by remember { mutableStateOf("") }
+                    val addAction = {
+                        if (newTagInput.trim().isNotEmpty()) {
+                            viewModel.addGlobalTag(newTagInput)
+                            newTagInput = ""
+                            onShowSnackbar("已添加全局预设标签")
+                        }
+                    }
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(Spacing.S4)
+                            .padding(Spacing.S4),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.S4)
                     ) {
+                        // 新建全局标签输入区
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(AppElevation.Sm, RoundedCornerShape(R_MD))
+                                .border(1.dp, borderColor, RoundedCornerShape(R_MD)),
+                            shape = RoundedCornerShape(R_MD),
+                            color = cardBg
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(Spacing.S3),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.S2)
+                            ) {
+                                OutlinedTextField(
+                                    value = newTagInput,
+                                    onValueChange = { newTagInput = it },
+                                    label = { Text("新建全局常用标签") },
+                                    placeholder = { Text("例如: UI, API, 工具") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = addAction,
+                                    enabled = newTagInput.trim().isNotEmpty(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                                    shape = AppShapes.small
+                                ) {
+                                    Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("添加")
+                                }
+                            }
+                        }
+
+                        // 标签列表与快捷移除
                         if (uiState.tags.isEmpty()) {
                             EmptyState(
                                 title = "尚无自定义标签",
-                                desc = "在片段中添加标签后在此集中展示"
+                                desc = "可在此提前添加全局常备标签，或在代码片段中打上标签"
                             )
                         } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(Spacing.S2)
+                            Text("已积累与预设的标签列表", style = CaptionStyle, color = textSecondary)
+
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 uiState.tags.forEach { tag ->
                                     Surface(
                                         color = C_TagBg,
                                         shape = RoundedCornerShape(R_SM)
                                     ) {
-                                        Text(
-                                            text = "# $tag",
-                                            style = ListTitleStyle,
-                                            color = C_Tag,
-                                            modifier = Modifier.padding(horizontal = Spacing.S3, vertical = Spacing.S2)
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = "# $tag",
+                                                style = ListTitleStyle,
+                                                color = C_Tag,
+                                                fontSize = 13.sp
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Icon(
+                                                imageVector = Icons.Filled.Close,
+                                                contentDescription = "Remove Tag",
+                                                tint = C_Tag,
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .clickable {
+                                                        viewModel.removeGlobalTag(tag)
+                                                        onShowSnackbar("已移除预设标签: $tag")
+                                                    }
+                                            )
+                                        }
                                     }
                                 }
                             }

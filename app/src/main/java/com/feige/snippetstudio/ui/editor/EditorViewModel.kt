@@ -22,6 +22,8 @@ data class EditorUiState(
     val title: String = "",
     val textFieldValue: TextFieldValue = TextFieldValue(""),
     val type: SnippetType = SnippetType.HTML,
+    val tags: List<String> = emptyList(),
+    val allAvailableTags: List<String> = emptyList(),
     val selectedTab: Int = 0, // 0 = Code, 1 = Preview
     val saveState: SaveState = SaveState.SAVED,
     val fontSp: Float = 13.5f,
@@ -72,6 +74,18 @@ class EditorViewModel(
             }
         }
 
+        // Observe all available tags
+        viewModelScope.launch {
+            combine(
+                settingsRepository.settingsFlow,
+                snippetRepository.observeActive()
+            ) { settings, activeSnippets ->
+                (settings.customTags + activeSnippets.flatMap { it.tags }).distinct()
+            }.collect { tags ->
+                _uiState.update { it.copy(allAvailableTags = tags) }
+            }
+        }
+
         // Load or create snippet
         viewModelScope.launch {
             val currentSettings = settingsRepository.settingsFlow.first()
@@ -110,6 +124,7 @@ class EditorViewModel(
                 title = snippet.title,
                 textFieldValue = tfv,
                 type = snippet.type,
+                tags = snippet.tags,
                 lineCount = lines,
                 charCount = snippet.content.length,
                 saveState = SaveState.SAVED,
@@ -225,6 +240,13 @@ class EditorViewModel(
         triggerAutoSave()
     }
 
+    fun updateTags(tags: List<String>) {
+        _uiState.update {
+            it.copy(tags = tags, saveState = SaveState.UNSAVED)
+        }
+        triggerAutoSave()
+    }
+
     fun adjustFontSize(deltaSp: Float) {
         val current = _uiState.value.fontSp
         val next = (current + deltaSp).coerceIn(11f, 22f)
@@ -253,7 +275,8 @@ class EditorViewModel(
         val updated = snippet.copy(
             title = state.title,
             content = state.textFieldValue.text,
-            type = state.type
+            type = state.type,
+            tags = state.tags
         )
         snippetRepository.saveOrUpdate(updated, currentSettings.repoTreeUri)
         _uiState.update {

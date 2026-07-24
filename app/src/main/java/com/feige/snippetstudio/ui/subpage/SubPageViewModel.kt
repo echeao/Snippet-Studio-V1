@@ -60,7 +60,7 @@ class SubPageViewModel(
         val isOperating = flows[6] as Boolean
 
         val counts = active.groupBy { it.type.displayName }.mapValues { it.value.size }
-        val allTags = active.flatMap { it.tags }.distinct()
+        val allTags = (settings.customTags + active.flatMap { it.tags }).distinct()
 
         SubPageUiState(
             key = key,
@@ -197,6 +197,26 @@ class SubPageViewModel(
         viewModelScope.launch {
             settingsRepository.updateSettings { it.copy(lang = langCode) }
             LocaleHelper.setLocale(context, langCode)
+        }
+    }
+
+    fun addGlobalTag(tag: String) {
+        val trimmed = tag.trim().removePrefix("#").trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            settingsRepository.updateSettings { current ->
+                val updated = (current.customTags + trimmed).distinct()
+                current.copy(customTags = updated)
+            }
+        }
+    }
+
+    fun removeGlobalTag(tag: String) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { current ->
+                val updated = current.customTags.filter { it != tag }
+                current.copy(customTags = updated)
+            }
         }
     }
 

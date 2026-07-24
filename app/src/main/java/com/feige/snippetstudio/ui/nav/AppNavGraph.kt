@@ -115,7 +115,11 @@ fun AppNavGraph(
             val id = backStackEntry.arguments?.getString("id") ?: ""
 
             val viewModel: DetailViewModel = viewModel(
-                factory = DetailViewModel.factory(id, appContainer.snippetRepository)
+                factory = DetailViewModel.factory(
+                    snippetId = id,
+                    repository = appContainer.snippetRepository,
+                    settingsRepository = appContainer.settingsRepository
+                )
             )
             DetailScreen(
                 viewModel = viewModel,
