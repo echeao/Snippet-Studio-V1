@@ -95,7 +95,7 @@ fun SettingsScreen(
                 SettingsItem(
                     iconRes = R.drawable.ic_git,
                     title = stringResource(R.string.set_git),
-                    subTitle = if (settings.gitConnected) stringResource(R.string.sub_git_connected) else stringResource(R.string.sub_git_disconnected),
+                    subTitle = if (settings.gitConnected) "已连接 (JGit 真实仓库)" else stringResource(R.string.sub_git_disconnected),
                     onClick = { onNavigateToSubPage("git") }
                 )
             }

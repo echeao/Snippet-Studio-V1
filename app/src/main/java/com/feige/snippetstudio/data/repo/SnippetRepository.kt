@@ -12,9 +12,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
+import com.feige.snippetstudio.data.git.GitManager
+
 class SnippetRepository(
     private val snippetDao: SnippetDao,
-    private val context: Context? = null
+    private val context: Context? = null,
+    private val gitManager: GitManager? = null
 ) {
 
     suspend fun syncWithLocalRepository(context: Context, repoTreeUriStr: String) = withContext(Dispatchers.IO) {
@@ -70,6 +73,7 @@ class SnippetRepository(
                 LocalFileManager.writeSnippetToFile(ctx, snippet, repoTreeUriStr)
             }
         }
+        gitManager?.writeSnippetFile(snippet)
         return snippet
     }
 
@@ -87,6 +91,7 @@ class SnippetRepository(
                 LocalFileManager.writeSnippetToFile(ctx, updated, repoTreeUriStr)
             }
         }
+        gitManager?.writeSnippetFile(updated)
     }
 
     suspend fun toggleStar(id: String, currentStarred: Boolean) {
@@ -103,10 +108,13 @@ class SnippetRepository(
 
     suspend fun purge(id: String, repoTreeUriStr: String = "") {
         val snippet = getById(id)
-        if (snippet != null && context != null) {
-            withContext(Dispatchers.IO) {
-                LocalFileManager.deleteSnippetFile(context, snippet, repoTreeUriStr)
+        if (snippet != null) {
+            context?.let { ctx ->
+                withContext(Dispatchers.IO) {
+                    LocalFileManager.deleteSnippetFile(ctx, snippet, repoTreeUriStr)
+                }
             }
+            gitManager?.removeSnippetFile(snippet)
         }
         snippetDao.purge(id)
     }
@@ -122,5 +130,14 @@ class SnippetRepository(
 
     suspend fun activeCount(): Int {
         return snippetDao.activeCount()
+    }
+
+    suspend fun syncGitFilesToDb() {
+        gitManager?.importGitDirToDatabase(snippetDao)
+    }
+
+    suspend fun exportAllToGit() {
+        val snippets = allForExport()
+        gitManager?.exportAllSnippetsToDir(snippets)
     }
 }

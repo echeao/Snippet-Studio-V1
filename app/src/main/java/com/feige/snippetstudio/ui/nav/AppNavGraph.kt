@@ -136,7 +136,8 @@ fun AppNavGraph(
                 factory = SubPageViewModel.factory(
                     key = key,
                     settingsRepository = appContainer.settingsRepository,
-                    snippetRepository = appContainer.snippetRepository
+                    snippetRepository = appContainer.snippetRepository,
+                    gitManager = appContainer.gitManager
                 )
             )
             SubPageScreen(

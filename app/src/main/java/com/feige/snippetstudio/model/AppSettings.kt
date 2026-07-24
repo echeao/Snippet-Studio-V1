@@ -16,5 +16,7 @@ data class AppSettings(
     val gitUrl: String = "",
     val gitBranch: String = "main",
     val gitPat: String = "",
-    val gitConnected: Boolean = false
+    val gitConnected: Boolean = false,
+    val lastSyncTime: Long = 0L,
+    val autoSyncEnabled: Boolean = true
 )

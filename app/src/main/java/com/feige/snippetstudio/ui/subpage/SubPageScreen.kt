@@ -182,43 +182,74 @@ fun SubPageScreen(
                                     value = uiState.gitUrlInput,
                                     onValueChange = { viewModel.onGitUrlChange(it) },
                                     label = { Text(stringResource(R.string.sub_git_url)) },
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !uiState.isGitOperating
                                 )
                                 OutlinedTextField(
                                     value = uiState.gitBranchInput,
                                     onValueChange = { viewModel.onGitBranchChange(it) },
                                     label = { Text(stringResource(R.string.sub_git_branch)) },
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !uiState.isGitOperating
                                 )
                                 OutlinedTextField(
                                     value = uiState.gitPatInput,
                                     onValueChange = { viewModel.onGitPatChange(it) },
                                     label = { Text(stringResource(R.string.sub_git_pat)) },
                                     visualTransformation = PasswordVisualTransformation(),
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !uiState.isGitOperating
                                 )
 
                                 Spacer(modifier = Modifier.height(Spacing.S2))
 
-                                Button(
-                                    onClick = {
-                                        viewModel.testGitConnection { connected ->
-                                            onShowSnackbar(
-                                                if (connected) context.getString(R.string.sub_git_connected) else context.getString(R.string.sub_git_disconnected)
-                                            )
+                                if (uiState.isGitOperating) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(color = Primary)
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = {
+                                            viewModel.testGitConnection { success, errorMsg ->
+                                                if (success) {
+                                                    onShowSnackbar("Git 远程验证通过，本地仓库已初始化！")
+                                                } else {
+                                                    onShowSnackbar(errorMsg ?: "操作失败")
+                                                }
+                                            }
+                                        },
+                                        shape = AppShapes.small,
+                                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("校验连接并初始化/克隆")
+                                    }
+
+                                    if (uiState.settings.gitConnected) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                viewModel.syncGit { success, msg ->
+                                                    onShowSnackbar(msg ?: (if (success) "同步成功" else "同步失败"))
+                                                }
+                                            },
+                                            shape = AppShapes.small,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("手动完整同步 (Pull & Push)")
                                         }
-                                    },
-                                    shape = AppShapes.small,
-                                    colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(stringResource(R.string.sub_git_test))
+                                    }
                                 }
                             }
                         }
 
                         Text(
-                            text = stringResource(R.string.sub_git_hint),
+                            text = if (uiState.settings.gitConnected)
+                                "Git 状态: 已连接。修改代码片段时将自动同步至本地 Git 仓并可推送远端。"
+                            else
+                                "请输入有效的远程仓库 URL 和 Personal Access Token (PAT)，点击“校验连接”即可完成准备。",
                             style = BodyStyle,
                             color = textSecondary,
                             modifier = Modifier.padding(horizontal = Spacing.S2)

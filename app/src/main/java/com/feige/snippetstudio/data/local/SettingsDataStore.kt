@@ -33,6 +33,8 @@ class SettingsDataStore(private val context: Context) {
         val GIT_BRANCH = stringPreferencesKey("git_branch")
         val GIT_PAT = stringPreferencesKey("git_pat")
         val GIT_CONNECTED = booleanPreferencesKey("git_connected")
+        val LAST_SYNC_TIME = androidx.datastore.preferences.core.longPreferencesKey("last_sync_time")
+        val AUTO_SYNC_ENABLED = booleanPreferencesKey("auto_sync_enabled")
     }
 
     val settingsFlow: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -52,7 +54,9 @@ class SettingsDataStore(private val context: Context) {
             gitUrl = prefs[Keys.GIT_URL] ?: "",
             gitBranch = prefs[Keys.GIT_BRANCH] ?: "main",
             gitPat = prefs[Keys.GIT_PAT] ?: "",
-            gitConnected = prefs[Keys.GIT_CONNECTED] ?: false
+            gitConnected = prefs[Keys.GIT_CONNECTED] ?: false,
+            lastSyncTime = prefs[Keys.LAST_SYNC_TIME] ?: 0L,
+            autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true
         )
     }
 
@@ -74,7 +78,9 @@ class SettingsDataStore(private val context: Context) {
                 gitUrl = prefs[Keys.GIT_URL] ?: "",
                 gitBranch = prefs[Keys.GIT_BRANCH] ?: "main",
                 gitPat = prefs[Keys.GIT_PAT] ?: "",
-                gitConnected = prefs[Keys.GIT_CONNECTED] ?: false
+                gitConnected = prefs[Keys.GIT_CONNECTED] ?: false,
+                lastSyncTime = prefs[Keys.LAST_SYNC_TIME] ?: 0L,
+                autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true
             )
             val updated = transform(current)
             prefs[Keys.LANG] = updated.lang
@@ -93,6 +99,8 @@ class SettingsDataStore(private val context: Context) {
             prefs[Keys.GIT_BRANCH] = updated.gitBranch
             prefs[Keys.GIT_PAT] = updated.gitPat
             prefs[Keys.GIT_CONNECTED] = updated.gitConnected
+            prefs[Keys.LAST_SYNC_TIME] = updated.lastSyncTime
+            prefs[Keys.AUTO_SYNC_ENABLED] = updated.autoSyncEnabled
         }
     }
 }
