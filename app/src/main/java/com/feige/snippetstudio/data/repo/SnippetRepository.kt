@@ -136,6 +136,25 @@ class SnippetRepository(
         gitManager?.importGitDirToDatabase(snippetDao)
     }
 
+    suspend fun updateRename(id: String, newTitle: String, newFileName: String, repoTreeUriStr: String = "") {
+        val snippet = getById(id) ?: return
+        val updated = snippet.copy(
+            title = newTitle,
+            fileName = newFileName,
+            updatedAt = System.currentTimeMillis()
+        )
+        saveOrUpdate(updated, repoTreeUriStr)
+    }
+
+    suspend fun updateFolder(id: String, newFolder: String, repoTreeUriStr: String = "") {
+        val snippet = getById(id) ?: return
+        val updated = snippet.copy(
+            folder = newFolder,
+            updatedAt = System.currentTimeMillis()
+        )
+        saveOrUpdate(updated, repoTreeUriStr)
+    }
+
     suspend fun exportAllToGit() {
         val snippets = allForExport()
         gitManager?.exportAllSnippetsToDir(snippets)

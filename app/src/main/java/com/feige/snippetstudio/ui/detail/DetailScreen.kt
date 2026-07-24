@@ -53,6 +53,8 @@ fun DetailScreen(
 
     var showTrashDialog by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var showFolderDialog by remember { mutableStateOf(false) }
 
     val snippet = uiState.snippet
 
@@ -137,11 +139,31 @@ fun DetailScreen(
 
                     Spacer(modifier = Modifier.height(Spacing.S4))
 
-                    Text(
-                        text = snippet.displayTitle,
-                        style = DisplayTitleStyle,
-                        color = textPrimary
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showRenameDialog = true }
+                    ) {
+                        Text(
+                            text = snippet.displayTitle,
+                            style = DisplayTitleStyle,
+                            color = textPrimary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { showRenameDialog = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Rename",
+                                tint = textSecondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(Spacing.S2))
 
@@ -155,15 +177,27 @@ fun DetailScreen(
 
                     Surface(
                         color = if (isDark) Surface2Dark else Surface2Light,
-                        shape = RoundedCornerShape(R_SM)
+                        shape = RoundedCornerShape(R_SM),
+                        modifier = Modifier.clickable { showRenameDialog = true }
                     ) {
-                        Text(
-                            text = snippet.fileName,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.5.sp,
-                            color = textSecondary,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = Spacing.S3, vertical = Spacing.S2)
-                        )
+                        ) {
+                            Text(
+                                text = snippet.fileName,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.5.sp,
+                                color = textSecondary
+                            )
+                            Spacer(modifier = Modifier.width(Spacing.S2))
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "Edit Filename",
+                                tint = textSecondary,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(Spacing.S3))
@@ -323,13 +357,42 @@ fun DetailScreen(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.S3)) {
                     InfoRow(label = stringResource(R.string.detail_filename), value = snippet.fileName)
+                    InfoRow(
+                        label = "所属文件夹",
+                        value = if (snippet.folder.isBlank()) "/ (根目录)" else snippet.folder,
+                        onClick = { showFolderDialog = true }
+                    )
                     InfoRow(label = stringResource(R.string.detail_size), value = SizeUtil.formatBytes(snippet.sizeBytes))
-                    InfoRow(label = stringResource(R.string.detail_path), value = "snippets/${snippet.fileName}")
+                    InfoRow(label = stringResource(R.string.detail_path), value = if (snippet.folder.isBlank()) "snippets/${snippet.fileName}" else "snippets/${snippet.folder}/${snippet.fileName}")
                     InfoRow(label = stringResource(R.string.detail_updated), value = TimeUtil.formatFullDateTime(snippet.updatedAt))
                     InfoRow(label = stringResource(R.string.detail_git_status), value = stringResource(R.string.detail_git_status_val))
                 }
             }
         }
+
+        // Rename Dialog
+        RenameDialog(
+            show = showRenameDialog,
+            initialTitle = snippet.title,
+            initialFileName = snippet.fileName,
+            onDismiss = { showRenameDialog = false },
+            onConfirm = { newTitle, newFileName ->
+                viewModel.renameSnippet(newTitle, newFileName)
+                onShowSnackbar("片段已重命名")
+            }
+        )
+
+        // Folder Move Dialog
+        FolderMoveDialog(
+            show = showFolderDialog,
+            currentFolder = snippet.folder,
+            existingFolders = uiState.existingFolders,
+            onDismiss = { showFolderDialog = false },
+            onConfirm = { targetFolder ->
+                viewModel.updateFolder(targetFolder)
+                onShowSnackbar("已移动至文件夹")
+            }
+        )
 
         // Tag Edit Dialog
         TagEditDialog(
@@ -451,23 +514,40 @@ fun DetailPanel(
 }
 
 @Composable
-fun InfoRow(label: String, value: String) {
+fun InfoRow(
+    label: String,
+    value: String,
+    onClick: (() -> Unit)? = null
+) {
     val isDark = LocalIsDarkTheme.current
     val textPrimary = if (isDark) TextDark else TextLight
     val textSecondary = if (isDark) Text2Dark else Text2Light
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(text = label, style = BodyStyle, color = textSecondary)
-        Text(
-            text = value,
-            style = BodyStyle,
-            color = textPrimary,
-            fontFamily = FontFamily.Monospace,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = value,
+                style = BodyStyle,
+                color = if (onClick != null) Primary else textPrimary,
+                fontFamily = FontFamily.Monospace,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (onClick != null) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Edit",
+                    tint = Primary,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
     }
 }

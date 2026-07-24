@@ -9,62 +9,91 @@ import com.feige.snippetstudio.ui.components.FilterOption
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+import com.feige.snippetstudio.data.repo.SettingsRepository
+
 enum class SortMode {
     UPDATED_DESC, NAME_ASC, TYPE_ASC
 }
 
+enum class ViewMode {
+    FLAT, TREE
+}
+
 data class FilesUiState(
     val snippets: List<Snippet> = emptyList(),
+    val groupedFolders: Map<String, List<Snippet>> = emptyMap(),
+    val existingFolders: List<String> = emptyList(),
     val searchQuery: String = "",
     val filterOption: FilterOption = FilterOption.All,
     val sortMode: SortMode = SortMode.UPDATED_DESC,
+    val viewMode: ViewMode = ViewMode.FLAT,
+    val cardClickAction: String = "detail",
     val isLoading: Boolean = true
 )
 
+private data class FilterParams(
+    val query: String,
+    val filter: FilterOption,
+    val sort: SortMode,
+    val viewMode: ViewMode
+)
+
 class FilesViewModel(
-    private val repository: SnippetRepository
+    private val repository: SnippetRepository,
+    private val settingsRepository: SettingsRepository? = null
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     private val _filterOption = MutableStateFlow<FilterOption>(FilterOption.All)
     private val _sortMode = MutableStateFlow(SortMode.UPDATED_DESC)
+    private val _viewMode = MutableStateFlow(ViewMode.FLAT)
+
+    private val _filterParams = combine(_searchQuery, _filterOption, _sortMode, _viewMode) { query, filter, sort, viewMode ->
+        FilterParams(query, filter, sort, viewMode)
+    }
 
     val uiState: StateFlow<FilesUiState> = combine(
         repository.observeActive(),
-        _searchQuery,
-        _filterOption,
-        _sortMode
-    ) { allSnippets, query, filter, sort ->
+        _filterParams,
+        settingsRepository?.settingsFlow ?: flowOf(com.feige.snippetstudio.model.AppSettings())
+    ) { allSnippets, params, settings ->
         var list = allSnippets
 
         // Filter by option
         list = when {
-            filter.isFav -> list.filter { it.starred }
-            filter.type != null -> list.filter { it.type == filter.type }
+            params.filter.isFav -> list.filter { it.starred }
+            params.filter.type != null -> list.filter { it.type == params.filter.type }
             else -> list
         }
 
         // Filter by search query
-        if (query.isNotBlank()) {
+        if (params.query.isNotBlank()) {
             list = list.filter {
-                it.title.contains(query, ignoreCase = true) ||
-                        it.content.contains(query, ignoreCase = true) ||
-                        it.tags.any { tag -> tag.contains(query, ignoreCase = true) }
+                it.title.contains(params.query, ignoreCase = true) ||
+                        it.content.contains(params.query, ignoreCase = true) ||
+                        it.tags.any { tag -> tag.contains(params.query, ignoreCase = true) }
             }
         }
 
         // Sort
-        list = when (sort) {
+        list = when (params.sort) {
             SortMode.UPDATED_DESC -> list.sortedByDescending { it.updatedAt }
             SortMode.NAME_ASC -> list.sortedBy { it.displayTitle.lowercase() }
             SortMode.TYPE_ASC -> list.sortedBy { it.type.displayName }
         }
 
+        val grouped = list.groupBy { if (it.folder.isBlank()) "根目录" else it.folder }
+        val folders = allSnippets.map { it.folder }.filter { it.isNotBlank() }.distinct()
+
         FilesUiState(
             snippets = list,
-            searchQuery = query,
-            filterOption = filter,
-            sortMode = sort,
+            groupedFolders = grouped,
+            existingFolders = folders,
+            searchQuery = params.query,
+            filterOption = params.filter,
+            sortMode = params.sort,
+            viewMode = params.viewMode,
+            cardClickAction = settings.cardClickAction,
             isLoading = false
         )
     }.stateIn(
@@ -89,9 +118,25 @@ class FilesViewModel(
         }
     }
 
+    fun toggleViewMode() {
+        _viewMode.value = if (_viewMode.value == ViewMode.FLAT) ViewMode.TREE else ViewMode.FLAT
+    }
+
     fun toggleStar(id: String, currentStarred: Boolean) {
         viewModelScope.launch {
             repository.toggleStar(id, currentStarred)
+        }
+    }
+
+    fun renameSnippet(id: String, newTitle: String, newFileName: String) {
+        viewModelScope.launch {
+            repository.updateRename(id, newTitle, newFileName)
+        }
+    }
+
+    fun updateFolder(id: String, newFolder: String) {
+        viewModelScope.launch {
+            repository.updateFolder(id, newFolder)
         }
     }
 
@@ -102,10 +147,13 @@ class FilesViewModel(
     }
 
     companion object {
-        fun factory(repository: SnippetRepository): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun factory(
+            repository: SnippetRepository,
+            settingsRepository: SettingsRepository? = null
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return FilesViewModel(repository) as T
+                return FilesViewModel(repository, settingsRepository) as T
             }
         }
     }

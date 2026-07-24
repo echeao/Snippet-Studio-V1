@@ -34,6 +34,14 @@ class SettingsViewModel(
         }
     }
 
+    fun updateCardClickAction(action: String) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                it.copy(cardClickAction = action)
+            }
+        }
+    }
+
     fun exportBackupJson(context: Context, uri: Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val snippets = snippetRepository.allForExport()

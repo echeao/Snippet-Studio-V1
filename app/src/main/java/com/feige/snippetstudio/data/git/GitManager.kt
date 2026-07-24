@@ -79,7 +79,8 @@ class GitManager(private val context: Context) {
     suspend fun writeSnippetFile(snippet: Snippet): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val fileName = if (snippet.fileName.isBlank()) snippet.defaultFileName else snippet.fileName
-            val file = File(gitRepoDir, fileName)
+            val targetDir = if (snippet.folder.isBlank()) gitRepoDir else File(gitRepoDir, snippet.folder).apply { if (!exists()) mkdirs() }
+            val file = File(targetDir, fileName)
             file.writeText(snippet.content, Charsets.UTF_8)
         }
     }
@@ -90,7 +91,8 @@ class GitManager(private val context: Context) {
     suspend fun removeSnippetFile(snippet: Snippet): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val fileName = if (snippet.fileName.isBlank()) snippet.defaultFileName else snippet.fileName
-            File(gitRepoDir, fileName).delete()
+            val targetDir = if (snippet.folder.isBlank()) gitRepoDir else File(gitRepoDir, snippet.folder)
+            File(targetDir, fileName).delete()
             Unit
         }
     }
@@ -101,7 +103,8 @@ class GitManager(private val context: Context) {
     suspend fun exportAllSnippetsToDir(snippets: List<Snippet>) = withContext(Dispatchers.IO) {
         snippets.forEach { snippet ->
             val fileName = if (snippet.fileName.isBlank()) snippet.defaultFileName else snippet.fileName
-            val file = File(gitRepoDir, fileName)
+            val targetDir = if (snippet.folder.isBlank()) gitRepoDir else File(gitRepoDir, snippet.folder).apply { if (!exists()) mkdirs() }
+            val file = File(targetDir, fileName)
             file.writeText(snippet.content, Charsets.UTF_8)
         }
     }
@@ -110,9 +113,9 @@ class GitManager(private val context: Context) {
      * 从 Git 沙盒仓文件反向同步导入/更新到 Room 数据库
      */
     suspend fun importGitDirToDatabase(snippetDao: com.feige.snippetstudio.data.local.SnippetDao) = withContext(Dispatchers.IO) {
-        val files = gitRepoDir.listFiles()?.filter {
-            it.isFile && !it.name.startsWith(".") && !it.name.startsWith("README")
-        } ?: return@withContext
+        val files = gitRepoDir.walkTopDown().filter {
+            it.isFile && !it.name.startsWith(".") && !it.name.startsWith("README") && !it.path.contains(".git")
+        }.toList()
 
         val now = System.currentTimeMillis()
         val currentEntities = snippetDao.allActiveSnapshot().associateBy { it.fileName }
@@ -120,13 +123,15 @@ class GitManager(private val context: Context) {
         files.forEach { file ->
             val content = file.readText(Charsets.UTF_8)
             val fileName = file.name
+            val folder = file.parentFile?.relativeToOrNull(gitRepoDir)?.path?.replace('\\', '/') ?: ""
             val existing = currentEntities[fileName]
 
             if (existing != null) {
                 // 如果内容变动则更新
-                if (existing.content != content) {
+                if (existing.content != content || existing.folder != folder) {
                     val updated = existing.copy(
                         content = content,
+                        folder = folder,
                         updatedAt = now,
                         sizeBytes = content.toByteArray(Charsets.UTF_8).size
                     )
@@ -141,6 +146,7 @@ class GitManager(private val context: Context) {
                     type = type,
                     title = title,
                     fileName = fileName,
+                    folder = folder,
                     content = content,
                     createdAt = now,
                     updatedAt = now,

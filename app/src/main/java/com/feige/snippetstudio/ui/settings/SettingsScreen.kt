@@ -140,6 +140,19 @@ fun SettingsScreen(
                     label = stringResource(R.string.set_dark)
                 )
                 HorizontalDivider(color = if (isDark) LineDark else LineLight)
+                
+                val cardClickLabel = if (settings.cardClickAction == "editor") "直接进入编辑器" else "查看片段详情"
+                SettingsItem(
+                    iconRes = R.drawable.ic_spark,
+                    title = "卡片默认点击行为",
+                    subTitle = cardClickLabel,
+                    onClick = {
+                        val next = if (settings.cardClickAction == "editor") "detail" else "editor"
+                        viewModel.updateCardClickAction(next)
+                    }
+                )
+                HorizontalDivider(color = if (isDark) LineDark else LineLight)
+
                 val langLabel = when (settings.lang) {
                     "ja" -> stringResource(R.string.lang_ja)
                     "en" -> stringResource(R.string.lang_en)

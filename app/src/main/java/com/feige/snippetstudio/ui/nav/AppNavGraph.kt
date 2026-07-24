@@ -37,7 +37,10 @@ fun AppNavGraph(
         // Home Screen
         composable(Screen.Home.route) {
             val viewModel: HomeViewModel = viewModel(
-                factory = HomeViewModel.factory(appContainer.snippetRepository)
+                factory = HomeViewModel.factory(
+                    appContainer.snippetRepository,
+                    appContainer.settingsRepository
+                )
             )
             HomeScreen(
                 viewModel = viewModel,
@@ -52,11 +55,15 @@ fun AppNavGraph(
         // Files Screen
         composable(Screen.Files.route) {
             val viewModel: FilesViewModel = viewModel(
-                factory = FilesViewModel.factory(appContainer.snippetRepository)
+                factory = FilesViewModel.factory(
+                    appContainer.snippetRepository,
+                    appContainer.settingsRepository
+                )
             )
             FilesScreen(
                 viewModel = viewModel,
                 onNavigateToDetail = { id -> navController.navigate(Screen.Detail.of(id)) },
+                onNavigateToEditor = { id -> navController.navigate(Screen.Editor.edit(id)) },
                 onNavigateToNewEditor = { type -> navController.navigate(Screen.Editor.new(type)) },
                 onShowSnackbar = onShowSnackbar
             )

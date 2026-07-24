@@ -17,6 +17,7 @@ data class SnippetEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val sizeBytes: Int,
+    val folder: String = "",
     val trashed: Boolean = false,
     val trashedAt: Long? = null
 ) {
@@ -32,6 +33,7 @@ data class SnippetEntity(
             createdAt = createdAt,
             updatedAt = updatedAt,
             sizeBytes = sizeBytes,
+            folder = folder,
             trashed = trashed,
             trashedAt = trashedAt
         )
@@ -50,6 +52,7 @@ data class SnippetEntity(
                 createdAt = snippet.createdAt,
                 updatedAt = snippet.updatedAt,
                 sizeBytes = snippet.sizeBytes,
+                folder = snippet.folder,
                 trashed = snippet.trashed,
                 trashedAt = snippet.trashedAt
             )

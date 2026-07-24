@@ -18,21 +18,31 @@ import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.theme.*
 
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.AccountTree
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesScreen(
     viewModel: FilesViewModel,
     onNavigateToDetail: (String) -> Unit,
+    onNavigateToEditor: (String) -> Unit,
     onNavigateToNewEditor: (String) -> Unit,
     onShowSnackbar: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     val isDark = LocalIsDarkTheme.current
     val textPrimary = if (isDark) TextDark else TextLight
     val textSecondary = if (isDark) Text2Dark else Text2Light
 
     var pendingTrashId by remember { mutableStateOf<String?>(null) }
+    var pendingRenameSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
+    var pendingFolderSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
 
     val sortLabel = when (uiState.sortMode) {
         SortMode.UPDATED_DESC -> stringResource(R.string.sort_updated)
@@ -51,6 +61,18 @@ fun FilesScreen(
                     )
                 },
                 actions = {
+                    IconButton(
+                        onClick = { viewModel.toggleViewMode() },
+                        modifier = Modifier.testTag("files_view_mode_btn")
+                    ) {
+                        Icon(
+                            imageVector = if (uiState.viewMode == ViewMode.FLAT) Icons.Filled.AccountTree else Icons.Filled.List,
+                            contentDescription = "Toggle View Mode",
+                            tint = Primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
                     TextButton(
                         onClick = { viewModel.cycleSortMode() },
                         modifier = Modifier.testTag("files_sort_btn")
@@ -108,26 +130,125 @@ fun FilesScreen(
                     onAction = if (!isFiltered) { { onNavigateToNewEditor(SnippetType.HTML.code) } } else null
                 )
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    items(
-                        items = uiState.snippets,
-                        key = { it.id }
-                    ) { snippet ->
-                        SnippetCard(
-                            snippet = snippet,
-                            onOpen = { onNavigateToDetail(snippet.id) },
-                            onToggleStar = { viewModel.toggleStar(snippet.id, snippet.starred) },
-                            onMore = { pendingTrashId = snippet.id },
-                            showFullDateTime = true,
-                            modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
-                        )
+                if (uiState.viewMode == ViewMode.FLAT) {
+                    // 平铺视图 (Flat View)
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(
+                            items = uiState.snippets,
+                            key = { it.id }
+                        ) { snippet ->
+                            SnippetCard(
+                                snippet = snippet,
+                                onOpen = {
+                                    if (uiState.cardClickAction == "editor") {
+                                        onNavigateToEditor(snippet.id)
+                                    } else {
+                                        onNavigateToDetail(snippet.id)
+                                    }
+                                },
+                                onCopySnippet = {
+                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(snippet.content))
+                                    onShowSnackbar(context.getString(R.string.toast_copied))
+                                },
+                                onRename = { pendingRenameSnippet = snippet },
+                                onMoveFolder = { pendingFolderSnippet = snippet },
+                                onToggleStar = { viewModel.toggleStar(snippet.id, snippet.starred) },
+                                onMore = { pendingTrashId = snippet.id },
+                                showFullDateTime = true,
+                                modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
+                            )
+                        }
+                    }
+                } else {
+                    // 目录树视图 (Folder Tree View)
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        uiState.groupedFolders.forEach { (folderName, folderSnippets) ->
+                            item(key = "folder_$folderName") {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = Spacing.S4, vertical = Spacing.S2)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Folder,
+                                        contentDescription = "Folder Group",
+                                        tint = Primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(Spacing.S2))
+                                    Text(
+                                        text = "$folderName (${folderSnippets.size})",
+                                        style = SectionTitleStyle,
+                                        color = textPrimary
+                                    )
+                                }
+                            }
+
+                            items(
+                                items = folderSnippets,
+                                key = { it.id }
+                            ) { snippet ->
+                                SnippetCard(
+                                    snippet = snippet,
+                                    onOpen = {
+                                        if (uiState.cardClickAction == "editor") {
+                                            onNavigateToEditor(snippet.id)
+                                        } else {
+                                            onNavigateToDetail(snippet.id)
+                                        }
+                                    },
+                                    onCopySnippet = {
+                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(snippet.content))
+                                        onShowSnackbar(context.getString(R.string.toast_copied))
+                                    },
+                                    onRename = { pendingRenameSnippet = snippet },
+                                    onMoveFolder = { pendingFolderSnippet = snippet },
+                                    onToggleStar = { viewModel.toggleStar(snippet.id, snippet.starred) },
+                                    onMore = { pendingTrashId = snippet.id },
+                                    showFullDateTime = true,
+                                    modifier = Modifier.padding(start = 24.dp, end = Spacing.S4, top = Spacing.S1, bottom = Spacing.S1)
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // Rename Dialog
+        RenameDialog(
+            show = (pendingRenameSnippet != null),
+            initialTitle = pendingRenameSnippet?.title.orEmpty(),
+            initialFileName = pendingRenameSnippet?.fileName.orEmpty(),
+            onDismiss = { pendingRenameSnippet = null },
+            onConfirm = { newTitle, newFileName ->
+                pendingRenameSnippet?.let { snippet ->
+                    viewModel.renameSnippet(snippet.id, newTitle, newFileName)
+                    onShowSnackbar("片段已重命名")
+                }
+            }
+        )
+
+        // Folder Move Dialog
+        FolderMoveDialog(
+            show = (pendingFolderSnippet != null),
+            currentFolder = pendingFolderSnippet?.folder.orEmpty(),
+            existingFolders = uiState.existingFolders,
+            onDismiss = { pendingFolderSnippet = null },
+            onConfirm = { targetFolder ->
+                pendingFolderSnippet?.let { snippet ->
+                    viewModel.updateFolder(snippet.id, targetFolder)
+                    onShowSnackbar("已移动至文件夹")
+                }
+            }
+        )
 
         // Trash Confirm Dialog
         ConfirmDialog(

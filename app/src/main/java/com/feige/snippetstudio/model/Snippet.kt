@@ -38,6 +38,7 @@ data class Snippet(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val sizeBytes: Int = 0,
+    val folder: String = "",
     val trashed: Boolean = false,
     val trashedAt: Long? = null
 ) {

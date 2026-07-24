@@ -45,7 +45,11 @@ fun HomeScreen(
     val textSecondary = if (isDark) Text2Dark else Text2Light
     val cardBg = if (isDark) SurfaceDark else SurfaceLight
 
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+
     var pendingTrashId by remember { mutableStateOf<String?>(null) }
+    var pendingRenameSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
+    var pendingFolderSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
 
     // Clipboard detection on ON_RESUME
     DisposableEffect(lifecycleOwner) {
@@ -229,7 +233,19 @@ fun HomeScreen(
                     ) { snippet ->
                         SnippetCard(
                             snippet = snippet,
-                            onOpen = { onNavigateToDetail(snippet.id) },
+                            onOpen = {
+                                if (uiState.cardClickAction == "editor") {
+                                    onNavigateToEditor(snippet.id)
+                                } else {
+                                    onNavigateToDetail(snippet.id)
+                                }
+                            },
+                            onCopySnippet = {
+                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(snippet.content))
+                                onShowSnackbar(context.getString(R.string.toast_copied))
+                            },
+                            onRename = { pendingRenameSnippet = snippet },
+                            onMoveFolder = { pendingFolderSnippet = snippet },
                             onToggleStar = { viewModel.toggleStar(snippet.id, snippet.starred) },
                             onMore = { pendingTrashId = snippet.id },
                             modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
@@ -238,6 +254,34 @@ fun HomeScreen(
                 }
             }
         }
+
+        // Rename Dialog
+        RenameDialog(
+            show = (pendingRenameSnippet != null),
+            initialTitle = pendingRenameSnippet?.title.orEmpty(),
+            initialFileName = pendingRenameSnippet?.fileName.orEmpty(),
+            onDismiss = { pendingRenameSnippet = null },
+            onConfirm = { newTitle, newFileName ->
+                pendingRenameSnippet?.let { snippet ->
+                    viewModel.renameSnippet(snippet.id, newTitle, newFileName)
+                    onShowSnackbar("片段已重命名")
+                }
+            }
+        )
+
+        // Folder Move Dialog
+        FolderMoveDialog(
+            show = (pendingFolderSnippet != null),
+            currentFolder = pendingFolderSnippet?.folder.orEmpty(),
+            existingFolders = uiState.existingFolders,
+            onDismiss = { pendingFolderSnippet = null },
+            onConfirm = { targetFolder ->
+                pendingFolderSnippet?.let { snippet ->
+                    viewModel.updateFolder(snippet.id, targetFolder)
+                    onShowSnackbar("已移动至文件夹")
+                }
+            }
+        )
 
         // Confirmation dialog for moving to trash
         ConfirmDialog(

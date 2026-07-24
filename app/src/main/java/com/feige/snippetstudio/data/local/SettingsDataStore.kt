@@ -35,6 +35,7 @@ class SettingsDataStore(private val context: Context) {
         val GIT_CONNECTED = booleanPreferencesKey("git_connected")
         val LAST_SYNC_TIME = androidx.datastore.preferences.core.longPreferencesKey("last_sync_time")
         val AUTO_SYNC_ENABLED = booleanPreferencesKey("auto_sync_enabled")
+        val CARD_CLICK_ACTION = stringPreferencesKey("card_click_action")
     }
 
     val settingsFlow: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -56,7 +57,8 @@ class SettingsDataStore(private val context: Context) {
             gitPat = prefs[Keys.GIT_PAT] ?: "",
             gitConnected = prefs[Keys.GIT_CONNECTED] ?: false,
             lastSyncTime = prefs[Keys.LAST_SYNC_TIME] ?: 0L,
-            autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true
+            autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true,
+            cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail"
         )
     }
 
@@ -80,7 +82,8 @@ class SettingsDataStore(private val context: Context) {
                 gitPat = prefs[Keys.GIT_PAT] ?: "",
                 gitConnected = prefs[Keys.GIT_CONNECTED] ?: false,
                 lastSyncTime = prefs[Keys.LAST_SYNC_TIME] ?: 0L,
-                autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true
+                autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true,
+                cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail"
             )
             val updated = transform(current)
             prefs[Keys.LANG] = updated.lang
@@ -101,6 +104,7 @@ class SettingsDataStore(private val context: Context) {
             prefs[Keys.GIT_CONNECTED] = updated.gitConnected
             prefs[Keys.LAST_SYNC_TIME] = updated.lastSyncTime
             prefs[Keys.AUTO_SYNC_ENABLED] = updated.autoSyncEnabled
+            prefs[Keys.CARD_CLICK_ACTION] = updated.cardClickAction
         }
     }
 }

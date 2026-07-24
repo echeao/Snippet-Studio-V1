@@ -18,6 +18,7 @@ data class DetailUiState(
     val snippet: Snippet? = null,
     val isSourceExpanded: Boolean = false,
     val allAvailableTags: List<String> = emptyList(),
+    val existingFolders: List<String> = emptyList(),
     val isLoading: Boolean = true
 )
 
@@ -33,15 +34,17 @@ class DetailViewModel(
     init {
         loadSnippet()
 
-        // Observe all available tags
+        // Observe all available tags and existing folders
         viewModelScope.launch {
             combine(
                 settingsRepository.settingsFlow,
                 repository.observeActive()
             ) { settings, activeSnippets ->
-                (settings.customTags + activeSnippets.flatMap { it.tags }).distinct()
-            }.collect { tags ->
-                _uiState.update { it.copy(allAvailableTags = tags) }
+                val tags = (settings.customTags + activeSnippets.flatMap { it.tags }).distinct()
+                val folders = activeSnippets.map { it.folder }.filter { it.isNotBlank() }.distinct()
+                Pair(tags, folders)
+            }.collect { (tags, folders) ->
+                _uiState.update { it.copy(allAvailableTags = tags, existingFolders = folders) }
             }
         }
     }
@@ -66,6 +69,27 @@ class DetailViewModel(
         val currentSnippet = _uiState.value.snippet ?: return
         viewModelScope.launch {
             val updated = currentSnippet.copy(tags = tags)
+            repository.saveOrUpdate(updated)
+            _uiState.update { it.copy(snippet = updated) }
+        }
+    }
+
+    fun renameSnippet(newTitle: String, newFileName: String) {
+        val currentSnippet = _uiState.value.snippet ?: return
+        viewModelScope.launch {
+            val updated = currentSnippet.copy(
+                title = newTitle,
+                fileName = newFileName
+            )
+            repository.saveOrUpdate(updated)
+            _uiState.update { it.copy(snippet = updated) }
+        }
+    }
+
+    fun updateFolder(newFolder: String) {
+        val currentSnippet = _uiState.value.snippet ?: return
+        viewModelScope.launch {
+            val updated = currentSnippet.copy(folder = newFolder)
             repository.saveOrUpdate(updated)
             _uiState.update { it.copy(snippet = updated) }
         }

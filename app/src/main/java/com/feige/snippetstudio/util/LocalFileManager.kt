@@ -53,12 +53,12 @@ object LocalFileManager {
 
             // Fallback to local app storage directory
             val localDir = getDefaultRepoDir(context)
-            val files = localDir.listFiles() ?: emptyArray()
-            for (file in files) {
+            localDir.walkTopDown().forEach { file ->
                 if (file.isFile && !file.name.startsWith(".")) {
+                    val relativeParent = file.parentFile?.relativeToOrNull(localDir)?.path?.replace('\\', '/') ?: ""
                     val name = file.name
                     val type = SnippetType.fromFileName(name)
-                    readAndSyncLocalFile(file, name, type, snippetDao)
+                    readAndSyncLocalFile(file, name, relativeParent, type, snippetDao)
                 }
             }
         } catch (e: Exception) {
@@ -113,6 +113,7 @@ object LocalFileManager {
     private suspend fun readAndSyncLocalFile(
         file: File,
         fileName: String,
+        folder: String,
         type: SnippetType,
         snippetDao: SnippetDao
     ) {
@@ -123,9 +124,10 @@ object LocalFileManager {
             val existing = snippetDao.allActiveSnapshot().find { it.fileName == fileName || it.title == title }
 
             if (existing != null) {
-                if (existing.content != content) {
+                if (existing.content != content || existing.folder != folder) {
                     val updated = existing.copy(
                         content = content,
+                        folder = folder,
                         sizeBytes = content.toByteArray(Charsets.UTF_8).size,
                         updatedAt = now
                     )
@@ -137,6 +139,7 @@ object LocalFileManager {
                     type = type,
                     title = title,
                     fileName = fileName,
+                    folder = folder,
                     content = content,
                     createdAt = now,
                     updatedAt = now,
@@ -183,9 +186,10 @@ object LocalFileManager {
                 }
             }
 
-            // Fallback to local app storage directory
+            // Fallback to local app storage directory with folder support
             val localDir = getDefaultRepoDir(context)
-            val file = File(localDir, fileName)
+            val targetDir = if (snippet.folder.isBlank()) localDir else File(localDir, snippet.folder).apply { if (!exists()) mkdirs() }
+            val file = File(targetDir, fileName)
             file.writeText(snippet.content, Charsets.UTF_8)
         } catch (e: Exception) {
             Log.e(TAG, "Error writing snippet file to disk", e)
@@ -214,7 +218,8 @@ object LocalFileManager {
             }
 
             val localDir = getDefaultRepoDir(context)
-            val file = File(localDir, fileName)
+            val targetDir = if (snippet.folder.isBlank()) localDir else File(localDir, snippet.folder)
+            val file = File(targetDir, fileName)
             if (file.exists()) {
                 file.delete()
             }

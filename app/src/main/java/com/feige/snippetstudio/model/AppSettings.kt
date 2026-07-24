@@ -19,5 +19,6 @@ data class AppSettings(
     val gitConnected: Boolean = false,
     val lastSyncTime: Long = 0L,
     val autoSyncEnabled: Boolean = true,
+    val cardClickAction: String = "detail", // detail, editor
     val customTags: List<String> = emptyList()
 )

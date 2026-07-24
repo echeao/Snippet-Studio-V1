@@ -12,17 +12,22 @@ import com.feige.snippetstudio.util.DetectedClip
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+import com.feige.snippetstudio.data.repo.SettingsRepository
+
 data class HomeUiState(
     val recentSnippets: List<Snippet> = emptyList(),
     val totalActiveCount: Int = 0,
     val searchQuery: String = "",
+    val cardClickAction: String = "detail",
+    val existingFolders: List<String> = emptyList(),
     val detectedClip: DetectedClip? = null,
     val isLoading: Boolean = true,
     val error: String? = null
 )
 
 class HomeViewModel(
-    private val repository: SnippetRepository
+    private val repository: SnippetRepository,
+    private val settingsRepository: SettingsRepository? = null
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -31,8 +36,9 @@ class HomeViewModel(
     val uiState: StateFlow<HomeUiState> = combine(
         repository.observeActive(),
         _searchQuery,
-        _detectedClip
-    ) { snippets, query, clip ->
+        _detectedClip,
+        settingsRepository?.settingsFlow ?: flowOf(com.feige.snippetstudio.model.AppSettings())
+    ) { snippets, query, clip, settings ->
         val filtered = if (query.isBlank()) {
             snippets
         } else {
@@ -43,10 +49,14 @@ class HomeViewModel(
             }
         }
 
+        val folders = snippets.map { it.folder }.filter { it.isNotBlank() }.distinct()
+
         HomeUiState(
             recentSnippets = filtered.take(5),
             totalActiveCount = snippets.size,
             searchQuery = query,
+            cardClickAction = settings.cardClickAction,
+            existingFolders = folders,
             detectedClip = clip,
             isLoading = false
         )
@@ -89,6 +99,18 @@ class HomeViewModel(
         }
     }
 
+    fun renameSnippet(id: String, newTitle: String, newFileName: String) {
+        viewModelScope.launch {
+            repository.updateRename(id, newTitle, newFileName)
+        }
+    }
+
+    fun updateFolder(id: String, newFolder: String) {
+        viewModelScope.launch {
+            repository.updateFolder(id, newFolder)
+        }
+    }
+
     fun trashSnippet(id: String) {
         viewModelScope.launch {
             repository.trash(id)
@@ -96,10 +118,13 @@ class HomeViewModel(
     }
 
     companion object {
-        fun factory(repository: SnippetRepository): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun factory(
+            repository: SnippetRepository,
+            settingsRepository: SettingsRepository? = null
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return HomeViewModel(repository) as T
+                return HomeViewModel(repository, settingsRepository) as T
             }
         }
     }
