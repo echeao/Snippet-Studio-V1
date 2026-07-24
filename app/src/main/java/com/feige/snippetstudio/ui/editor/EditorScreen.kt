@@ -154,24 +154,6 @@ fun EditorScreen(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-
-                    // Run Button
-                    IconButton(
-                        onClick = {
-                            viewModel.selectTab(1) // Switch to preview tab
-                        },
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(Primary, RoundedCornerShape(R_SM))
-                            .testTag("run_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.PlayArrow,
-                            contentDescription = "Run",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
                 }
             }
 
