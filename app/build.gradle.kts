@@ -119,6 +119,15 @@ dependencies {
   implementation("org.eclipse.jgit:org.eclipse.jgit:6.8.0.202311291450-r")
   implementation("org.slf4j:slf4j-nop:2.0.9")
 
+  // Testing
+  testImplementation("junit:junit:4.13.2")
+  testImplementation("androidx.test:core-ktx:1.5.0")
+  testImplementation("androidx.test.ext:junit:1.1.5")
+  testImplementation("org.robolectric:robolectric:4.11.1")
+
+  androidTestImplementation("androidx.test.ext:junit:1.1.5")
+  androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
 }
