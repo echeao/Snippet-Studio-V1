@@ -26,6 +26,8 @@ import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.SyntaxHighlighter
 
+import androidx.compose.ui.unit.Dp
+
 @Composable
 fun CodeEditor(
     textFieldValue: TextFieldValue,
@@ -36,6 +38,7 @@ fun CodeEditor(
     isWordWrap: Boolean = true,
     showLineNumbers: Boolean = true,
     highlightCurrentLine: Boolean = true,
+    topContentPadding: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
     val isDark = LocalIsDarkTheme.current
@@ -73,7 +76,7 @@ fun CodeEditor(
                     .width(44.dp)
                     .background(gutterBg)
                     .verticalScroll(verticalScrollState)
-                    .padding(vertical = Spacing.S3),
+                    .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3),
                 horizontalAlignment = Alignment.End
             ) {
                 for (i in 0 until linesCount) {
@@ -103,7 +106,7 @@ fun CodeEditor(
                 .weight(1f)
                 .fillMaxHeight()
                 .verticalScroll(verticalScrollState)
-                .padding(vertical = Spacing.S3, horizontal = Spacing.S3)
+                .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3, start = Spacing.S3, end = Spacing.S3)
         ) {
             // Current line highlight background layer
             if (highlightCurrentLine && currentLineIndex in 0 until linesCount) {

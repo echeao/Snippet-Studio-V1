@@ -35,6 +35,12 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.theme.*
+import com.feige.snippetstudio.util.SystemUiUtil
+import androidx.compose.animation.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +60,32 @@ fun EditorScreen(
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showTypeDialog by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
+
+    var showFloatingIsland by remember { mutableStateOf(true) }
+    var showFullscreenSymbolBar by remember { mutableStateOf(true) }
+
+    val activity = remember(context) { SystemUiUtil.findActivity(context) }
+    DisposableEffect(uiState.isFullscreen) {
+        if (uiState.isFullscreen) {
+            SystemUiUtil.setImmersiveFullscreen(activity, true)
+        }
+        onDispose {
+            SystemUiUtil.setImmersiveFullscreen(activity, false)
+        }
+    }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < -15f) {
+                    showFloatingIsland = false
+                } else if (available.y > 15f) {
+                    showFloatingIsland = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     val handleBack = {
         if (uiState.saveState == SaveState.UNSAVED) {
@@ -191,34 +223,78 @@ fun EditorScreen(
     }
 
     if (uiState.isFullscreen) {
-        // Fullscreen Mode Container
+        // True Immersive Fullscreen Container
+        val safeTopPadding = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(if (isDark) BgDark else BgLight)
-                .statusBarsPadding()
-                .navigationBarsPadding()
-        ) {
-            editorContent(Modifier.fillMaxSize())
-
-            // Floating translucent Exit Fullscreen button
-            Surface(
-                color = if (isDark) SurfaceDark.copy(alpha = 0.9f) else SurfaceLight.copy(alpha = 0.9f),
-                shape = CircleShape,
-                shadowElevation = 6.dp,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-                    .size(44.dp)
-                    .testTag("exit_fullscreen_floating_btn")
-            ) {
-                IconButton(onClick = { viewModel.setFullscreen(false) }) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = "Exit Fullscreen",
-                        tint = textPrimary
-                    )
+                .nestedScroll(nestedScrollConnection)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                ) {
+                    showFloatingIsland = !showFloatingIsland
                 }
+        ) {
+            // Main Code / Preview Layout in Fullscreen
+            if (uiState.selectedTab == 0) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    CodeEditor(
+                        textFieldValue = uiState.textFieldValue,
+                        onValueChange = { viewModel.onTextFieldValueChange(it) },
+                        fontSp = uiState.fontSp,
+                        currentLineIndex = uiState.currentLineIndex,
+                        snippetType = uiState.type,
+                        isWordWrap = uiState.isWordWrap,
+                        showLineNumbers = uiState.showLineNumbers,
+                        highlightCurrentLine = uiState.highlightCurrentLine,
+                        topContentPadding = safeTopPadding,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Floating SymbolBar in Fullscreen
+                    AnimatedVisibility(
+                        visible = showFullscreenSymbolBar && showFloatingIsland,
+                        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                        modifier = Modifier
+                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                            .padding(bottom = 2.dp)
+                    ) {
+                        SymbolBar(
+                            snippetType = uiState.type,
+                            onInsertSymbol = { symbol -> viewModel.insertSymbol(symbol) }
+                        )
+                    }
+                }
+            } else {
+                RunPreview(
+                    type = uiState.type,
+                    content = uiState.textFieldValue.text,
+                    modifier = Modifier.fillMaxSize(),
+                    onToast = onShowSnackbar
+                )
+            }
+
+            // Top Floating Control Island
+            AnimatedVisibility(
+                visible = showFloatingIsland,
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                    .padding(top = 8.dp)
+            ) {
+                com.feige.snippetstudio.ui.components.FloatingControlIsland(
+                    selectedTab = uiState.selectedTab,
+                    onSelectTab = { viewModel.selectTab(it) },
+                    showSymbolBar = showFullscreenSymbolBar,
+                    onToggleSymbolBar = { showFullscreenSymbolBar = !showFullscreenSymbolBar },
+                    onExitFullscreen = { viewModel.setFullscreen(false) }
+                )
             }
         }
     } else {
