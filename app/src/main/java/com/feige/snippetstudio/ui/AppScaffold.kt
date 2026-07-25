@@ -62,9 +62,9 @@ fun AppScaffold(
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState()
 
-    val isDark = LocalIsDarkTheme.current
-    val barBg = if (isDark) SurfaceDark else SurfaceLight
-    val borderColor = if (isDark) LineDark else LineLight
+    val tc = LocalThemeColors.current
+    val barBg = tc.surface
+    val borderColor = tc.line
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp),
@@ -98,9 +98,9 @@ fun AppScaffold(
                         },
                         label = { Text(stringResource(R.string.home_title)) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Primary,
-                            selectedTextColor = Primary,
-                            indicatorColor = PrimarySoft
+                            selectedIconColor = tc.primary,
+                            selectedTextColor = tc.primary,
+                            indicatorColor = tc.primarySoft
                         ),
                         modifier = Modifier.testTag("tab_home")
                     )
@@ -127,9 +127,9 @@ fun AppScaffold(
                         },
                         label = { Text(stringResource(R.string.files_title)) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Primary,
-                            selectedTextColor = Primary,
-                            indicatorColor = PrimarySoft
+                            selectedIconColor = tc.primary,
+                            selectedTextColor = tc.primary,
+                            indicatorColor = tc.primarySoft
                         ),
                         modifier = Modifier.testTag("tab_files")
                     )
@@ -156,9 +156,9 @@ fun AppScaffold(
                         },
                         label = { Text(stringResource(R.string.settings_title)) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Primary,
-                            selectedTextColor = Primary,
-                            indicatorColor = PrimarySoft
+                            selectedIconColor = tc.primary,
+                            selectedTextColor = tc.primary,
+                            indicatorColor = tc.primarySoft
                         ),
                         modifier = Modifier.testTag("tab_settings")
                     )
@@ -170,7 +170,7 @@ fun AppScaffold(
             if (showBottomBarAndFab) {
                 FloatingActionButton(
                     onClick = { showNewSheet = true },
-                    containerColor = Primary,
+                    containerColor = tc.primary,
                     contentColor = Color.White,
                     shape = RoundedCornerShape(R_MD),
                     modifier = Modifier.testTag("fab_new")
@@ -187,7 +187,7 @@ fun AppScaffold(
             SnackbarHost(hostState = snackbarHostState) { data ->
                 Snackbar(
                     snackbarData = data,
-                    containerColor = if (isDark) SurfaceDark else TextLight,
+                    containerColor = if (tc.isDark) tc.surface else tc.text,
                     contentColor = Color.White,
                     shape = AppShapes.small
                 )
@@ -201,7 +201,7 @@ fun AppScaffold(
             ModalBottomSheet(
                 onDismissRequest = { showNewSheet = false },
                 sheetState = sheetState,
-                containerColor = if (isDark) SurfaceDark else SurfaceLight,
+                containerColor = tc.surface,
                 shape = RoundedCornerShape(topStart = R_XL, topEnd = R_XL)
             ) {
                 Column(
@@ -212,7 +212,7 @@ fun AppScaffold(
                     Text(
                         text = stringResource(R.string.sheet_new_title),
                         style = SectionTitleStyle,
-                        color = if (isDark) TextDark else TextLight
+                        color = tc.text
                     )
 
                     Spacer(modifier = Modifier.height(Spacing.S4))
@@ -297,9 +297,7 @@ fun NewSheetTypeItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val cardBg = if (isDark) Surface2Dark else Surface2Light
-    val textPrimary = if (isDark) TextDark else TextLight
+    val tc = LocalThemeColors.current
 
     Surface(
         modifier = modifier
@@ -307,7 +305,7 @@ fun NewSheetTypeItem(
             .clickable(onClick = onClick)
             .testTag("sheet_type_${type.code}"),
         shape = RoundedCornerShape(R_MD),
-        color = cardBg
+        color = tc.surface2
     ) {
         Row(
             modifier = Modifier.padding(Spacing.S4),
@@ -318,7 +316,7 @@ fun NewSheetTypeItem(
             Text(
                 text = type.displayName,
                 style = ListTitleStyle,
-                color = textPrimary
+                color = tc.text
             )
         }
     }

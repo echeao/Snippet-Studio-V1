@@ -32,14 +32,12 @@ fun FolderCreateDialog(
     if (!show) return
 
     var folderInput by remember { mutableStateOf("") }
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = "新建文件夹", style = SectionTitleStyle, color = textPrimary)
+            Text(text = "新建文件夹", style = SectionTitleStyle, color = tc.text)
         },
         text = {
             Column(
@@ -61,7 +59,7 @@ fun FolderCreateDialog(
                 Text(
                     text = "注：创建后将在本地物理磁盘同步生成真实文件夹目录。",
                     style = CaptionStyle,
-                    color = textSecondary
+                    color = tc.text2
                 )
             }
         },
@@ -77,7 +75,7 @@ fun FolderCreateDialog(
                 enabled = folderInput.trim().isNotBlank(),
                 modifier = Modifier.testTag("create_folder_confirm_btn")
             ) {
-                Text(text = stringResource(R.string.common_confirm), color = Primary, style = ListTitleStyle)
+                Text(text = stringResource(R.string.common_confirm), color = tc.primary, style = ListTitleStyle)
             }
         },
         dismissButton = {

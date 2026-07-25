@@ -41,6 +41,8 @@ fun ClipBar(
     modifier: Modifier = Modifier
 ) {
 
+    val tc = LocalThemeColors.current
+
     AnimatedVisibility(
         visible = (clip != null),
         exit = slideOutVertically() + fadeOut(),
@@ -51,10 +53,10 @@ fun ClipBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Spacing.S4, vertical = Spacing.S2)
-                    .border(1.dp, PrimaryLine, RoundedCornerShape(R_MD))
+                    .border(1.dp, tc.line, RoundedCornerShape(R_MD))
                     .testTag("clip_bar"),
                 shape = RoundedCornerShape(R_MD),
-                color = PrimarySoft
+                color = tc.primarySoft
             ) {
                 Row(
                     modifier = Modifier
@@ -65,7 +67,7 @@ fun ClipBar(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_clipboard),
                         contentDescription = "Clipboard Code",
-                        tint = Primary,
+                        tint = tc.primary,
                         modifier = Modifier.size(24.dp)
                     )
 
@@ -75,14 +77,14 @@ fun ClipBar(
                         Text(
                             text = stringResource(R.string.home_clip_title),
                             style = ListTitleStyle,
-                            color = Primary
+                            color = tc.primary
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = clip.previewText,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 12.sp,
-                            color = Text2Light,
+                            color = tc.text2,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -94,13 +96,13 @@ fun ClipBar(
                         onClick = { onDismiss(clip) },
                         modifier = Modifier.testTag("clip_ignore_btn")
                     ) {
-                        Text(stringResource(R.string.home_clip_ignore), color = Text2Light, fontSize = 13.sp)
+                        Text(stringResource(R.string.home_clip_ignore), color = tc.text2, fontSize = 13.sp)
                     }
 
                     Button(
                         onClick = { onSave(clip) },
                         shape = AppShapes.small,
-                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                        colors = ButtonDefaults.buttonColors(containerColor = tc.primary),
                         contentPadding = PaddingValues(horizontal = Spacing.S3, vertical = Spacing.S1),
                         modifier = Modifier.testTag("clip_save_btn")
                     ) {

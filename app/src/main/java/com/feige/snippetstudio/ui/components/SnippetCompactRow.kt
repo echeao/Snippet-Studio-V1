@@ -44,12 +44,10 @@ fun SnippetCompactRow(
     onMoveFolder: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val isDark = LocalIsDarkTheme.current
+    val tc = LocalThemeColors.current
     var showMenu by remember { mutableStateOf(false) }
 
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
-    val dividerColor = if (isDark) LineDark.copy(alpha = 0.6f) else LineLight.copy(alpha = 0.7f)
+    val dividerColor = tc.line.copy(alpha = 0.6f)
 
     Column(
         modifier = modifier
@@ -75,7 +73,7 @@ fun SnippetCompactRow(
                 Text(
                     text = snippet.displayTitle,
                     style = ListTitleStyle,
-                    color = textPrimary,
+                    color = tc.text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -88,14 +86,14 @@ fun SnippetCompactRow(
                     Text(
                         text = if (showFullDateTime) TimeUtil.formatFullDateTime(snippet.updatedAt) else TimeUtil.formatRelativeTime(context, snippet.updatedAt),
                         style = CaptionStyle,
-                        color = textSecondary,
+                        color = tc.text2,
                         maxLines = 1
                     )
 
                     if (snippet.folder.isNotBlank()) {
                         Spacer(modifier = Modifier.width(Spacing.S2))
                         Surface(
-                            color = PrimarySoft,
+                            color = tc.primarySoft,
                             shape = RoundedCornerShape(R_SM)
                         ) {
                             Row(
@@ -105,14 +103,14 @@ fun SnippetCompactRow(
                                 Icon(
                                     imageVector = Icons.Filled.Folder,
                                     contentDescription = "Folder",
-                                    tint = Primary,
+                                    tint = tc.primary,
                                     modifier = Modifier.size(10.dp)
                                 )
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Text(
                                     text = snippet.folder,
                                     style = BadgeStyle,
-                                    color = Primary
+                                    color = tc.primary
                                 )
                             }
                         }
@@ -148,7 +146,7 @@ fun SnippetCompactRow(
                     Icon(
                         imageVector = if (snippet.starred) Icons.Filled.Star else Icons.Outlined.Star,
                         contentDescription = stringResource(R.string.filter_fav),
-                        tint = if (snippet.starred) StarOn else textSecondary,
+                        tint = if (snippet.starred) StarOn else tc.text2,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -161,7 +159,7 @@ fun SnippetCompactRow(
                         Icon(
                             imageVector = Icons.Filled.MoreVert,
                             contentDescription = "More",
-                            tint = textSecondary,
+                            tint = tc.text2,
                             modifier = Modifier.size(16.dp)
                         )
                     }

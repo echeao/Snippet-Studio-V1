@@ -59,10 +59,7 @@ fun HomeScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
-    val cardBg = if (isDark) SurfaceDark else SurfaceLight
+    val tc = LocalThemeColors.current
 
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
 
@@ -92,17 +89,17 @@ fun HomeScreen(
                         Text(
                             text = stringResource(R.string.home_title),
                             style = DisplayTitleStyle,
-                            color = textPrimary
+                            color = tc.text
                         )
                         Spacer(modifier = Modifier.width(Spacing.S2))
                         Surface(
-                            color = PrimarySoft,
+                            color = tc.primarySoft,
                             shape = RoundedCornerShape(R_SM)
                         ) {
                             Text(
                                 text = stringResource(R.string.home_subtitle),
                                 style = BadgeStyle,
-                                color = Primary,
+                                color = tc.primary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
@@ -116,16 +113,16 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Filled.Refresh,
                             contentDescription = "Refresh",
-                            tint = textSecondary
+                            tint = tc.text2
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isDark) BgDark else BgLight
+                    containerColor = tc.bg
                 )
             )
         },
-        containerColor = if (isDark) BgDark else BgLight
+        containerColor = tc.bg
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -167,7 +164,7 @@ fun HomeScreen(
                         Text(
                             text = stringResource(R.string.home_quick_new),
                             style = SectionTitleStyle,
-                            color = textPrimary
+                            color = tc.text
                         )
 
                         Spacer(modifier = Modifier.height(Spacing.S3))
@@ -220,13 +217,13 @@ fun HomeScreen(
                         Text(
                             text = stringResource(R.string.home_recent),
                             style = SectionTitleStyle,
-                            color = textPrimary
+                            color = tc.text
                         )
 
                         Text(
                             text = "${stringResource(R.string.home_view_all)} (${uiState.totalActiveCount})",
                             style = ListTitleStyle,
-                            color = Primary,
+                            color = tc.primary,
                             modifier = Modifier
                                 .clickable { onNavigateToFiles() }
                                 .testTag("view_all_link")
@@ -329,9 +326,7 @@ fun QuickNewCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val cardBg = if (isDark) SurfaceDark else SurfaceLight
+    val tc = LocalThemeColors.current
 
     Surface(
         modifier = modifier
@@ -339,7 +334,7 @@ fun QuickNewCard(
             .clickable(onClick = onClick)
             .testTag("quick_new_${type.code}"),
         shape = RoundedCornerShape(R_MD),
-        color = cardBg
+        color = tc.surface
     ) {
         Row(
             modifier = Modifier.padding(Spacing.S3),
@@ -350,7 +345,7 @@ fun QuickNewCard(
             Text(
                 text = type.displayName,
                 style = ListTitleStyle,
-                color = textPrimary
+                color = tc.text
             )
         }
     }

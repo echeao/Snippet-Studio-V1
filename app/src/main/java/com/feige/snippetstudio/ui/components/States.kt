@@ -41,11 +41,7 @@ fun EmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null
 ) {
-
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
-    val iconBg = if (isDark) Surface2Dark else Surface2Light
+    val tc = LocalThemeColors.current
 
     Column(
         modifier = modifier
@@ -57,7 +53,7 @@ fun EmptyState(
         Box(
             modifier = Modifier
                 .size(88.dp)
-                .background(iconBg, RoundedCornerShape(R_XL)),
+                .background(tc.surface2, RoundedCornerShape(R_XL)),
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -65,7 +61,7 @@ fun EmptyState(
                     Icon(
                         painter = painterResource(id = iconRes),
                         contentDescription = "Empty State Icon",
-                        tint = Primary,
+                        tint = tc.primary,
                         modifier = Modifier.size(40.dp)
                     )
                 }
@@ -73,7 +69,7 @@ fun EmptyState(
                     Icon(
                         imageVector = iconVector,
                         contentDescription = "Empty State Icon",
-                        tint = Primary,
+                        tint = tc.primary,
                         modifier = Modifier.size(40.dp)
                     )
                 }
@@ -81,7 +77,7 @@ fun EmptyState(
                     Icon(
                         imageVector = Icons.Filled.Code,
                         contentDescription = "Empty State Icon",
-                        tint = Primary,
+                        tint = tc.primary,
                         modifier = Modifier.size(40.dp)
                     )
                 }
@@ -93,7 +89,7 @@ fun EmptyState(
         Text(
             text = title,
             style = SectionTitleStyle,
-            color = textPrimary,
+            color = tc.text,
             textAlign = TextAlign.Center
         )
 
@@ -102,7 +98,7 @@ fun EmptyState(
         Text(
             text = desc,
             style = BodyStyle,
-            color = textSecondary,
+            color = tc.text2,
             textAlign = TextAlign.Center
         )
 
@@ -111,7 +107,7 @@ fun EmptyState(
             Button(
                 onClick = onAction,
                 shape = AppShapes.small,
-                colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                colors = ButtonDefaults.buttonColors(containerColor = tc.primary),
                 modifier = Modifier.testTag("empty_state_action_btn")
             ) {
                 Text(text = actionLabel, style = ListTitleStyle)
@@ -127,8 +123,7 @@ fun EmptyState(
 fun LoadingState(
     modifier: Modifier = Modifier
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val boxBg = if (isDark) Surface2Dark else Surface2Light
+    val tc = LocalThemeColors.current
 
     Column(
         modifier = modifier
@@ -142,7 +137,7 @@ fun LoadingState(
                     .fillMaxWidth()
                     .height(72.dp),
                 shape = RoundedCornerShape(R_MD),
-                color = boxBg
+                color = tc.surface2
             ) {
                 Row(
                     modifier = Modifier
@@ -153,7 +148,7 @@ fun LoadingState(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .background(if (isDark) LineDark else LineLight, RoundedCornerShape(R_SM))
+                            .background(tc.line, RoundedCornerShape(R_SM))
                     )
                     Spacer(modifier = Modifier.width(Spacing.S3))
                     Column(modifier = Modifier.weight(1f)) {
@@ -161,14 +156,14 @@ fun LoadingState(
                             modifier = Modifier
                                 .fillMaxWidth(0.6f)
                                 .height(16.dp)
-                                .background(if (isDark) LineDark else LineLight, RoundedCornerShape(4.dp))
+                                .background(tc.line, RoundedCornerShape(4.dp))
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(0.4f)
                                 .height(12.dp)
-                                .background(if (isDark) LineDark else LineLight, RoundedCornerShape(4.dp))
+                                .background(tc.line, RoundedCornerShape(4.dp))
                         )
                     }
                 }
@@ -190,8 +185,7 @@ fun ErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-
-    val isDark = LocalIsDarkTheme.current
+    val tc = LocalThemeColors.current
 
     Column(
         modifier = modifier
@@ -212,7 +206,7 @@ fun ErrorState(
         Text(
             text = title,
             style = SectionTitleStyle,
-            color = if (isDark) TextDark else TextLight
+            color = tc.text
         )
 
         Spacer(modifier = Modifier.height(Spacing.S4))
@@ -220,7 +214,7 @@ fun ErrorState(
         Button(
             onClick = onRetry,
             shape = AppShapes.small,
-            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+            colors = ButtonDefaults.buttonColors(containerColor = tc.primary)
         ) {
             Text(stringResource(R.string.common_retry))
         }

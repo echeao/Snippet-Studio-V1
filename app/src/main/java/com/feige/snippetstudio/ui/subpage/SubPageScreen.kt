@@ -59,11 +59,14 @@ fun SubPageScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
-    val cardBg = if (isDark) SurfaceDark else SurfaceLight
-    val borderColor = if (isDark) LineDark else LineLight
+    val tc = LocalThemeColors.current
+
+    val textPrimary = tc.text
+    val textSecondary = tc.text2
+    val cardBg = tc.surface
+    val borderColor = tc.line
+    val Primary = tc.primary
+    val PrimarySoft = tc.primarySoft
 
     var pendingPurgeId by remember { mutableStateOf<String?>(null) }
 
@@ -95,6 +98,7 @@ fun SubPageScreen(
         "tags" -> stringResource(R.string.set_tags)
         "trash" -> stringResource(R.string.set_trash)
         "lang" -> stringResource(R.string.set_lang)
+        "theme" -> stringResource(R.string.set_color_theme)
         else -> stringResource(R.string.settings_title)
     }
 
@@ -109,7 +113,7 @@ fun SubPageScreen(
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = textPrimary
+                            tint = tc.text
                         )
                     }
                 },
@@ -117,15 +121,15 @@ fun SubPageScreen(
                     Text(
                         text = pageTitle,
                         style = SectionTitleStyle,
-                        color = textPrimary
+                        color = tc.text
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isDark) BgDark else BgLight
+                    containerColor = tc.bg
                 )
             )
         },
-        containerColor = if (isDark) BgDark else BgLight
+        containerColor = tc.bg
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -495,13 +499,13 @@ fun SubPageScreen(
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .border(1.dp, if (isSelected) Primary else borderColor, RoundedCornerShape(R_MD))
+                                    .border(1.dp, if (isSelected) tc.primary else tc.line, RoundedCornerShape(R_MD))
                                     .clickable {
                                         viewModel.setLanguage(context, code)
                                         onShowSnackbar(context.getString(R.string.toast_saved))
                                     },
                                 shape = RoundedCornerShape(R_MD),
-                                color = if (isSelected) PrimarySoft else cardBg
+                                color = if (isSelected) tc.primarySoft else tc.surface
                             ) {
                                 Row(
                                     modifier = Modifier.padding(Spacing.S4),
@@ -511,13 +515,80 @@ fun SubPageScreen(
                                     Text(
                                         text = label,
                                         style = ListTitleStyle,
-                                        color = if (isSelected) Primary else textPrimary
+                                        color = if (isSelected) tc.primary else tc.text
                                     )
                                     if (isSelected) {
                                         Icon(
                                             imageVector = Icons.Filled.Check,
                                             contentDescription = "Selected",
-                                            tint = Primary
+                                            tint = tc.primary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ===== 子页面 7: 配色风格主题选择 =====
+                "theme" -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(Spacing.S4),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.S3)
+                    ) {
+                        ColorThemeStyle.entries.forEach { style ->
+                            val isSelected = uiState.settings.colorTheme == style.id
+                            val palette = ColorThemeRegistry.paletteOf(style)
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(
+                                        1.dp,
+                                        if (isSelected) palette.primary else tc.line,
+                                        RoundedCornerShape(R_MD)
+                                    )
+                                    .clickable {
+                                        viewModel.setColorTheme(style.id)
+                                        onShowSnackbar(context.getString(R.string.toast_saved))
+                                    },
+                                shape = RoundedCornerShape(R_MD),
+                                color = if (isSelected) palette.primarySoft.copy(alpha = 0.3f) else tc.surface
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(Spacing.S4),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        // 色板预览圆点（展示品牌主色 primary + 辅助主色 primary2 + 深色背景 bgDark）
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            androidx.compose.foundation.Canvas(
+                                                modifier = Modifier.size(20.dp)
+                                            ) { drawCircle(palette.primary) }
+                                            androidx.compose.foundation.Canvas(
+                                                modifier = Modifier.size(20.dp)
+                                            ) { drawCircle(palette.primary2) }
+                                            androidx.compose.foundation.Canvas(
+                                                modifier = Modifier.size(20.dp)
+                                            ) { drawCircle(palette.bgDark) }
+                                        }
+                                        Spacer(modifier = Modifier.width(Spacing.S3))
+                                        Text(
+                                            text = style.displayName,
+                                            style = ListTitleStyle,
+                                            color = if (isSelected) palette.primary else tc.text
+                                        )
+                                    }
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Check,
+                                            contentDescription = "Selected",
+                                            tint = palette.primary
                                         )
                                     }
                                 }

@@ -44,6 +44,19 @@ class SettingsViewModel(
         }
     }
 
+    /**
+     * 切换配色风格主题。
+     *
+     * @param colorThemeId 配色主题标识符 ("forest", "ocean", "sunset", "lavender", "mono")
+     */
+    fun updateColorTheme(colorThemeId: String) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                it.copy(colorTheme = colorThemeId)
+            }
+        }
+    }
+
     /** 切换新建代码片段时是否注入默认样板代码 */
     fun toggleUseBoilerplate(enabled: Boolean) {
         viewModelScope.launch {

@@ -23,9 +23,6 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 
-/**
- * [SymbolLanguage] 快捷符号栏支持的语言/模板分类。
- */
 enum class SymbolLanguage(val displayName: String) {
     HTML("HTML"),
     JS("JavaScript"),
@@ -37,7 +34,6 @@ enum class SymbolLanguage(val displayName: String) {
     JSON("JSON");
 
     companion object {
-        /** 从代码片段类型映射默认初始符号语言 */
         fun fromSnippetType(type: SnippetType): SymbolLanguage {
             return when (type) {
                 SnippetType.HTML -> HTML
@@ -49,26 +45,16 @@ enum class SymbolLanguage(val displayName: String) {
     }
 }
 
-/**
- * [SymbolBar] 编辑器底部的快捷键盘代码符号/短语工具栏。
- *
- * 解决移动端软键盘输入代码符号（如 `<`, `>`, `{`, `}`, `=>`, `const`）不便的问题。
- * 提供支持横向滚动的快捷符号按键，以及切换语言分类的下拉选择器。
- *
- * @param snippetType 当前代码片段类型
- * @param onInsertSymbol 点击符号按键触发的插入符号回调
- */
 @Composable
 fun SymbolBar(
     snippetType: SnippetType,
     onInsertSymbol: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDark = LocalIsDarkTheme.current
+    val tc = LocalThemeColors.current
     var activeLang by remember(snippetType) { mutableStateOf(SymbolLanguage.fromSnippetType(snippetType)) }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
-    // 根据选中的语言类别动态加载对应的符号与短语列表
     val symbols = remember(activeLang) {
         when (activeLang) {
             SymbolLanguage.HTML -> listOf("<", ">", "</", "/>", "=", "\"", "'", "<!--", "-->", "div", "span", "class=", "id=", "style=", "{", "}", "(", ")")
@@ -82,23 +68,17 @@ fun SymbolBar(
         }
     }
 
-    val borderColor = if (isDark) LineDark else LineLight
-    val btnBg = if (isDark) SurfaceDark else SurfaceLight
-    val textPrimary = if (isDark) TextDark else TextLight
-    val labelColor = if (isDark) Text3Dark else Text3Light
-
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(44.dp)
-            .background(if (isDark) Surface2Dark else Surface2Light)
+            .background(tc.surface2)
             .padding(horizontal = Spacing.S3),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // ===== 语言符号分类切换下拉 Chip =====
         Box(modifier = Modifier.padding(end = Spacing.S2)) {
             Surface(
-                color = PrimarySoft,
+                color = tc.primarySoft,
                 shape = RoundedCornerShape(R_SM),
                 modifier = Modifier
                     .clickable { dropdownExpanded = true }
@@ -111,13 +91,13 @@ fun SymbolBar(
                     Text(
                         text = activeLang.displayName,
                         style = BadgeStyle,
-                        color = Primary,
+                        color = tc.primary,
                         fontWeight = FontWeight.Bold
                     )
                     Icon(
                         imageVector = Icons.Filled.ArrowDropDown,
                         contentDescription = "Select language symbols",
-                        tint = Primary,
+                        tint = tc.primary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -145,7 +125,6 @@ fun SymbolBar(
             }
         }
 
-        // ===== 符号按钮横向 LazyRow 列表 =====
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(Spacing.S2),
             verticalAlignment = Alignment.CenterVertically,
@@ -156,8 +135,8 @@ fun SymbolBar(
                     modifier = Modifier
                         .height(32.dp)
                         .padding(vertical = 1.dp)
-                        .background(btnBg, RoundedCornerShape(R_SM))
-                        .border(1.dp, borderColor, RoundedCornerShape(R_SM))
+                        .background(tc.surface, RoundedCornerShape(R_SM))
+                        .border(1.dp, tc.line, RoundedCornerShape(R_SM))
                         .clickable { onInsertSymbol(symbol) }
                         .padding(horizontal = Spacing.S3)
                         .testTag("symbol_btn_$symbol"),
@@ -168,11 +147,10 @@ fun SymbolBar(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.W600,
-                        color = textPrimary
+                        color = tc.text
                     )
                 }
             }
         }
     }
 }
-

@@ -34,6 +34,7 @@ class SettingsDataStore(private val context: Context) {
     private object Keys {
         val LANG = stringPreferencesKey("lang")
         val THEME = stringPreferencesKey("theme")
+        val COLOR_THEME = stringPreferencesKey("color_theme")
         val EDITOR_FONT = floatPreferencesKey("editor_font")
         val IS_WORD_WRAP = booleanPreferencesKey("is_word_wrap")
         val ENCODING = stringPreferencesKey("encoding")
@@ -62,6 +63,7 @@ class SettingsDataStore(private val context: Context) {
         AppSettings(
             lang = prefs[Keys.LANG] ?: "zh",
             theme = prefs[Keys.THEME] ?: "system",
+            colorTheme = prefs[Keys.COLOR_THEME] ?: "forest",
             editorFontSp = prefs[Keys.EDITOR_FONT] ?: 13.5f,
             isWordWrap = prefs[Keys.IS_WORD_WRAP] ?: true,
             encoding = prefs[Keys.ENCODING] ?: "UTF-8",
@@ -93,6 +95,7 @@ class SettingsDataStore(private val context: Context) {
             val current = AppSettings(
                 lang = prefs[Keys.LANG] ?: "zh",
                 theme = prefs[Keys.THEME] ?: "system",
+                colorTheme = prefs[Keys.COLOR_THEME] ?: "forest",
                 editorFontSp = prefs[Keys.EDITOR_FONT] ?: 13.5f,
                 isWordWrap = prefs[Keys.IS_WORD_WRAP] ?: true,
                 encoding = prefs[Keys.ENCODING] ?: "UTF-8",
@@ -118,6 +121,7 @@ class SettingsDataStore(private val context: Context) {
             // 将最新值写回 DataStore Preferences 内存结构并异步持久化刷盘
             prefs[Keys.LANG] = updated.lang
             prefs[Keys.THEME] = updated.theme
+            prefs[Keys.COLOR_THEME] = updated.colorTheme
             prefs[Keys.EDITOR_FONT] = updated.editorFontSp
             prefs[Keys.IS_WORD_WRAP] = updated.isWordWrap
             prefs[Keys.ENCODING] = updated.encoding

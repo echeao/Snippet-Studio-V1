@@ -26,23 +26,6 @@ import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.TimeUtil
 
-/**
- * [SnippetCard] 是列表展示单个代码片段的主体 UI 卡片组件。
- *
- * 布局结构：
- * - 左侧：[TypeIcon] 识别图标 (如 HTML/JS/MD/Prompt 标识)。
- * - 中间：代码片段标题、自定义标签 Chips、文件夹路径胶囊 Badge、修改时间。
- * - 右侧：一键复制代码按钮、星标收藏 Toggle 按钮、更多操作下拉菜单 DropdownMenu（编辑/重命名/移动文件夹/删除）。
- *
- * @param snippet 关联的代码片段领域模型 [Snippet]
- * @param onOpen 点击卡片触发的打开/编辑事件回调
- * @param onToggleStar 点击收藏按钮事件回调
- * @param onMore 点击删除/更多主要操作事件回调
- * @param showFullDateTime 是否显示完整标准时间 (true: yyyy-MM-dd HH:mm:ss, false: 相对时间)
- * @param onCopySnippet 一键复制片段正文到剪贴板的回调
- * @param onRename 重命名按钮回调
- * @param onMoveFolder 移动文件夹按钮回调
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SnippetCard(
@@ -57,23 +40,18 @@ fun SnippetCard(
     onMoveFolder: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val isDark = LocalIsDarkTheme.current
+    val tc = LocalThemeColors.current
     var showMenu by remember { mutableStateOf(false) }
-
-    val borderColor = if (isDark) LineDark else LineLight
-    val surfaceColor = if (isDark) SurfaceDark else SurfaceLight
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, borderColor, RoundedCornerShape(R_MD))
+            .border(1.dp, tc.line, RoundedCornerShape(R_MD))
             .clickable(onClick = onOpen)
             .testTag("snippet_card_${snippet.id}"),
         shape = RoundedCornerShape(R_MD),
-        color = surfaceColor
+        color = tc.surface
     ) {
         Row(
             modifier = Modifier
@@ -81,26 +59,23 @@ fun SnippetCard(
                 .padding(Spacing.S4),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 类型图标
             TypeIcon(type = snippet.type, size = 44.dp)
 
             Spacer(modifier = Modifier.width(Spacing.S3))
 
-            // 中间文本描述与元数据
             Column(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = snippet.displayTitle,
                     style = ListTitleStyle,
-                    color = textPrimary,
+                    color = tc.text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // 标签、文件夹胶囊与修改时间
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -128,7 +103,7 @@ fun SnippetCard(
 
                     if (snippet.folder.isNotBlank()) {
                         Surface(
-                            color = PrimarySoft,
+                            color = tc.primarySoft,
                             shape = RoundedCornerShape(R_SM)
                         ) {
                             Row(
@@ -138,14 +113,14 @@ fun SnippetCard(
                                 Icon(
                                     imageVector = Icons.Filled.Folder,
                                     contentDescription = "Folder",
-                                    tint = Primary,
+                                    tint = tc.primary,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(modifier = Modifier.width(3.dp))
                                 Text(
                                     text = snippet.folder,
                                     style = BadgeStyle,
-                                    color = Primary
+                                    color = tc.primary
                                 )
                             }
                         }
@@ -155,7 +130,7 @@ fun SnippetCard(
                     Text(
                         text = if (showFullDateTime) TimeUtil.formatFullDateTime(snippet.updatedAt) else TimeUtil.formatRelativeTime(context, snippet.updatedAt),
                         style = CaptionStyle,
-                        color = textSecondary,
+                        color = tc.text2,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -164,11 +139,9 @@ fun SnippetCard(
 
             Spacer(modifier = Modifier.width(Spacing.S2))
 
-            // 右侧操作按钮组
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 快捷复制按钮
                 if (onCopySnippet != null) {
                     IconButton(
                         onClick = onCopySnippet,
@@ -177,13 +150,12 @@ fun SnippetCard(
                         Icon(
                             imageVector = Icons.Filled.ContentCopy,
                             contentDescription = "Copy Code",
-                            tint = textSecondary,
+                            tint = tc.text2,
                             modifier = Modifier.size(20.dp)
                         )
                     }
                 }
 
-                // 收藏星标按钮
                 IconButton(
                     onClick = onToggleStar,
                     modifier = Modifier.testTag("star_button_${snippet.id}")
@@ -191,12 +163,11 @@ fun SnippetCard(
                     Icon(
                         imageVector = if (snippet.starred) Icons.Filled.Star else Icons.Outlined.Star,
                         contentDescription = stringResource(R.string.filter_fav),
-                        tint = if (snippet.starred) StarOn else textSecondary,
+                        tint = if (snippet.starred) StarOn else tc.text2,
                         modifier = Modifier.size(20.dp)
                     )
                 }
 
-                // 更多选项下拉菜单按钮
                 Box {
                     IconButton(
                         onClick = { showMenu = true },
@@ -205,7 +176,7 @@ fun SnippetCard(
                         Icon(
                             imageVector = Icons.Filled.MoreVert,
                             contentDescription = "More",
-                            tint = textSecondary,
+                            tint = tc.text2,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -252,4 +223,3 @@ fun SnippetCard(
         }
     }
 }
-

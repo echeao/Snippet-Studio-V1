@@ -230,6 +230,17 @@ class SubPageViewModel(
         }
     }
 
+    /**
+     * 切换配色风格主题。
+     *
+     * @param colorThemeId 配色主题标识符 ("forest", "ocean", "sunset", "lavender", "mono")
+     */
+    fun setColorTheme(colorThemeId: String) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { it.copy(colorTheme = colorThemeId) }
+        }
+    }
+
     /** 新增全局预设自定义标签 */
     fun addGlobalTag(tag: String) {
         val trimmed = tag.trim().removePrefix("#").trim()

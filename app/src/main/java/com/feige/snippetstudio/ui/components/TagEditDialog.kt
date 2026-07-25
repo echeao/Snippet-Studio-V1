@@ -25,20 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.theme.*
 
-/**
- * [TagEditDialog] 标签编辑与管理模态对话框。
- *
- * 提供可视化的标签交互方式：
- * 1. 展示已选择的标签 FlowRow，支持直接点击【X】删除。
- * 2. 快捷候选推荐区：自动提取现有库中所有可用标签，点击【+】一键添加。
- * 3. 标签新增输入框，支持软键盘 Enter 或【+】按钮保存新标签。
- *
- * @param show 对话框控制开关
- * @param initialTags 初始选中的标签列表
- * @param allAvailableTags 现有的全量可用预设/自定义候选标签
- * @param onDismiss 关闭弹窗回调
- * @param onSave 保存最终选中的标签列表回调
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TagEditDialog(
@@ -49,6 +35,8 @@ fun TagEditDialog(
     onSave: (List<String>) -> Unit
 ) {
     if (!show) return
+
+    val tc = LocalThemeColors.current
 
     val currentTags = remember(show, initialTags) {
         mutableStateListOf<String>().apply { addAll(initialTags) }
@@ -62,10 +50,6 @@ fun TagEditDialog(
             tagInput = ""
         }
     }
-
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
 
     val candidateTags = remember(allAvailableTags, currentTags.toList()) {
         allAvailableTags.filter { !currentTags.contains(it) }
@@ -81,13 +65,13 @@ fun TagEditDialog(
                 Icon(
                     imageVector = Icons.Filled.Tag,
                     contentDescription = null,
-                    tint = Primary,
+                    tint = tc.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
                     text = "编辑标签",
                     style = SectionTitleStyle,
-                    color = textPrimary
+                    color = tc.text
                 )
             }
         },
@@ -101,16 +85,15 @@ fun TagEditDialog(
                 Text(
                     text = "已选标签",
                     style = CaptionStyle,
-                    color = Primary,
+                    color = tc.primary,
                     fontWeight = FontWeight.Bold
                 )
 
-                // 已添加的标签 FlowRow 布局
                 if (currentTags.isEmpty()) {
                     Text(
                         text = "暂未选择标签，点击下方候选或手动输入添加",
                         style = CaptionStyle,
-                        color = textSecondary,
+                        color = tc.text2,
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
                 } else {
@@ -149,13 +132,12 @@ fun TagEditDialog(
                     }
                 }
 
-                // 快捷选择已有/预设标签候选区
                 if (candidateTags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "快捷点选现有/预设标签",
                         style = CaptionStyle,
-                        color = textSecondary
+                        color = tc.text2
                     )
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -164,7 +146,7 @@ fun TagEditDialog(
                     ) {
                         candidateTags.forEach { tag ->
                             Surface(
-                                color = if (isDark) Surface2Dark else Surface2Light,
+                                color = tc.surface2,
                                 shape = RoundedCornerShape(R_SM),
                                 modifier = Modifier.clickable { currentTags.add(tag) }
                             ) {
@@ -175,14 +157,14 @@ fun TagEditDialog(
                                     Icon(
                                         imageVector = Icons.Filled.Add,
                                         contentDescription = null,
-                                        tint = textSecondary,
+                                        tint = tc.text2,
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Spacer(modifier = Modifier.width(2.dp))
                                     Text(
                                         text = "# $tag",
                                         style = CaptionStyle,
-                                        color = textPrimary
+                                        color = tc.text
                                     )
                                 }
                             }
@@ -192,7 +174,6 @@ fun TagEditDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // 标签文本手动输入框
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -219,7 +200,7 @@ fun TagEditDialog(
                         Icon(
                             imageVector = Icons.Filled.Add,
                             contentDescription = "Add Tag",
-                            tint = if (tagInput.trim().isNotEmpty()) Primary else textSecondary
+                            tint = if (tagInput.trim().isNotEmpty()) tc.primary else tc.text2
                         )
                     }
                 }
@@ -231,7 +212,7 @@ fun TagEditDialog(
                     onSave(currentTags.toList())
                     onDismiss()
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                colors = ButtonDefaults.buttonColors(containerColor = tc.primary),
                 shape = AppShapes.small,
                 modifier = Modifier.testTag("tag_save_btn")
             ) {
@@ -249,4 +230,3 @@ fun TagEditDialog(
         shape = AppShapes.large
     )
 }
-

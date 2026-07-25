@@ -67,8 +67,11 @@ class MainActivity : ComponentActivity() {
                 LocalContext provides localeContext,
                 LocalActivityResultRegistryOwner provides this@MainActivity
             ) {
-                // 【主题包裹】根据设置中的 theme 属性（"light" / "dark" / "system"）应用系统配色方案与 Typography
-                SnippetStudioTheme(themeSetting = settings.theme) {
+                // 【主题包裹】根据设置中的 theme 属性（"light" / "dark" / "system"）与 colorTheme 风格应用系统配色方案与 Typography
+                SnippetStudioTheme(
+                    themeSetting = settings.theme,
+                    colorThemeId = settings.colorTheme
+                ) {
                     // 创建并记住 Jetpack Navigation 路由控制器
                     val navController = rememberNavController()
                     // 状态对象：管理底层浮动 Snackbar 消息提示弹窗

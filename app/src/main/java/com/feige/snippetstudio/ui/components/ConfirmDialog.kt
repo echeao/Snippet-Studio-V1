@@ -34,6 +34,8 @@ fun ConfirmDialog(
     isDanger: Boolean = false
 ) {
 
+    val tc = LocalThemeColors.current
+
     if (show) {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -53,7 +55,7 @@ fun ConfirmDialog(
                 ) {
                     Text(
                         text = confirmText,
-                        color = if (isDanger) Danger else Primary,
+                        color = if (isDanger) Danger else tc.primary,
                         style = ListTitleStyle
                     )
                 }

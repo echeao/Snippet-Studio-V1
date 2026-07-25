@@ -59,16 +59,10 @@ fun CodeEditor(
     topContentPadding: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val gutterText = if (isDark) Text3Dark else Text3Light
-    val gutterBg = if (isDark) Surface2Dark else Surface2Light
-    val editorBg = if (isDark) SurfaceDark else SurfaceLight
-    val highlightLineBg = if (isDark) PrimarySoft.copy(alpha = 0.15f) else PrimarySoft
+    val tc = LocalThemeColors.current
+    val isDark = tc.isDark
 
     // 记住并构建语法高亮转换器 VisualTransformation
-    // 教学解析：Compose TextField 的 visualTransformation 允许在不改变输入框底层文本真实数据 (String) 的情况下，
-    // 在视觉上将其包装显示为富文本 AnnotatedString。OffsetMapping.Identity 表示字符位置映射 1:1 无偏移。
     val syntaxTransformation = remember(snippetType, isDark) {
         VisualTransformation { text ->
             val highlighted = SyntaxHighlighter.highlight(text.text, snippetType, isDark)
@@ -77,7 +71,6 @@ fun CodeEditor(
     }
 
     // 记住垂直与水平滚动状态 State
-    // 教学解析：将同一个 verticalScrollState 分别赋予左侧行号栏与右侧代码区域，从而实现滚动时的完美像素级同步！
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
 
@@ -90,7 +83,7 @@ fun CodeEditor(
     Row(
         modifier = modifier
             .fillMaxSize()
-            .background(editorBg)
+            .background(tc.surface)
     ) {
         // ===== 1. 左侧行号装订轨 (Line Number Gutter) =====
         if (showLineNumbers) {
@@ -98,7 +91,7 @@ fun CodeEditor(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(44.dp)
-                    .background(gutterBg)
+                    .background(tc.surface2)
                     .verticalScroll(verticalScrollState) // 与右侧代码区绑着同一个 verticalScrollState 共用垂直滚动
                     .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3),
                 horizontalAlignment = Alignment.End
@@ -119,7 +112,7 @@ fun CodeEditor(
                             fontFamily = FontFamily.Monospace, // 等宽字体对齐
                             fontSize = (fontSp * 0.85f).sp,
                             fontWeight = if (isCurrent) FontWeight.W800 else FontWeight.W400,
-                            color = if (isCurrent) Primary else gutterText
+                            color = if (isCurrent) tc.primary else tc.text3
                         )
                     }
                 }
@@ -135,14 +128,13 @@ fun CodeEditor(
                 .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3, start = Spacing.S3, end = Spacing.S3)
         ) {
             // 当前焦点行高亮背景绘制层
-            // 通过 offset 偏移计算 y 轴物理坐标: currentLineIndex * 行高 (fontSp * 1.6f)
             if (highlightCurrentLine && currentLineIndex in 0 until linesCount) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .offset(y = (currentLineIndex * (fontSp * 1.6f)).dp)
                         .height((fontSp * 1.6f).dp)
-                        .background(highlightLineBg)
+                        .background(tc.primarySoft.copy(alpha = if (isDark) 0.15f else 0.5f))
                 )
             }
 
@@ -157,9 +149,9 @@ fun CodeEditor(
                         fontFamily = FontFamily.Monospace, // 强制使用代码标准等宽字体
                         fontSize = fontSp.sp,
                         lineHeight = (fontSp * 1.6f).sp,
-                        color = textPrimary
+                        color = tc.text
                     ),
-                    cursorBrush = SolidColor(Primary),
+                    cursorBrush = SolidColor(tc.primary),
                     modifier = Modifier
                         .fillMaxSize()
                         .testTag("code_editor_input")
@@ -179,9 +171,9 @@ fun CodeEditor(
                             fontFamily = FontFamily.Monospace,
                             fontSize = fontSp.sp,
                             lineHeight = (fontSp * 1.6f).sp,
-                            color = textPrimary
+                            color = tc.text
                         ),
-                        cursorBrush = SolidColor(Primary),
+                        cursorBrush = SolidColor(tc.primary),
                         modifier = Modifier
                             .widthIn(min = 1200.dp) // 给定最小 1200.dp 支撑宽文本横向拖拽
                             .fillMaxHeight()

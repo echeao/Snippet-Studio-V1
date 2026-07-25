@@ -59,12 +59,7 @@ fun DetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
-    val cardBg = if (isDark) SurfaceDark else SurfaceLight
-    val borderColor = if (isDark) LineDark else LineLight
+    val tc = LocalThemeColors.current
 
     // 交互弹窗挂起状态
     var showTrashDialog by remember { mutableStateOf(false) }
@@ -78,10 +73,10 @@ fun DetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (isDark) BgDark else BgLight),
+                .background(tc.bg),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Primary)
+            CircularProgressIndicator(color = tc.primary)
         }
         return
     }
@@ -97,7 +92,7 @@ fun DetailScreen(
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = textPrimary
+                            tint = tc.text
                         )
                     }
                 },
@@ -105,15 +100,15 @@ fun DetailScreen(
                     Text(
                         text = stringResource(R.string.detail_title),
                         style = SectionTitleStyle,
-                        color = textPrimary
+                        color = tc.text
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isDark) BgDark else BgLight
+                    containerColor = tc.bg
                 )
             )
         },
-        containerColor = if (isDark) BgDark else BgLight
+        containerColor = tc.bg
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -128,9 +123,9 @@ fun DetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(AppElevation.Sm, RoundedCornerShape(R_XL), ambientColor = AppElevation.SmColor)
-                    .border(1.dp, borderColor, RoundedCornerShape(R_XL)),
+                    .border(1.dp, tc.line, RoundedCornerShape(R_XL)),
                 shape = RoundedCornerShape(R_XL),
-                color = cardBg
+                color = tc.surface
             ) {
                 Column(modifier = Modifier.padding(Spacing.S5)) {
                     Row(
@@ -141,13 +136,13 @@ fun DetailScreen(
                         TypeIcon(type = snippet.type, size = 48.dp)
 
                         Surface(
-                            color = PrimarySoft,
+                            color = tc.primarySoft,
                             shape = RoundedCornerShape(R_SM)
                         ) {
                             Text(
                                 text = snippet.type.displayName,
                                 style = BadgeStyle,
-                                color = Primary,
+                                color = tc.primary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -165,7 +160,7 @@ fun DetailScreen(
                         Text(
                             text = snippet.displayTitle,
                             style = DisplayTitleStyle,
-                            color = textPrimary,
+                            color = tc.text,
                             modifier = Modifier.weight(1f)
                         )
                         IconButton(
@@ -175,7 +170,7 @@ fun DetailScreen(
                             Icon(
                                 imageVector = Icons.Filled.Edit,
                                 contentDescription = "Rename",
-                                tint = textSecondary,
+                                tint = tc.text2,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -186,13 +181,13 @@ fun DetailScreen(
                     Text(
                         text = "创建于 ${TimeUtil.formatFullDateTime(snippet.createdAt)}",
                         style = CaptionStyle,
-                        color = textSecondary
+                        color = tc.text2
                     )
 
                     Spacer(modifier = Modifier.height(Spacing.S3))
 
                     Surface(
-                        color = if (isDark) Surface2Dark else Surface2Light,
+                        color = tc.surface2,
                         shape = RoundedCornerShape(R_SM),
                         modifier = Modifier.clickable { showRenameDialog = true }
                     ) {
@@ -204,13 +199,13 @@ fun DetailScreen(
                                 text = snippet.fileName,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 12.5.sp,
-                                color = textSecondary
+                                color = tc.text2
                             )
                             Spacer(modifier = Modifier.width(Spacing.S2))
                             Icon(
                                 imageVector = Icons.Filled.Edit,
                                 contentDescription = "Edit Filename",
-                                tint = textSecondary,
+                                tint = tc.text2,
                                 modifier = Modifier.size(12.dp)
                             )
                         }
@@ -226,7 +221,7 @@ fun DetailScreen(
                     ) {
                         if (snippet.tags.isEmpty()) {
                             Surface(
-                                color = PrimarySoft,
+                                color = tc.primarySoft,
                                 shape = RoundedCornerShape(R_SM),
                                 modifier = Modifier.clickable { showTagDialog = true }
                             ) {
@@ -237,14 +232,14 @@ fun DetailScreen(
                                     Icon(
                                         imageVector = Icons.Filled.Add,
                                         contentDescription = "Add Tag",
-                                        tint = Primary,
+                                        tint = tc.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "添加标签",
                                         style = CaptionStyle,
-                                        color = Primary
+                                        color = tc.primary
                                     )
                                 }
                             }
@@ -278,7 +273,7 @@ fun DetailScreen(
                                 Icon(
                                     imageVector = Icons.Filled.Edit,
                                     contentDescription = "Edit Tags",
-                                    tint = textSecondary,
+                                    tint = tc.text2,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -346,14 +341,14 @@ fun DetailScreen(
                     Text(
                         text = if (uiState.isSourceExpanded) "收起" else "展开",
                         style = CaptionStyle,
-                        color = Primary,
+                        color = tc.primary,
                         modifier = Modifier.clickable { viewModel.toggleSourceExpanded() }
                     )
                 }
             ) {
                 val previewLines = if (uiState.isSourceExpanded) snippet.content else snippet.content.lines().take(8).joinToString("\n")
                 Surface(
-                    color = if (isDark) Surface2Dark else Surface2Light,
+                    color = tc.surface2,
                     shape = RoundedCornerShape(R_SM),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -361,7 +356,7 @@ fun DetailScreen(
                         text = previewLines,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
-                        color = textPrimary,
+                        color = tc.text,
                         modifier = Modifier.padding(Spacing.S3)
                     )
                 }
@@ -447,20 +442,18 @@ fun DetailActionButton(
     modifier: Modifier = Modifier,
     isDanger: Boolean = false
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val cardBg = if (isDark) SurfaceDark else SurfaceLight
-    val borderColor = if (isDark) LineDark else LineLight
-    val iconColor = if (isDanger) Danger else Primary
-    val iconBg = if (isDanger) DangerSoft else PrimarySoft
+    val tc = LocalThemeColors.current
+    val iconColor = if (isDanger) Danger else tc.primary
+    val iconBg = if (isDanger) DangerSoft else tc.primarySoft
 
     Surface(
         modifier = modifier
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, borderColor, RoundedCornerShape(R_MD))
+            .border(1.dp, tc.line, RoundedCornerShape(R_MD))
             .clickable(onClick = onClick)
             .testTag("detail_act_$label"),
         shape = RoundedCornerShape(R_MD),
-        color = cardBg
+        color = tc.surface
     ) {
         Column(
             modifier = Modifier.padding(vertical = Spacing.S3),
@@ -483,7 +476,7 @@ fun DetailActionButton(
             Text(
                 text = label,
                 style = CaptionStyle,
-                color = if (isDark) TextDark else TextLight
+                color = tc.text
             )
         }
     }
@@ -498,18 +491,15 @@ fun DetailPanel(
     headerAction: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val cardBg = if (isDark) SurfaceDark else SurfaceLight
-    val borderColor = if (isDark) LineDark else LineLight
-    val textPrimary = if (isDark) TextDark else TextLight
+    val tc = LocalThemeColors.current
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, borderColor, RoundedCornerShape(R_MD)),
+            .border(1.dp, tc.line, RoundedCornerShape(R_MD)),
         shape = RoundedCornerShape(R_MD),
-        color = cardBg
+        color = tc.surface
     ) {
         Column(modifier = Modifier.padding(Spacing.S4)) {
             Row(
@@ -520,7 +510,7 @@ fun DetailPanel(
                 Text(
                     text = title,
                     style = SectionTitleStyle,
-                    color = textPrimary
+                    color = tc.text
                 )
                 headerAction?.invoke()
             }
@@ -541,9 +531,7 @@ fun InfoRow(
     value: String,
     onClick: (() -> Unit)? = null
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     Row(
         modifier = Modifier
@@ -551,12 +539,12 @@ fun InfoRow(
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, style = BodyStyle, color = textSecondary)
+        Text(text = label, style = BodyStyle, color = tc.text2)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = value,
                 style = BodyStyle,
-                color = if (onClick != null) Primary else textPrimary,
+                color = if (onClick != null) tc.primary else tc.text,
                 fontFamily = FontFamily.Monospace,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -566,7 +554,7 @@ fun InfoRow(
                 Icon(
                     imageVector = Icons.Filled.Edit,
                     contentDescription = "Edit",
-                    tint = Primary,
+                    tint = tc.primary,
                     modifier = Modifier.size(14.dp)
                 )
             }

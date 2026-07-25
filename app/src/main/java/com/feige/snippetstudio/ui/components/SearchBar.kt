@@ -19,15 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.ui.theme.*
 
-/**
- * [SearchBar] 全局通用搜索框组件。
- *
- * 包含搜索 Icon 放大镜图标、占位占位符 Placeholder、文本输入框以及输入非空时的“一键清空”按钮。
- *
- * @param value 当前输入的搜索关键字
- * @param onValueChange 搜索文本变动回调
- * @param placeholder 占位符提示文字
- */
 @Composable
 fun SearchBar(
     value: String,
@@ -35,20 +26,16 @@ fun SearchBar(
     placeholder: String,
     modifier: Modifier = Modifier
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val borderColor = if (isDark) LineDark else LineLight
-    val surfaceColor = if (isDark) SurfaceDark else SurfaceLight
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .height(50.dp)
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, borderColor, RoundedCornerShape(R_MD)),
+            .border(1.dp, tc.line, RoundedCornerShape(R_MD)),
         shape = RoundedCornerShape(R_MD),
-        color = surfaceColor
+        color = tc.surface
     ) {
         Row(
             modifier = Modifier
@@ -59,7 +46,7 @@ fun SearchBar(
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = "Search",
-                tint = textSecondary,
+                tint = tc.text2,
                 modifier = Modifier.size(20.dp)
             )
 
@@ -72,7 +59,7 @@ fun SearchBar(
                 if (value.isEmpty()) {
                     Text(
                         text = placeholder,
-                        style = TextStyle(fontSize = 15.sp, color = textSecondary)
+                        style = TextStyle(fontSize = 15.sp, color = tc.text2)
                     )
                 }
 
@@ -81,17 +68,16 @@ fun SearchBar(
                     onValueChange = onValueChange,
                     textStyle = TextStyle(
                         fontSize = 16.sp,
-                        color = textPrimary
+                        color = tc.text
                     ),
                     singleLine = true,
-                    cursorBrush = SolidColor(Primary),
+                    cursorBrush = SolidColor(tc.primary),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("search_input")
                 )
             }
 
-            // 一键清空搜索输入内容
             if (value.isNotEmpty()) {
                 IconButton(
                     onClick = { onValueChange("") },
@@ -102,7 +88,7 @@ fun SearchBar(
                     Icon(
                         imageVector = Icons.Filled.Close,
                         contentDescription = "Clear search",
-                        tint = textSecondary,
+                        tint = tc.text2,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -110,4 +96,3 @@ fun SearchBar(
         }
     }
 }
-

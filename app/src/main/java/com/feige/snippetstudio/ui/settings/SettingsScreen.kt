@@ -50,9 +50,7 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     // ===== Android SAF 系统文件创建 Launcher (保存 JSON 全量备份文件) =====
     val createDocLauncher = rememberLauncherForActivityResult(
@@ -76,15 +74,15 @@ fun SettingsScreen(
                     Text(
                         text = stringResource(R.string.settings_title),
                         style = DisplayTitleStyle,
-                        color = textPrimary
+                        color = tc.text
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isDark) BgDark else BgLight
+                    containerColor = tc.bg
                 )
             )
         },
-        containerColor = if (isDark) BgDark else BgLight
+        containerColor = tc.bg
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -121,7 +119,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.set_cat),
                     onClick = { onNavigateToSubPage("cat") }
                 )
-                HorizontalDivider(color = if (isDark) LineDark else LineLight)
+                HorizontalDivider(color = tc.line)
                 SettingsItem(
                     iconRes = R.drawable.ic_tag,
                     title = stringResource(R.string.set_tags),
@@ -138,7 +136,7 @@ fun SettingsScreen(
                         createDocLauncher.launch("snippet-studio-backup.json")
                     }
                 )
-                HorizontalDivider(color = if (isDark) LineDark else LineLight)
+                HorizontalDivider(color = tc.line)
                 SettingsItem(
                     iconRes = R.drawable.ic_spark,
                     title = stringResource(R.string.set_trash),
@@ -148,19 +146,30 @@ fun SettingsScreen(
 
             // ===== 分组 5: 外观与多语言偏好设置 =====
             SettingsGroup(title = stringResource(R.string.set_look)) {
+                // 配色风格选择入口
+                val colorThemeLabel = ColorThemeStyle.fromId(settings.colorTheme).displayName
+                SettingsItem(
+                    iconRes = R.drawable.ic_spark,
+                    title = stringResource(R.string.set_color_theme),
+                    subTitle = colorThemeLabel,
+                    onClick = { onNavigateToSubPage("theme") }
+                )
+                HorizontalDivider(color = tc.line)
+
+                // 明暗模式切换
                 AppSwitch(
-                    checked = (settings.theme == "dark" || (settings.theme == "system" && isDark)),
+                    checked = (settings.theme == "dark" || (settings.theme == "system" && tc.isDark)),
                     onCheckedChange = { viewModel.toggleDarkMode(it) },
                     label = stringResource(R.string.set_dark)
                 )
-                HorizontalDivider(color = if (isDark) LineDark else LineLight)
+                HorizontalDivider(color = tc.line)
 
                 AppSwitch(
                     checked = settings.useBoilerplate,
                     onCheckedChange = { viewModel.toggleUseBoilerplate(it) },
                     label = stringResource(R.string.set_use_boilerplate)
                 )
-                HorizontalDivider(color = if (isDark) LineDark else LineLight)
+                HorizontalDivider(color = tc.line)
                 
                 val cardClickLabel = if (settings.cardClickAction == "editor") "直接进入编辑器" else "查看片段详情"
                 SettingsItem(
@@ -172,7 +181,7 @@ fun SettingsScreen(
                         viewModel.updateCardClickAction(next)
                     }
                 )
-                HorizontalDivider(color = if (isDark) LineDark else LineLight)
+                HorizontalDivider(color = tc.line)
 
                 val langLabel = when (settings.lang) {
                     "ja" -> stringResource(R.string.lang_ja)
@@ -198,16 +207,13 @@ fun SettingsGroup(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val cardBg = if (isDark) SurfaceDark else SurfaceLight
-    val borderColor = if (isDark) LineDark else LineLight
-    val titleColor = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = title,
             style = CaptionStyle,
-            color = titleColor,
+            color = tc.text2,
             modifier = Modifier.padding(start = Spacing.S2, bottom = Spacing.S2)
         )
 
@@ -215,9 +221,9 @@ fun SettingsGroup(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-                .border(1.dp, borderColor, RoundedCornerShape(R_MD)),
+                .border(1.dp, tc.line, RoundedCornerShape(R_MD)),
             shape = RoundedCornerShape(R_MD),
-            color = cardBg
+            color = tc.surface
         ) {
             Column(content = content)
         }
@@ -234,9 +240,7 @@ fun SettingsItem(
     subTitle: String? = null,
     onClick: () -> Unit
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     Row(
         modifier = Modifier
@@ -253,7 +257,7 @@ fun SettingsItem(
             Icon(
                 painter = painterResource(id = iconRes),
                 contentDescription = title,
-                tint = Primary,
+                tint = tc.primary,
                 modifier = Modifier.size(22.dp)
             )
 
@@ -263,14 +267,14 @@ fun SettingsItem(
                 Text(
                     text = title,
                     style = ListTitleStyle,
-                    color = textPrimary
+                    color = tc.text
                 )
                 if (!subTitle.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = subTitle,
                         style = CaptionStyle,
-                        color = textSecondary
+                        color = tc.text2
                     )
                 }
             }
@@ -279,7 +283,7 @@ fun SettingsItem(
         Icon(
             imageVector = Icons.Filled.ChevronRight,
             contentDescription = "Navigate",
-            tint = textSecondary,
+            tint = tc.text2,
             modifier = Modifier.size(20.dp)
         )
     }

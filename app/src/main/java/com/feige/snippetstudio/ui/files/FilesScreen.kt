@@ -64,11 +64,7 @@ fun FilesScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
-    val surfaceColor = if (isDark) SurfaceDark else SurfaceLight
-    val borderColor = if (isDark) LineDark else LineLight
+    val tc = LocalThemeColors.current
 
     var pendingTrashId by remember { mutableStateOf<String?>(null) }
     var pendingRenameSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
@@ -88,7 +84,7 @@ fun FilesScreen(
                     Text(
                         text = stringResource(R.string.files_title),
                         style = DisplayTitleStyle,
-                        color = textPrimary
+                        color = tc.text
                     )
                 },
                 actions = {
@@ -100,7 +96,7 @@ fun FilesScreen(
                         Icon(
                             imageVector = Icons.Filled.CreateNewFolder,
                             contentDescription = "Create Folder",
-                            tint = Primary,
+                            tint = tc.primary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -113,7 +109,7 @@ fun FilesScreen(
                         Icon(
                             imageVector = if (uiState.densityMode == DensityMode.COMFORT) Icons.Filled.ViewModule else Icons.Filled.GridView,
                             contentDescription = "Toggle Density Mode",
-                            tint = Primary,
+                            tint = tc.primary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -126,7 +122,7 @@ fun FilesScreen(
                         Icon(
                             imageVector = if (uiState.viewMode == ViewMode.FLAT) Icons.Filled.AccountTree else Icons.Filled.List,
                             contentDescription = "Toggle View Mode",
-                            tint = Primary,
+                            tint = tc.primary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -139,19 +135,19 @@ fun FilesScreen(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_sort),
                             contentDescription = "Sort",
-                            tint = Primary,
+                            tint = tc.primary,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(Spacing.S1))
-                        Text(text = sortLabel, style = CaptionStyle, color = Primary)
+                        Text(text = sortLabel, style = CaptionStyle, color = tc.primary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isDark) BgDark else BgLight
+                    containerColor = tc.bg
                 )
             )
         },
-        containerColor = if (isDark) BgDark else BgLight
+        containerColor = tc.bg
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -237,9 +233,9 @@ fun FilesScreen(
                                         .fillMaxWidth()
                                         .padding(horizontal = Spacing.S4, vertical = Spacing.S1)
                                         .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-                                        .border(1.dp, borderColor, RoundedCornerShape(R_MD)),
+                                        .border(1.dp, tc.line, RoundedCornerShape(R_MD)),
                                     shape = RoundedCornerShape(R_MD),
-                                    color = surfaceColor
+                                    color = tc.surface
                                 ) {
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         uiState.snippets.forEachIndexed { index, snippet ->
@@ -283,14 +279,14 @@ fun FilesScreen(
                                     Icon(
                                         imageVector = Icons.Filled.Folder,
                                         contentDescription = "Folder Group",
-                                        tint = Primary,
+                                        tint = tc.primary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(Spacing.S2))
                                     Text(
                                         text = "$folderName (${folderSnippets.size})",
                                         style = SectionTitleStyle,
-                                        color = textPrimary
+                                        color = tc.text
                                     )
                                 }
                             }
@@ -300,7 +296,7 @@ fun FilesScreen(
                                     Text(
                                         text = "(空文件夹)",
                                         style = CaptionStyle,
-                                        color = textSecondary,
+                                        color = tc.text2,
                                         modifier = Modifier.padding(start = 44.dp, top = 2.dp, bottom = 8.dp)
                                     )
                                 }
@@ -341,9 +337,9 @@ fun FilesScreen(
                                                 .fillMaxWidth()
                                                 .padding(start = 24.dp, end = Spacing.S4, top = Spacing.S1, bottom = Spacing.S2)
                                                 .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-                                                .border(1.dp, borderColor, RoundedCornerShape(R_MD)),
+                                                .border(1.dp, tc.line, RoundedCornerShape(R_MD)),
                                             shape = RoundedCornerShape(R_MD),
-                                            color = surfaceColor
+                                            color = tc.surface
                                         ) {
                                             Column(modifier = Modifier.fillMaxWidth()) {
                                                 folderSnippets.forEachIndexed { index, snippet ->

@@ -9,6 +9,7 @@ package com.feige.snippetstudio.model
  *
  * @param lang 界面语言配置 ("zh": 简体中文, "ja": 日语, "en": 英文)
  * @param theme 主题样式 ("system": 跟随系统, "light": 浅色, "dark": 深色)
+ * @param colorTheme 配色风格主题 ("forest": 森林绿, "ocean": 海洋蓝, "sunset": 暮光橙, "lavender": 薰衣草紫, "mono": 极简灰)
  * @param editorFontSp 代码编辑器文本字号大小 (单位: sp)
  * @param isWordWrap 编辑器超过边界时是否开启自动软换行
  * @param encoding 文本文件保存/读取编码 (默认 "UTF-8")
@@ -32,6 +33,7 @@ package com.feige.snippetstudio.model
 data class AppSettings(
     val lang: String = "zh",
     val theme: String = "system",
+    val colorTheme: String = "forest",
     val editorFontSp: Float = 13.5f,
     val isWordWrap: Boolean = true,
     val encoding: String = "UTF-8",

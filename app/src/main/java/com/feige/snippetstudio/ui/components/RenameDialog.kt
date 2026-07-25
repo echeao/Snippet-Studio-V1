@@ -28,6 +28,8 @@ fun RenameDialog(
     onDismiss: () -> Unit,
     onConfirm: (newTitle: String, newFileName: String) -> Unit
 ) {
+    val tc = LocalThemeColors.current
+
     if (!show) return
 
     var title by remember(initialTitle) { mutableStateOf(initialTitle) }
@@ -75,7 +77,7 @@ fun RenameDialog(
                 enabled = title.isNotBlank() || fileName.isNotBlank(),
                 modifier = Modifier.testTag("rename_confirm_btn")
             ) {
-                Text(text = stringResource(R.string.common_confirm), color = Primary, style = ListTitleStyle)
+                Text(text = stringResource(R.string.common_confirm), color = tc.primary, style = ListTitleStyle)
             }
         },
         dismissButton = {

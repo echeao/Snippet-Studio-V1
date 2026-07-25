@@ -49,15 +49,11 @@ fun SnippetPreviewCard(
     onMoveFolder: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val isDark = LocalIsDarkTheme.current
+    val tc = LocalThemeColors.current
     var showMenu by remember { mutableStateOf(false) }
 
-    val borderColor = if (isDark) LineDark else LineLight
-    val surfaceColor = if (isDark) SurfaceDark else SurfaceLight
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
-    val codeBgColor = if (isDark) Color(0xFF1B1D22) else Color(0xFFF4F6F9)
-    val codeTextColor = if (isDark) Color(0xFFC5C8D4) else Color(0xFF333745)
+    val codeBgColor = if (tc.isDark) Color(0xFF1B1D22) else Color(0xFFF4F6F9)
+    val codeTextColor = if (tc.isDark) Color(0xFFC5C8D4) else Color(0xFF333745)
 
     val previewCode = remember(snippet.content) {
         snippet.content.lines().take(4).joinToString("\n")
@@ -73,11 +69,11 @@ fun SnippetPreviewCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, borderColor, RoundedCornerShape(R_MD))
+            .border(1.dp, tc.line, RoundedCornerShape(R_MD))
             .clickable(onClick = onOpen)
             .testTag("snippet_preview_card_${snippet.id}"),
         shape = RoundedCornerShape(R_MD),
-        color = surfaceColor
+        color = tc.surface
     ) {
         Column(
             modifier = Modifier
@@ -97,7 +93,7 @@ fun SnippetPreviewCard(
                     Text(
                         text = snippet.displayTitle,
                         style = ListTitleStyle,
-                        color = textPrimary,
+                        color = tc.text,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -105,7 +101,7 @@ fun SnippetPreviewCard(
                     Text(
                         text = if (showFullDateTime) TimeUtil.formatFullDateTime(snippet.updatedAt) else TimeUtil.formatRelativeTime(context, snippet.updatedAt),
                         style = CaptionStyle,
-                        color = textSecondary
+                        color = tc.text2
                     )
                 }
 
@@ -121,7 +117,7 @@ fun SnippetPreviewCard(
                             Icon(
                                 imageVector = Icons.Filled.ContentCopy,
                                 contentDescription = "Copy Code",
-                                tint = textSecondary,
+                                tint = tc.text2,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -134,7 +130,7 @@ fun SnippetPreviewCard(
                         Icon(
                             imageVector = if (snippet.starred) Icons.Filled.Star else Icons.Outlined.Star,
                             contentDescription = stringResource(R.string.filter_fav),
-                            tint = if (snippet.starred) StarOn else textSecondary,
+                            tint = if (snippet.starred) StarOn else tc.text2,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -147,7 +143,7 @@ fun SnippetPreviewCard(
                             Icon(
                                 imageVector = Icons.Filled.MoreVert,
                                 contentDescription = "More",
-                                tint = textSecondary,
+                                tint = tc.text2,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -225,7 +221,7 @@ fun SnippetPreviewCard(
                 ) {
                     if (snippet.folder.isNotBlank()) {
                         Surface(
-                            color = PrimarySoft,
+                            color = tc.primarySoft,
                             shape = RoundedCornerShape(R_SM)
                         ) {
                             Row(
@@ -235,14 +231,14 @@ fun SnippetPreviewCard(
                                 Icon(
                                     imageVector = Icons.Filled.Folder,
                                     contentDescription = "Folder",
-                                    tint = Primary,
+                                    tint = tc.primary,
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(modifier = Modifier.width(3.dp))
                                 Text(
                                     text = snippet.folder,
                                     style = BadgeStyle,
-                                    color = Primary
+                                    color = tc.primary
                                 )
                             }
                         }
@@ -275,7 +271,7 @@ fun SnippetPreviewCard(
                 Text(
                     text = "$totalLines 行 · ${byteSize} B",
                     style = CaptionStyle,
-                    color = textSecondary
+                    color = tc.text2
                 )
             }
         }

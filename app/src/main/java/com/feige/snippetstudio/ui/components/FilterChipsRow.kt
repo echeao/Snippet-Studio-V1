@@ -50,6 +50,8 @@ fun FilterChipsRow(
     modifier: Modifier = Modifier
 ) {
 
+    val tc = LocalThemeColors.current
+
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(Spacing.S2),
@@ -62,7 +64,7 @@ fun FilterChipsRow(
                 onClick = { onSelect(option) },
                 label = { Text(stringResource(id = option.labelRes)) },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Primary,
+                    selectedContainerColor = tc.primary,
                     selectedLabelColor = Color.White,
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     labelColor = MaterialTheme.colorScheme.onSurfaceVariant

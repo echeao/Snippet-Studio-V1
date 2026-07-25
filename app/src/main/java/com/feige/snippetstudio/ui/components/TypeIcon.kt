@@ -1,7 +1,6 @@
 package com.feige.snippetstudio.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,13 +36,13 @@ fun TypeIcon(
     size: Dp = 40.dp
 ) {
 
-    val isDark = isSystemInDarkTheme()
+    val tc = LocalThemeColors.current
 
     val (bg, fg) = when (type) {
-        SnippetType.HTML -> if (isDark) C_Html.copy(alpha = 0.2f) to C_Html else C_HtmlBg to C_Html
-        SnippetType.JS -> if (isDark) C_Js.copy(alpha = 0.2f) to C_Js else C_JsBg to C_Js
-        SnippetType.MARKDOWN -> if (isDark) C_Md.copy(alpha = 0.2f) to C_Md else C_MdBg to C_Md
-        SnippetType.PROMPT -> if (isDark) C_Prompt.copy(alpha = 0.2f) to Primary2 else C_PromptBg to C_Prompt
+        SnippetType.HTML -> if (tc.isDark) C_Html.copy(alpha = 0.2f) to C_Html else C_HtmlBg to C_Html
+        SnippetType.JS -> if (tc.isDark) C_Js.copy(alpha = 0.2f) to C_Js else C_JsBg to C_Js
+        SnippetType.MARKDOWN -> if (tc.isDark) C_Md.copy(alpha = 0.2f) to C_Md else C_MdBg to C_Md
+        SnippetType.PROMPT -> if (tc.isDark) C_Prompt.copy(alpha = 0.2f) to tc.primary2 else C_PromptBg to C_Prompt
     }
 
     Box(

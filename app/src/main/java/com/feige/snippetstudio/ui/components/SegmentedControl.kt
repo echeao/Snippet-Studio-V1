@@ -36,12 +36,12 @@ fun SegmentedControl(
     modifier: Modifier = Modifier
 ) {
 
-    val isDark = LocalIsDarkTheme.current
-    val containerBg = if (isDark) Surface2Dark else Surface2Light
-    val activeBg = if (isDark) SurfaceDark else SurfaceLight
-    val activeText = Primary
-    val inactiveText = if (isDark) Text2Dark else Text2Light
-    val borderColor = if (isDark) LineDark else LineLight
+    val tc = LocalThemeColors.current
+    val containerBg = tc.surface2
+    val activeBg = tc.surface
+    val activeText = tc.primary
+    val inactiveText = tc.text2
+    val borderColor = tc.line
 
     Box(
         modifier = modifier

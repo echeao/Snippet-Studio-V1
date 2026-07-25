@@ -32,16 +32,8 @@ import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.MarkdownRenderer
 
-/**
- * [ConsoleLog] 控制台日志实体数据模型。
- */
 data class ConsoleLog(val message: String, val level: String)
 
-/**
- * [WebConsoleBridge] 网页 JavaScript 原生控制台拦截桥接器。
- *
- * 通过 `@JavascriptInterface` 将 JavaScript 的 `console.log` / `console.error` 等输出捕获并重定向回 Android 原生界面展示。
- */
 class WebConsoleBridge(private val onLog: (String, String) -> Unit) {
     @JavascriptInterface
     fun postMessage(msg: String, level: String) {
@@ -49,19 +41,6 @@ class WebConsoleBridge(private val onLog: (String, String) -> Unit) {
     }
 }
 
-/**
- * [RunPreview] 实时运行预览面板组件。
- *
- * 根据片段类型 [SnippetType] 提供针对性的交互式运行与效果渲染：
- * 1. **HTML**：内置 WebView 动态渲染 HTML/CSS 样式。
- * 2. **JS**：内置 WebView 执行 JavaScript 代码，结合 [WebConsoleBridge] 在下方控制台面板实能拦截输出日志。
- * 3. **Markdown**：调用 [MarkdownRenderer] 转换为 HTML 并通过 WebView 展示富文本样式。
- * 4. **Prompt**：格式化展示 AI 提示词文本，并提供“一键复制”快捷操作。
- *
- * @param type 代码片段类型
- * @param content 片段代码正文
- * @param onToast Toast 提示消息回调闭包
- */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun RunPreview(
@@ -70,20 +49,18 @@ fun RunPreview(
     modifier: Modifier = Modifier,
     onToast: ((String) -> Unit)? = null
 ) {
-    val isDark = LocalIsDarkTheme.current
+    val tc = LocalThemeColors.current
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
 
-    // 保存 JavaScript 控制台日志的响应式列表
     val consoleLogs = remember { mutableStateListOf<ConsoleLog>() }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(if (isDark) SurfaceDark else SurfaceLight)
+            .background(tc.bg)
     ) {
         when (type) {
-            // ===== 1. HTML 渲染预览模式 =====
             SnippetType.HTML -> {
                 AndroidView(
                     factory = { ctx ->
@@ -104,7 +81,7 @@ fun RunPreview(
                                 <meta charset="utf-8">
                                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                                 <style>
-                                    body { font-family: sans-serif; padding: 16px; margin: 0; background-color: ${if (isDark) "#181B22" else "#FFFFFF"}; color: ${if (isDark) "#EDEFF4" else "#16181F"}; }
+                                    body { font-family: sans-serif; padding: 16px; margin: 0; background-color: ${if (tc.isDark) "#181B22" else "#FFFFFF"}; color: ${if (tc.isDark) "#EDEFF4" else "#16181F"}; }
                                 </style>
                             </head>
                             <body>$content</body>
@@ -120,26 +97,21 @@ fun RunPreview(
                 )
             }
 
-            // ===== 2. JavaScript 执行与 Console 日志拦截模式 =====
             SnippetType.JS -> {
                 Box(modifier = Modifier.weight(1f)) {
-                    // AndroidView 用于在 Jetpack Compose 中嵌入原生 Android View 组件 (如 WebView)
                     AndroidView(
                         factory = { ctx ->
                             WebView(ctx).apply {
                                 settings.javaScriptEnabled = true
-                                // 实例化 JS <-> Native 桥接通信通道，拦截控制台消息并更新 consoleLogs 列表
                                 val bridge = WebConsoleBridge { msg, level ->
                                     post { consoleLogs.add(ConsoleLog(msg, level)) }
                                 }
-                                // 将 bridge 绑定给 WebView 中的全局 window.AndroidConsole 对象
                                 addJavascriptInterface(bridge, "AndroidConsole")
                                 webViewClient = WebViewClient()
                             }
                         },
                         update = { webView ->
                             consoleLogs.clear()
-                            // 构造 JS 包装沙盒代码：重写 console.log / error / warn，将其转发给 AndroidConsole.postMessage
                             val wrappedJs = """
                                 <!DOCTYPE html>
                                 <html>
@@ -175,20 +147,18 @@ fun RunPreview(
                     )
                 }
 
-
-                // 下方 JS 控制台日志面板 (Console Log Panel)
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(180.dp)
-                        .border(1.dp, if (isDark) LineDark else LineLight),
-                    color = if (isDark) Surface2Dark else Surface2Light
+                        .border(1.dp, tc.line),
+                    color = tc.surface2
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(if (isDark) LineDark else LineLight)
+                                .background(tc.line)
                                 .padding(horizontal = Spacing.S3, vertical = Spacing.S1),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -196,7 +166,7 @@ fun RunPreview(
                             Text(
                                 text = stringResource(R.string.editor_console),
                                 style = CaptionStyle,
-                                color = if (isDark) Text2Dark else Text2Light
+                                color = tc.text2
                             )
                             TextButton(
                                 onClick = { consoleLogs.clear() },
@@ -215,7 +185,7 @@ fun RunPreview(
                                 val color = when (log.level) {
                                     "error" -> Danger
                                     "warn" -> Warning
-                                    else -> if (isDark) TextDark else TextLight
+                                    else -> tc.text
                                 }
                                 Text(
                                     text = "> ${log.message}",
@@ -230,7 +200,6 @@ fun RunPreview(
                 }
             }
 
-            // ===== 3. Markdown 富文本渲染模式 =====
             SnippetType.MARKDOWN -> {
                 val renderedHtml = remember(content) { MarkdownRenderer.toHtml(content) }
                 AndroidView(
@@ -250,7 +219,6 @@ fun RunPreview(
                 )
             }
 
-            // ===== 4. Prompt AI 提示词视图 =====
             SnippetType.PROMPT -> {
                 Column(
                     modifier = Modifier
@@ -267,7 +235,7 @@ fun RunPreview(
                                 onToast?.invoke(context.getString(R.string.toast_copied))
                             },
                             shape = AppShapes.small,
-                            colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                            colors = ButtonDefaults.buttonColors(containerColor = tc.primary)
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.ContentCopy,
@@ -285,9 +253,9 @@ fun RunPreview(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .border(1.dp, if (isDark) LineDark else LineLight, AppShapes.medium),
+                            .border(1.dp, tc.line, AppShapes.medium),
                         shape = AppShapes.medium,
-                        color = if (isDark) Surface2Dark else Surface2Light
+                        color = tc.surface2
                     ) {
                         Box(
                             modifier = Modifier
@@ -297,7 +265,7 @@ fun RunPreview(
                             Text(
                                 text = content,
                                 style = BodyStyle,
-                                color = if (isDark) TextDark else TextLight,
+                                color = tc.text,
                                 fontFamily = FontFamily.Monospace
                             )
                         }
@@ -307,4 +275,3 @@ fun RunPreview(
         }
     }
 }
-

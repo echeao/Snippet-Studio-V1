@@ -65,9 +65,7 @@ fun EditorScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     var showDiscardDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
@@ -124,10 +122,10 @@ fun EditorScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (isDark) BgDark else BgLight),
+                .background(tc.bg),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Primary)
+            CircularProgressIndicator(color = tc.primary)
         }
         return
     }
@@ -177,14 +175,14 @@ fun EditorScreen(
                             contentPadding = PaddingValues(horizontal = 4.dp),
                             modifier = Modifier.height(32.dp)
                         ) {
-                            Text("A−", style = CaptionStyle, color = textSecondary)
+                            Text("A−", style = CaptionStyle, color = tc.text2)
                         }
                         TextButton(
                             onClick = { viewModel.adjustFontSize(+1f) },
                             contentPadding = PaddingValues(horizontal = 4.dp),
                             modifier = Modifier.height(32.dp)
                         ) {
-                            Text("A+", style = CaptionStyle, color = textSecondary)
+                            Text("A+", style = CaptionStyle, color = tc.text2)
                         }
                     }
 
@@ -197,7 +195,7 @@ fun EditorScreen(
                         Icon(
                             imageVector = if (uiState.isFullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
                             contentDescription = if (uiState.isFullscreen) "Exit Fullscreen" else "Fullscreen",
-                            tint = if (uiState.isFullscreen) Primary else textSecondary,
+                            tint = if (uiState.isFullscreen) tc.primary else tc.text2,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -244,7 +242,7 @@ fun EditorScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (isDark) BgDark else BgLight)
+                .background(tc.bg)
                 .nestedScroll(nestedScrollConnection)
                 .clickable(
                     indication = null,
@@ -323,7 +321,7 @@ fun EditorScreen(
                             Icon(
                                 imageVector = Icons.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                tint = textPrimary
+                                tint = tc.text
                             )
                         }
                     },
@@ -338,10 +336,10 @@ fun EditorScreen(
                                 textStyle = TextStyle(
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.W800,
-                                    color = textPrimary
+                                    color = tc.text
                                 ),
                                 singleLine = true,
-                                cursorBrush = SolidColor(Primary),
+                                cursorBrush = SolidColor(tc.primary),
                                 modifier = Modifier
                                     .weight(1f)
                                     .testTag("editor_title_input"),
@@ -349,7 +347,7 @@ fun EditorScreen(
                                     if (uiState.title.isEmpty()) {
                                         Text(
                                             text = stringResource(R.string.editor_rename_hint),
-                                            style = TextStyle(fontSize = 16.sp, color = textSecondary)
+                                            style = TextStyle(fontSize = 16.sp, color = tc.text2)
                                         )
                                     }
                                     innerTextField()
@@ -381,7 +379,7 @@ fun EditorScreen(
                                 Icon(
                                     imageVector = Icons.Filled.MoreVert,
                                     contentDescription = "More",
-                                    tint = textPrimary
+                                    tint = tc.text
                                 )
                             }
 
@@ -438,7 +436,7 @@ fun EditorScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = if (isDark) BgDark else BgLight
+                        containerColor = tc.bg
                     )
                 )
             },
@@ -448,8 +446,8 @@ fun EditorScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(36.dp)
-                        .border(1.dp, if (isDark) LineDark else LineLight),
-                    color = if (isDark) Surface2Dark else Surface2Light
+                        .border(1.dp, tc.line),
+                    color = tc.surface2
                 ) {
                     Row(
                         modifier = Modifier
@@ -461,28 +459,28 @@ fun EditorScreen(
                         Text(
                             text = "${uiState.currentLineIndex + 1}:${uiState.currentColumnIndex + 1}  ·  ${uiState.lineCount} 行  ·  ${uiState.charCount} 字符  ·  ${uiState.encoding}  ·  ${uiState.lineEnding}",
                             style = CaptionStyle,
-                            color = textSecondary,
+                            color = tc.text2,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
 
                         Surface(
-                            color = PrimarySoft,
+                            color = tc.primarySoft,
                             shape = RoundedCornerShape(R_SM),
                             modifier = Modifier.clickable { showTypeDialog = true }
                         ) {
                             Text(
                                 text = uiState.type.displayName,
                                 style = BadgeStyle,
-                                color = Primary,
+                                color = tc.primary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
                     }
                 }
             },
-            containerColor = if (isDark) BgDark else BgLight
+            containerColor = tc.bg
         ) { innerPadding ->
             editorContent(
                 Modifier
@@ -497,7 +495,7 @@ fun EditorScreen(
         ModalBottomSheet(
             onDismissRequest = { showSettingsSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = if (isDark) SurfaceDark else SurfaceLight
+            containerColor = tc.surface
         ) {
             EditorSettingsContent(
                 uiState = uiState,
@@ -538,8 +536,8 @@ fun EditorScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(text = type.displayName, fontWeight = FontWeight.Bold, color = textPrimary)
-                                Text(text = "扩展名: ${type.extension}", style = CaptionStyle, color = textSecondary)
+                                Text(text = type.displayName, fontWeight = FontWeight.Bold, color = tc.text)
+                                Text(text = "扩展名: ${type.extension}", style = CaptionStyle, color = tc.text2)
                             }
                         }
                     }
@@ -589,9 +587,7 @@ private fun EditorSettingsContent(
     onClose: () -> Unit,
     onOpenTagsDialog: () -> Unit
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     Column(
         modifier = Modifier
@@ -609,17 +605,17 @@ private fun EditorSettingsContent(
                 text = "编辑器选项",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = textPrimary
+                color = tc.text
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = textSecondary)
+                Icon(Icons.Filled.Close, contentDescription = "Close", tint = tc.text2)
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         // ===== 属性分组 1: 片段标签管理 =====
-        Text("片段属性", style = CaptionStyle, color = Primary, fontWeight = FontWeight.Bold)
+        Text("片段属性", style = CaptionStyle, color = tc.primary, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(
@@ -631,20 +627,20 @@ private fun EditorSettingsContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "管理代码标签", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = textPrimary)
+                Text(text = "管理代码标签", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = tc.text)
                 Text(
                     text = if (uiState.tags.isEmpty()) "暂无标签，点击添加" else uiState.tags.joinToString(", ") { "#$it" },
                     style = CaptionStyle,
-                    color = textSecondary
+                    color = tc.text2
                 )
             }
-            Icon(imageVector = Icons.Filled.ChevronRight, contentDescription = null, tint = textSecondary)
+            Icon(imageVector = Icons.Filled.ChevronRight, contentDescription = null, tint = tc.text2)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         // ===== 属性分组 2: 显示与排版开关 (WordWrap / 行号 / 高亮) =====
-        Text("显示与排版", style = CaptionStyle, color = Primary, fontWeight = FontWeight.Bold)
+        Text("显示与排版", style = CaptionStyle, color = tc.primary, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
         SettingSwitchRow(
@@ -678,7 +674,7 @@ private fun EditorSettingsContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ===== 字号调整 Slider =====
-        Text("代码字号: ${uiState.fontSp} sp", style = CaptionStyle, color = textPrimary, fontWeight = FontWeight.Medium)
+        Text("代码字号: ${uiState.fontSp} sp", style = CaptionStyle, color = tc.text, fontWeight = FontWeight.Medium)
         Slider(
             value = uiState.fontSp,
             onValueChange = { viewModel.adjustFontSize(it - uiState.fontSp) },
@@ -689,10 +685,10 @@ private fun EditorSettingsContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ===== 属性分组 3: 编码与换行符 (UTF-8, LF / CRLF) =====
-        Text("编码与换行符", style = CaptionStyle, color = Primary, fontWeight = FontWeight.Bold)
+        Text("编码与换行符", style = CaptionStyle, color = tc.primary, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text("字符编码格式", style = CaptionStyle, color = textSecondary)
+        Text("字符编码格式", style = CaptionStyle, color = tc.text2)
         Spacer(modifier = Modifier.height(4.dp))
         val encodings = listOf("UTF-8", "GBK", "UTF-16", "ISO-8859-1", "US-ASCII")
         Row(
@@ -722,7 +718,7 @@ private fun EditorSettingsContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("换行符格式", style = CaptionStyle, color = textSecondary)
+        Text("换行符格式", style = CaptionStyle, color = tc.text2)
         Spacer(modifier = Modifier.height(4.dp))
         val lineEndings = listOf("LF" to "LF (Unix/Mac)", "CRLF" to "CRLF (Windows)", "CR" to "CR (Classic)")
         Row(
@@ -740,7 +736,7 @@ private fun EditorSettingsContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("Tab 缩进大小", style = CaptionStyle, color = textSecondary)
+        Text("Tab 缩进大小", style = CaptionStyle, color = tc.text2)
         Spacer(modifier = Modifier.height(4.dp))
         val tabSizes = listOf(2, 4, 8)
         Row(
@@ -770,9 +766,7 @@ private fun SettingSwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     Row(
         modifier = Modifier
@@ -783,8 +777,8 @@ private fun SettingSwitchRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = textPrimary)
-            Text(text = subtitle, style = CaptionStyle, color = textSecondary)
+            Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = tc.text)
+            Text(text = subtitle, style = CaptionStyle, color = tc.text2)
         }
         Switch(
             checked = checked,

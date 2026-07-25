@@ -27,9 +27,7 @@ fun AppSwitch(
     modifier: Modifier = Modifier
 ) {
 
-    val isDark = LocalIsDarkTheme.current
-    val textPrimary = if (isDark) TextDark else TextLight
-    val textSecondary = if (isDark) Text2Dark else Text2Light
+    val tc = LocalThemeColors.current
 
     Row(
         modifier = modifier
@@ -43,14 +41,14 @@ fun AppSwitch(
             Text(
                 text = label,
                 style = ListTitleStyle,
-                color = textPrimary
+                color = tc.text
             )
             if (!subLabel.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(Spacing.S1))
                 Text(
                     text = subLabel,
                     style = CaptionStyle,
-                    color = textSecondary
+                    color = tc.text2
                 )
             }
         }
@@ -59,8 +57,8 @@ fun AppSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedTrackColor = Primary,
-                checkedThumbColor = SurfaceLight
+                checkedTrackColor = tc.primary,
+                checkedThumbColor = tc.surface
             ),
             modifier = Modifier.testTag("app_switch_${label}")
         )
