@@ -45,12 +45,13 @@
 
 | 模块 | 特性说明 |
 | :--- | :--- |
-| ⚡ **现代 UI 体验** | 基于 **Jetpack Compose + Material 3** 构建，动态色彩方案，流畅微交互动画。 |
+| ⚡ **现代 UI 体验** | 基于 **Jetpack Compose + Material 3** 构建，内置 **5 种主题色盘**（森林绿、海洋蓝、暮光橙、薰衣草紫、极简灰），支持深色/浅色/系统跟随模式与流畅微交互。 |
 | 🔄 **原生 Git 云同步** | 内置 **JGit 核心引擎**，支持 PAT 鉴权、Push/Pull 双向同步，具备智能合并冲突检测与自动备份机制。 |
-| 📝 **多类型片段管理** | 原生支持 **HTML**（网页预览）、**JavaScript**（脚本）、**Markdown**（文档与实时渲染）、**Prompt**（AI 提示词）。 |
-| 🏷️ **高效组织与检索** | 支持多标签分类 (Tags)、星标收藏 (Starred)、全局实时搜索以及带安全恢复功能的回收站 (Trash)。 |
+| 📝 **多类型片段与模板** | 原生支持 **HTML**（Web 实时预览）、**JavaScript**（脚本）、**Markdown**（实时富文本渲染）、**Prompt**（AI 提示词），支持开箱即用的模板代码自动注入。 |
+| 📂 **SAF 磁盘工作区** | 支持绑定 Android **Storage Access Framework (SAF)** 外部目录或应用私有沙盒，实现跨应用与本地目录灵活管理。 |
+| 🏷️ **高效组织与检索** | 支持分类 (Categories)、多标签 (Tags)、星标收藏 (Starred)、全局实时搜索以及带安全恢复功能的**防误删回收站 (Trash)**。 |
+| 📦 **数据备份与控制** | 支持通过 SAF 一键**导出 JSON 全量备份文件**，数据完全存储于本地 Room 数据库与你自己的 Git 仓库中。 |
 | 🌐 **多语言国际化** | 完整支持 **简体中文 (ZH)**、**English (EN)**、**日本語 (JA)** 自适应切换。 |
-| 🔒 **数据自主控制** | 本地 Room 数据库 + 沙盒 Git 仓同步，数据完全受你掌控，绝不上传第三方服务器。 |
 
 ---
 
@@ -79,10 +80,11 @@ graph TD
 
 * **Core Language**: Kotlin 2.x (Coroutines, Flow, KSP)
 * **UI Framework**: Jetpack Compose, Material 3, Navigation Compose
-* **Architecture**: MVVM / Single-Activity Architecture
+* **Architecture**: MVVM / Clean Architecture / Single-Activity
 * **Local Persistence**: Room Database (ORM), DataStore Preferences
 * **Version Control**: Eclipse JGit (Pure Java Git implementation)
-* **Testing Framework**: JUnit 4, Robolectric, Espresso, Roborazzi
+* **Build & Config**: Gradle Kotlin DSL, Secrets Gradle Plugin (`.env` 支持)
+* **Testing Framework**: JUnit 4, Robolectric, Espresso, Roborazzi 截图对比测试
 * **CI/CD**: GitHub Actions (Auto APK Build & Release Workflow)
 
 ---
@@ -128,28 +130,38 @@ graph TD
 
 ### 🔑 配置 Git 远程仓库同步
 
-1. 打开应用，进入 **设置 (Settings)** 页面；
+1. 打开应用，进入 **设置 (Settings)** 页面 -> 点击 **Git 同步设置**；
 2. 填入你的远程 Git 仓库信息：
    - **Repository URL**: 例如 `https://github.com/yourname/my-snippets-repo.git`
    - **Branch**: 例如 `main` 或 `master`
    - **Personal Access Token (PAT)**: 输入具有 `repo` 读写权限的个人访问令牌
-3. 点击 **测试连接**。校验成功后即可在主界面进行 Pull/Push 同步操作。
+3. 点击 **测试连接**。校验成功后即可在主界面及同步中心进行 Pull/Push 双向同步。
+
+### 🎨 外观与偏好自定义
+
+在 **设置** 页面中，你可以根据个人习惯调整：
+- **配色风格**：可在 5 种精心设计的调色盘（森林绿、海洋蓝、暮光橙、薰衣草紫、极简灰）中自由切换；
+- **深色模式**：开启/关闭深色模式或跟随系统主题；
+- **模板注入**：控制新建代码片段时是否自动插入默认代码模版；
+- **卡片点击行为**：自定义列表项点击后是“直接进入编辑器”还是“打开详情预览”；
+- **数据备份与回收站**：支持导出全量 `.json` 备份文件及彻底清空已删除片段。
 
 ---
 
 ## 🛣️ 路线图 (Roadmap)
 
-- [x] **v1.0.0 核心发布**
-  - [x] 多类型 Snippet (HTML/JS/Markdown/Prompt) 创建与管理
-  - [x] Jetpack Compose Material 3 基础 UI 框架
-  - [x] 基于 JGit 的基础 Commit & Push / Pull 云同步
-  - [x] 自动合并冲突处理与本地安全备份
+- [x] **v1.0.0 - v1.0.13 核心特性发布**
+  - [x] 多类型 Snippet (HTML/JS/Markdown/Prompt) 创建与实时预览
+  - [x] Jetpack Compose Material 3 响应式 UI 框架
+  - [x] 5 种精美主题色盘（Forest/Ocean/Sunset/Lavender/Mono）及深/浅色模式
+  - [x] 基于 JGit 的完整 Commit & Push / Pull 云同步与冲突安全回滚
+  - [x] SAF 外部工作区挂载与 JSON 全量备份导出
+  - [x] 智能回收站 (Trash) 与片段恢复机制
   - [x] 多语言支持 (ZH / EN / JA)
-  - [x] GitHub Actions CI/CD 打包发布
+  - [x] GitHub Actions CI/CD 打包与自动发布流程
 - [ ] **v1.1.0 演进计划 (进行中)**
   - [ ] 集成 Monaco Editor / CodeMirror 网页端高级代码编辑器（支持代码高亮与自动补全）
   - [ ] 代码片段标签图谱与多维筛选过滤
-  - [ ] 导出/导入 JSON 与 Zip 压缩包本地备份
   - [ ] 支持 Gist / GitHub GraphQL API 快捷同步
 
 ---
