@@ -224,10 +224,11 @@ class GitManager(private val context: Context) {
     /**
      * 执行 Git 提交 (`git add .` -> `git commit -m`) 并推送 (`git push`) 到远端 Git 仓库。
      *
-     * @param commitMessage 提交说明消息
+     * @param commitMessage 提交说明消息（若传入非空值作为优先级参考，否则自动根据状态构建描述）
      * @param url 远端仓库地址
-     * @param branch 推送的目标分支名称
-     * @param pat 个人访问令牌 PAT
+     * @param branch 推送的目标分支名称（如 main 或 master）
+     * @param pat 个人访问令牌 PAT (Personal Access Token)
+     * @return 包含提交与推送执行结果的 [Result] 包装对象
      */
     suspend fun commitAndPush(
         commitMessage: String,
@@ -236,29 +237,33 @@ class GitManager(private val context: Context) {
         pat: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            // 校验本地工作树是否已经初始化为 Git 仓库，若否则执行克隆或初始化
             if (!File(gitRepoDir, ".git").exists()) {
                 initOrClone(url, branch, pat).getOrThrow()
             }
 
             Git.open(gitRepoDir).use { git ->
-                // 将所有未暂存与新增文件添加至暂存区
+                // 将所有未暂存变更与未追踪文件添加至暂存区
                 git.add().addFilepattern(".").call()
 
-                // 如果存在变动文件或未追踪文件，则进行提交
+                // 检查仓库当前状态，判断是否存在未提交的变更或未追踪的文件
                 val status = git.status().call()
                 if (status.hasUncommittedChanges() || status.untracked.isNotEmpty()) {
+                    // 自动计算变更统计并生成结构化的提交信息
+                    val message = buildCommitMessage(status)
                     git.commit()
-                        .setMessage(commitMessage)
+                        .setMessage(message)
                         .setAuthor("Snippet Studio", "app@snippetstudio.local")
                         .call()
                 }
 
-                // 推送变动到远端仓库
+                // 若配置了远端仓库 URL，则发起网络推送
                 if (url.isNotBlank()) {
                     val pushCmd = git.push().setRemote("origin")
                     val targetBranch = branch.ifBlank { "main" }
                     pushCmd.setRefSpecs(org.eclipse.jgit.transport.RefSpec("HEAD:refs/heads/$targetBranch"))
 
+                    // 设置 PAT Token 凭据进行身份认证
                     if (pat.isNotBlank()) {
                         pushCmd.setCredentialsProvider(UsernamePasswordCredentialsProvider("token", pat))
                     }
@@ -267,6 +272,45 @@ class GitManager(private val context: Context) {
             }
             Unit
         }
+    }
+
+    /**
+     * 根据 JGit 的仓库状态对象 [status]，自动构建结构化的提交说明信息（Commit Message）。
+     *
+     * 格式示例：`sync: +2 ~1 (file1.kt, file2.kt) [07-26 02:19]`
+     *
+     * @param status JGit 的仓状态对象 [org.eclipse.jgit.api.Status]
+     * @return 格式化后的动态提交说明文本
+     */
+    private fun buildCommitMessage(status: org.eclipse.jgit.api.Status): String {
+        // 统计新增文件（已暂存新增 + 未追踪文件）
+        val added = status.added + status.untracked
+        // 统计修改过的文件
+        val modified = status.changed
+        // 统计已删除的文件
+        val removed = status.removed
+
+        // 拼接变更统计摘要（如：+2 ~1 -0）
+        val parts = mutableListOf<String>()
+        if (added.isNotEmpty()) parts.add("+${added.size}")
+        if (modified.isNotEmpty()) parts.add("~${modified.size}")
+        if (removed.isNotEmpty()) parts.add("-${removed.size}")
+
+        val summary = parts.joinToString(" ")
+
+        // 提取变更文件的简短文件名（去掉目录路径），并去重
+        val allFiles = (added + modified + removed).map { it.substringAfterLast('/') }.distinct()
+        // 超过 5 个文件时显示前 3 个并追加数量提示
+        val fileDetail = when {
+            allFiles.size <= 5 -> allFiles.joinToString(", ")
+            else -> "${allFiles.take(3).joinToString(", ")} 等${allFiles.size}个文件"
+        }
+
+        // 格式化当前日期时间戳 (MM-dd HH:mm)
+        val dateStr = java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
+            .format(java.util.Date())
+
+        return "sync: $summary ($fileDetail) [$dateStr]"
     }
 
     /**
