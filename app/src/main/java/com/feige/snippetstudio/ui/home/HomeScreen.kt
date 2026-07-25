@@ -243,27 +243,32 @@ fun HomeScreen(
                         )
                     }
                 } else {
+                    // ===== 5. 最近修改代码片段列表（使用与文件中心一致的 SnippetPreviewCard 大卡片带预览模式） =====
                     items(
                         items = uiState.recentSnippets,
                         key = { it.id }
                     ) { snippet ->
-                        SnippetCard(
+                        val onOpen = {
+                            if (uiState.cardClickAction == "editor") {
+                                onNavigateToEditor(snippet.id)
+                            } else {
+                                onNavigateToDetail(snippet.id)
+                            }
+                        }
+                        val onCopy = {
+                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(snippet.content))
+                            onShowSnackbar(context.getString(R.string.toast_copied))
+                        }
+
+                        SnippetPreviewCard(
                             snippet = snippet,
-                            onOpen = {
-                                if (uiState.cardClickAction == "editor") {
-                                    onNavigateToEditor(snippet.id)
-                                } else {
-                                    onNavigateToDetail(snippet.id)
-                                }
-                            },
-                            onCopySnippet = {
-                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(snippet.content))
-                                onShowSnackbar(context.getString(R.string.toast_copied))
-                            },
+                            onOpen = onOpen,
+                            onCopySnippet = onCopy,
                             onRename = { pendingRenameSnippet = snippet },
                             onMoveFolder = { pendingFolderSnippet = snippet },
                             onToggleStar = { viewModel.toggleStar(snippet.id, snippet.starred) },
                             onMore = { pendingTrashId = snippet.id },
+                            showFullDateTime = true,
                             modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
                         )
                     }

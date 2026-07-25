@@ -49,11 +49,17 @@ fun AppScaffold(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
 
-    // 控制是否在当前页面显示底部导航栏与 FAB 新建按钮（仅在主界面显示，编辑/详情/子页面中自动隐藏）
-    val showBottomBarAndFab = currentRoute in listOf(
+    // 控制是否在当前页面显示底部导航栏（仅在首页、文件/仓库与设置主界面中呈现）
+    val showBottomBar = currentRoute in listOf(
         Screen.Home.route,
         Screen.Files.route,
         Screen.Settings.route
+    )
+
+    // 控制是否在当前页面显示悬浮新建按钮 FAB（仅在首页与文件/仓库中呈现，设置页面中隐藏）
+    val showFab = currentRoute in listOf(
+        Screen.Home.route,
+        Screen.Files.route
     )
 
     var showNewSheet by remember { mutableStateOf(false) }
@@ -68,7 +74,7 @@ fun AppScaffold(
         contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             // ===== 底部 NavigationBar =====
-            if (showBottomBarAndFab) {
+            if (showBottomBar) {
                 NavigationBar(
                     containerColor = barBg,
                     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -164,8 +170,8 @@ fun AppScaffold(
             }
         },
         floatingActionButton = {
-            // ===== 全局悬浮新建 FAB 按钮 =====
-            if (showBottomBarAndFab) {
+            // ===== 全局悬浮新建 FAB 按钮（仅在首页和文件中心显示） =====
+            if (showFab) {
                 FloatingActionButton(
                     onClick = { showNewSheet = true },
                     containerColor = tc.primary,
