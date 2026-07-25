@@ -99,41 +99,6 @@ data class Snippet(
 
     companion object {
         /**
-         * 新建代码片段时，根据不同类型生成内置的开箱即用样板代码 (Boilerplate Code)。
-         */
-        fun createDefaultContent(type: SnippetType): String {
-            return when (type) {
-                SnippetType.HTML -> """<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <title>Snippet Preview</title>
-</head>
-<body>
-    <p style="color:red; font-family:sans-serif; font-size:18px;">能看到红色文字</p>
-</body>
-</html>"""
-                SnippetType.JS -> """// Snippet Studio JavaScript
-console.log("Hello, Snippet Studio!");
-const items = [1, 2, 3, 4, 5];
-const doubled = items.map(n => n * 2);
-console.log("Doubled array:", doubled);"""
-                SnippetType.MARKDOWN -> """# Hello Markdown
-
-This is a **Markdown** snippet created in *Snippet Studio*.
-
-- Clean layout
-- Instant preview
-- Local storage
-
-```javascript
-console.log("Code inside markdown");
-```"""
-                SnippetType.PROMPT -> """You are an expert software developer. Please review the following architecture and provide constructive feedback on code modularity, security, and performance."""
-            }
-        }
-
-        /**
          * 新建代码片段时自动生成包含时间的默认标题 (例如 "JavaScript · 07-25 10:30")。
          */
         fun generateDefaultTitle(type: SnippetType): String {

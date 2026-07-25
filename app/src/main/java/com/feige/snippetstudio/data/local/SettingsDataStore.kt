@@ -51,6 +51,7 @@ class SettingsDataStore(private val context: Context) {
         val LAST_SYNC_TIME = androidx.datastore.preferences.core.longPreferencesKey("last_sync_time")
         val AUTO_SYNC_ENABLED = booleanPreferencesKey("auto_sync_enabled")
         val CARD_CLICK_ACTION = stringPreferencesKey("card_click_action")
+        val USE_BOILERPLATE = booleanPreferencesKey("use_boilerplate")
     }
 
     /**
@@ -77,7 +78,8 @@ class SettingsDataStore(private val context: Context) {
             gitConnected = prefs[Keys.GIT_CONNECTED] ?: false,
             lastSyncTime = prefs[Keys.LAST_SYNC_TIME] ?: 0L,
             autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true,
-            cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail"
+            cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail",
+            useBoilerplate = prefs[Keys.USE_BOILERPLATE] ?: true
         )
     }
 
@@ -107,7 +109,8 @@ class SettingsDataStore(private val context: Context) {
                 gitConnected = prefs[Keys.GIT_CONNECTED] ?: false,
                 lastSyncTime = prefs[Keys.LAST_SYNC_TIME] ?: 0L,
                 autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true,
-                cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail"
+                cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail",
+                useBoilerplate = prefs[Keys.USE_BOILERPLATE] ?: true
             )
             // 调用高阶函数拿到修改后的更新对象
             val updated = transform(current)
@@ -132,6 +135,7 @@ class SettingsDataStore(private val context: Context) {
             prefs[Keys.LAST_SYNC_TIME] = updated.lastSyncTime
             prefs[Keys.AUTO_SYNC_ENABLED] = updated.autoSyncEnabled
             prefs[Keys.CARD_CLICK_ACTION] = updated.cardClickAction
+            prefs[Keys.USE_BOILERPLATE] = updated.useBoilerplate
         }
     }
 }

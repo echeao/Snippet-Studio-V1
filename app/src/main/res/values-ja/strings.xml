@@ -71,6 +71,7 @@
     <string name="set_trash">ごみ箱</string>
     <string name="set_look">外観とシステム</string>
     <string name="set_dark">ダークモード</string>
+    <string name="set_use_boilerplate">新規作成時にデフォルトテンプレートを挿入</string>
     <string name="set_lang">言語</string>
     <string name="sub_repo_change">場所を変更</string>
     <string name="sub_repo_hint">現在はアプリの内部ストレージでスニペットを管理しています。SAFで変更可能です。</string>

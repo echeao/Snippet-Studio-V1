@@ -154,6 +154,13 @@ fun SettingsScreen(
                     label = stringResource(R.string.set_dark)
                 )
                 HorizontalDivider(color = if (isDark) LineDark else LineLight)
+
+                AppSwitch(
+                    checked = settings.useBoilerplate,
+                    onCheckedChange = { viewModel.toggleUseBoilerplate(it) },
+                    label = stringResource(R.string.set_use_boilerplate)
+                )
+                HorizontalDivider(color = if (isDark) LineDark else LineLight)
                 
                 val cardClickLabel = if (settings.cardClickAction == "editor") "直接进入编辑器" else "查看片段详情"
                 SettingsItem(

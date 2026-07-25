@@ -6,6 +6,7 @@ import com.feige.snippetstudio.data.local.SnippetEntity
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.util.LocalFileManager
+import com.feige.snippetstudio.util.SnippetTemplateManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -24,7 +25,7 @@ import com.feige.snippetstudio.data.git.GitManager
  * 3. **Git 沙盒仓与远程仓库**：调用 [GitManager] 将变动落盘到 Git 本地沙盒，为 Commit / Push / Pull 做准备。
  *
  * @param snippetDao Room 数据库访问对象
- * @param context 应用 Context（可选，用于 SAF 文件写入）
+ * @param context 应用 Context（可选，用于 SAF 文件写入与 Assets 模板读取）
  * @param gitManager Git 版本控制管理器（可选，用于 Git 仓增删改）
  */
 class SnippetRepository(
@@ -78,17 +79,6 @@ class SnippetRepository(
     /**
      * 创建全新的代码片段对象。
      *
-     * 会同时同步写入 Room 数据库、SAF 本地物理文件（若配置了目录）以及 Git 本地沙盒。
-     *
-     * @param type 类型
-     * @param initialContent 初始内容（如空则生成样板代码）
-     * @param initialTitle 初始标题（如空则生成时间默认标题）
-     * @param repoTreeUriStr SAF 目录 URI 字符串
-     * @return 新创建的 [Snippet] 对象
-     */
-    /**
-     * 创建全新的代码片段对象。
-     *
      * 教学解析：
      * 三端原子协同写入步骤 (Three-way Sync Protocol):
      * 1. 内存中构建 [Snippet] 数据模型对象，生成唯一 ID (`s_${timestamp}_${uuid}`) 并计算字节长度。
@@ -97,20 +87,26 @@ class SnippetRepository(
      * 4. 异步落盘至 JGit 本地工作树 (`gitManager.writeSnippetFile`)，以便随后的 Commit/Push。
      *
      * @param type 语言分类类型 [SnippetType]
-     * @param initialContent 初始文本内容（若为 null 则自动注入对应类型的预置样板代码）
+     * @param initialContent 初始文本内容（若为 null 且开启样板代码，则自动注入对应类型的内置样板代码）
      * @param initialTitle 初始标题（若为 null 则根据系统时间自动推导）
      * @param repoTreeUriStr SAF 目录 URI 字符串
+     * @param useBoilerplate 当 initialContent 为 null 时，是否自动注入 assets 中的默认样板代码
      * @return 构建并完成持久化的 [Snippet] 实例
      */
     suspend fun create(
         type: SnippetType,
         initialContent: String? = null,
         initialTitle: String? = null,
-        repoTreeUriStr: String = ""
+        repoTreeUriStr: String = "",
+        useBoilerplate: Boolean = true
     ): Snippet {
         val now = System.currentTimeMillis()
         val title = initialTitle ?: Snippet.generateDefaultTitle(type)
-        val content = initialContent ?: Snippet.createDefaultContent(type)
+        val content = initialContent ?: if (useBoilerplate) {
+            SnippetTemplateManager.getTemplate(context, type)
+        } else {
+            ""
+        }
         val fileName = if (title.isBlank()) "snippet${type.extension}" else "${title.take(20).replace("\\s+".toRegex(), "_")}${type.extension}"
         val sizeBytes = content.toByteArray(Charsets.UTF_8).size
 

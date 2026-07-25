@@ -71,6 +71,7 @@
     <string name="set_trash">Trash</string>
     <string name="set_look">Appearance &amp; system</string>
     <string name="set_dark">Dark mode</string>
+    <string name="set_use_boilerplate">Inject default boilerplate code for new snippets</string>
     <string name="set_lang">Language</string>
     <string name="sub_repo_change">Change location</string>
     <string name="sub_repo_hint">Snippets are currently stored in internal storage. SAF can be used to select another directory.</string>

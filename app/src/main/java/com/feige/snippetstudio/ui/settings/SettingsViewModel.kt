@@ -44,6 +44,15 @@ class SettingsViewModel(
         }
     }
 
+    /** 切换新建代码片段时是否注入默认样板代码 */
+    fun toggleUseBoilerplate(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                it.copy(useBoilerplate = enabled)
+            }
+        }
+    }
+
     /** 更新片段卡片点击触发动作 ("detail": 详情页, "editor": 编辑页) */
     fun updateCardClickAction(action: String) {
         viewModelScope.launch {

@@ -71,6 +71,7 @@
     <string name="set_trash">回收站</string>
     <string name="set_look">外观与系统</string>
     <string name="set_dark">深色模式</string>
+    <string name="set_use_boilerplate">新建片段时注入默认样板代码</string>
     <string name="set_lang">语言</string>
     <string name="sub_repo_change">更改位置</string>
     <string name="sub_repo_hint">当前在应用私有存储中管理代码片段，可使用 SAF 更改工作区目录。</string>

@@ -135,14 +135,14 @@ class EditorViewModel(
             val currentSettings = settingsRepository.settingsFlow.first()
             if (snippetId == "new") {
                 val type = SnippetType.fromCode(initialTypeStr ?: "html")
-                val snippet = snippetRepository.create(type, repoTreeUriStr = currentSettings.repoTreeUri)
+                val snippet = snippetRepository.create(type, repoTreeUriStr = currentSettings.repoTreeUri, useBoilerplate = currentSettings.useBoilerplate)
                 initFromSnippet(snippet)
             } else {
                 val snippet = snippetRepository.getById(snippetId)
                 if (snippet != null) {
                     initFromSnippet(snippet)
                 } else {
-                    val fallback = snippetRepository.create(SnippetType.HTML, repoTreeUriStr = currentSettings.repoTreeUri)
+                    val fallback = snippetRepository.create(SnippetType.HTML, repoTreeUriStr = currentSettings.repoTreeUri, useBoilerplate = currentSettings.useBoilerplate)
                     initFromSnippet(fallback)
                 }
             }

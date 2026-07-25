@@ -26,6 +26,7 @@ package com.feige.snippetstudio.model
  * @param lastSyncTime 最近一次 Git 成功完成双向同步的时间戳 (毫秒)
  * @param autoSyncEnabled 是否在代码片段增删改时自动触发异步 Git 物理提交
  * @param cardClickAction 首页/列表页点击代码卡片时的默认响应动作 ("detail": 查看详情, "editor": 直接打开全屏编辑器)
+ * @param useBoilerplate 新建代码片段时是否自动注入对应类型的内置样板代码 (默认 true)
  * @param customTags 用户在全局设置中预设或自定义积累的便签标签列表
  */
 data class AppSettings(
@@ -48,6 +49,7 @@ data class AppSettings(
     val lastSyncTime: Long = 0L,
     val autoSyncEnabled: Boolean = true,
     val cardClickAction: String = "detail",
+    val useBoilerplate: Boolean = true,
     val customTags: List<String> = emptyList()
 )
 
