@@ -33,6 +33,16 @@ enum class ViewMode {
 }
 
 /**
+ * [DensityMode] 列表显示密度模式枚举。
+ */
+enum class DensityMode {
+    /** 舒适大卡片模式 (包含代码片段预览、字符数/行数统计、完整标签) */
+    COMFORT, 
+    /** 高密度紧凑模式 (单行极简列表，高密度展示更多文件) */
+    COMPACT
+}
+
+/**
  * [FilesUiState] 文件管理与全量代码库页面的 UI 响应式状态模型。
  *
  * @param snippets 满足过滤/排序条件的完整片段列表
@@ -42,6 +52,7 @@ enum class ViewMode {
  * @param filterOption 当前选中的分类过滤 Chip
  * @param sortMode 排序模式 (更新时间 / 名称 / 类型)
  * @param viewMode 视图模式 (平铺 / 树状)
+ * @param densityMode 密度模式 (舒适大卡片 / 极简高密度)
  * @param cardClickAction 卡片点击默认打开策略 ("detail" 或 "editor")
  * @param isLoading 加载状态
  */
@@ -53,6 +64,7 @@ data class FilesUiState(
     val filterOption: FilterOption = FilterOption.All,
     val sortMode: SortMode = SortMode.UPDATED_DESC,
     val viewMode: ViewMode = ViewMode.FLAT,
+    val densityMode: DensityMode = DensityMode.COMFORT,
     val cardClickAction: String = "detail",
     val isLoading: Boolean = true
 )
@@ -61,14 +73,15 @@ private data class FilterParams(
     val query: String,
     val filter: FilterOption,
     val sort: SortMode,
-    val viewMode: ViewMode
+    val viewMode: ViewMode,
+    val densityMode: DensityMode
 )
 
 /**
  * [FilesViewModel] 文件与仓库页面的 ViewModel 控制器。
  *
  * 核心逻辑：
- * 1. 使用 Flow 管道组合：搜索词 + 筛选选项 + 排序模式 + 视图模式 => `_filterParams`。
+ * 1. 使用 Flow 管道组合：搜索词 + 筛选选项 + 排序模式 + 视图模式 + 密度模式 => `_filterParams`。
  * 2. 结合 `repository.observeActive()` 与 `repository.observeFolders()` 实时获取活动片段与文件夹数据库记录。
  * 3. 驱动星标切换、重命名、移动文件夹、显式新建文件夹与放入回收站。
  */
@@ -81,9 +94,10 @@ class FilesViewModel(
     private val _filterOption = MutableStateFlow<FilterOption>(FilterOption.All)
     private val _sortMode = MutableStateFlow(SortMode.UPDATED_DESC)
     private val _viewMode = MutableStateFlow(ViewMode.FLAT)
+    private val _densityMode = MutableStateFlow(DensityMode.COMFORT)
 
-    private val _filterParams = combine(_searchQuery, _filterOption, _sortMode, _viewMode) { query, filter, sort, viewMode ->
-        FilterParams(query, filter, sort, viewMode)
+    private val _filterParams = combine(_searchQuery, _filterOption, _sortMode, _viewMode, _densityMode) { query, filter, sort, viewMode, densityMode ->
+        FilterParams(query, filter, sort, viewMode, densityMode)
     }
 
     /** 暴露给 FilesScreen 调用的单向 StateFlow UI 状态 */
@@ -148,6 +162,7 @@ class FilesViewModel(
             filterOption = params.filter,
             sortMode = params.sort,
             viewMode = params.viewMode,
+            densityMode = params.densityMode,
             cardClickAction = settings.cardClickAction,
             isLoading = false
         )
@@ -179,6 +194,11 @@ class FilesViewModel(
     /** 切换【平铺列表 FLAT】与【树状文件夹 TREE】视图模式 */
     fun toggleViewMode() {
         _viewMode.value = if (_viewMode.value == ViewMode.FLAT) ViewMode.TREE else ViewMode.FLAT
+    }
+
+    /** 切换【大卡片 COMFORT】与【高密度 COMPACT】显示密度 */
+    fun toggleDensityMode() {
+        _densityMode.value = if (_densityMode.value == DensityMode.COMFORT) DensityMode.COMPACT else DensityMode.COMFORT
     }
 
     /** 切换星标收藏状态 */
