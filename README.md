@@ -60,7 +60,7 @@
 
 | 🏠 首页概览 | 📝 实时编辑与预览 | ⚙️ Git 同步配置 |
 | :---: | :---: | :---: |
-| <img src="assets\screenshots\editor.png" width="240" alt="Home Screen"/> | <img src="assets\screenshots\editor.png" width="240" alt="Editor Screen"/> | <img src="assets\screenshots\editor.png" width="240" alt="Git Settings"/> |
+| <img src="assets/screenshots/editor.png" width="240" alt="Home Screen"/> | <img src="assets/screenshots/editor.png" width="240" alt="Editor Screen"/> | <img src="assets/screenshots/editor.png" width="240" alt="Git Settings"/> |
 
 ---
 
