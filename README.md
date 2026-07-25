@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Snippet Studio Logo" width="120" height="120" error="if missing use custom style">
+  <img src="assets/Snippet Studio.svg" alt="Snippet Studio Logo" width="120" height="120" error="if missing use custom style">
 </p>
 
 <h1 align="center">Snippet Studio</h1>
@@ -60,7 +60,7 @@
 
 | 🏠 首页概览 | 📝 实时编辑与预览 | ⚙️ Git 同步配置 |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/home.png" width="240" alt="Home Screen"/> | <img src="docs/screenshots/editor.png" width="240" alt="Editor Screen"/> | <img src="docs/screenshots/git_settings.png" width="240" alt="Git Settings"/> |
+| <img src="assets\screenshots\editor.png" width="240" alt="Home Screen"/> | <img src="assets\screenshots\editor.png" width="240" alt="Editor Screen"/> | <img src="assets\screenshots\editor.png" width="240" alt="Git Settings"/> |
 
 ---
 
