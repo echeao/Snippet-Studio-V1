@@ -8,22 +8,23 @@ import androidx.compose.ui.graphics.Color
  *
  * @property id 持久化标识符（存入 DataStore）
  * @property displayName 界面显示名称（中文）
+ * @property iconSuffix 语言类型图标资源后缀（用于选择对应主题的 Markdown/Spark 图标变体）
  */
-enum class ColorThemeStyle(val id: String, val displayName: String) {
+enum class ColorThemeStyle(val id: String, val displayName: String, val iconSuffix: String) {
     /** 森林绿（默认基准配色） */
-    FOREST("forest", "森林绿"),
+    FOREST("forest", "森林绿", "forest"),
     
     /** 海洋蓝 */
-    OCEAN("ocean", "海洋蓝"),
+    OCEAN("ocean", "海洋蓝", "ocean"),
     
     /** 暮光橙 */
-    SUNSET("sunset", "暮光橙"),
+    SUNSET("sunset", "暮光橙", "sunset"),
     
     /** 薰衣草紫 */
-    LAVENDER("lavender", "薰衣草紫"),
+    LAVENDER("lavender", "薰衣草紫", "lavender"),
     
     /** 极简灰 */
-    MONO("mono", "极简灰");
+    MONO("mono", "极简灰", "mono");
 
     companion object {
         /**
@@ -38,8 +39,24 @@ enum class ColorThemeStyle(val id: String, val displayName: String) {
 }
 
 /**
+ * [TypeIconPalette] 代码片段语言类型专属前景色组合。
+ * 每种语言在不同配色主题下拥有协调的前景色，背景色由 TypeIcon 根据明暗模式自动派生。
+ *
+ * @property html HTML 图标前景色
+ * @property js JavaScript 图标前景色
+ * @property md Markdown 图标前景色
+ * @property prompt Prompt 图标前景色
+ */
+data class TypeIconPalette(
+    val html: Color,
+    val js: Color,
+    val md: Color,
+    val prompt: Color,
+)
+
+/**
  * [ThemePalette] 单个配色主题的完整色板。
- * 包含品牌主色 + Light 模式 7 色 + Dark 模式 7 色。
+ * 包含品牌主色 + Light 模式 7 色 + Dark 模式 7 色 + 语言类型图标色。
  *
  * @property primary 品牌主色 (用于高亮按钮、关键指示器)
  * @property primary2 辅助主色 (用于次要高亮或渐变点缀)
@@ -59,6 +76,7 @@ enum class ColorThemeStyle(val id: String, val displayName: String) {
  * @property text2Dark 深色模式二级文本色 (中对比度)
  * @property text3Dark 深色模式三级文本色/占位符色 (低对比度)
  * @property lineDark 深色模式分割线与边框色
+ * @property typeIcons 语言类型图标前景色组合
  */
 data class ThemePalette(
     val primary: Color,
@@ -79,6 +97,7 @@ data class ThemePalette(
     val text2Dark: Color,
     val text3Dark: Color,
     val lineDark: Color,
+    val typeIcons: TypeIconPalette,
 )
 
 /**
@@ -107,6 +126,12 @@ object ColorThemeRegistry {
         text2Dark = Color(0xFFBCC5B8),
         text3Dark = Color(0xFF879283),
         lineDark = Color(0xFF38413B),
+        typeIcons = TypeIconPalette(
+            html = Color(0xFFB4533C),
+            js = Color(0xFF8F752C),
+            md = Color(0xFF3B6B78),
+            prompt = Color(0xFF4B635A),
+        ),
     )
 
     /** 海洋蓝色板定义 (Ocean) */
@@ -129,6 +154,12 @@ object ColorThemeRegistry {
         text2Dark = Color(0xFFAEBFCB),
         text3Dark = Color(0xFF7A8E9C),
         lineDark = Color(0xFF33414E),
+        typeIcons = TypeIconPalette(
+            html = Color(0xFFC4695B),
+            js = Color(0xFF9A8B3E),
+            md = Color(0xFF3D7A8E),
+            prompt = Color(0xFF3D6B8E),
+        ),
     )
 
     /** 暮光橙色板定义 (Sunset) */
@@ -151,6 +182,12 @@ object ColorThemeRegistry {
         text2Dark = Color(0xFFCBB9AC),
         text3Dark = Color(0xFF97816F),
         lineDark = Color(0xFF43342B),
+        typeIcons = TypeIconPalette(
+            html = Color(0xFFB05A3C),
+            js = Color(0xFFC4954A),
+            md = Color(0xFF7A7A5E),
+            prompt = Color(0xFFC87E5A),
+        ),
     )
 
     /** 薰衣草紫色板定义 (Lavender) */
@@ -173,6 +210,12 @@ object ColorThemeRegistry {
         text2Dark = Color(0xFFBEB6CE),
         text3Dark = Color(0xFF8A8298),
         lineDark = Color(0xFF3A3546),
+        typeIcons = TypeIconPalette(
+            html = Color(0xFFB0607A),
+            js = Color(0xFF9A8B6B),
+            md = Color(0xFF5B6B9A),
+            prompt = Color(0xFF6B5B95),
+        ),
     )
 
     /** 极简灰色板定义 (Mono) */
@@ -195,6 +238,12 @@ object ColorThemeRegistry {
         text2Dark = Color(0xFFBDBDBD),
         text3Dark = Color(0xFF8A8A8A),
         lineDark = Color(0xFF3A3A3A),
+        typeIcons = TypeIconPalette(
+            html = Color(0xFF757575),
+            js = Color(0xFF9E9E9E),
+            md = Color(0xFF424242),
+            prompt = Color(0xFF616161),
+        ),
     )
 
     /**

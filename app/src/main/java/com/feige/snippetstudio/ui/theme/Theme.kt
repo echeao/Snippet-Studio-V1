@@ -20,6 +20,9 @@ import androidx.core.view.WindowCompat
  */
 val LocalIsDarkTheme = staticCompositionLocalOf { false }
 
+/** CompositionLocal：当前生效的配色风格标识，供子组件查询用于选择主题化资源 */
+val LocalColorThemeStyle = staticCompositionLocalOf { ColorThemeStyle.FOREST }
+
 /**
  * [SnippetStudioTheme] 应用程序的主题根容器组件。
  *
@@ -131,9 +134,10 @@ fun SnippetStudioTheme(
         }
     }
 
-    // 全局注入明暗状态与动态语义色
+    // 全局注入明暗状态、配色风格标识与动态语义色
     CompositionLocalProvider(
         LocalIsDarkTheme provides darkTheme,
+        LocalColorThemeStyle provides style,
         LocalThemeColors provides themeColors
     ) {
         MaterialTheme(

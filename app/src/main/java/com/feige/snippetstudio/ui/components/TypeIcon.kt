@@ -9,7 +9,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -20,29 +19,45 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 
-/**
- * [TypeIcon] 代码片段语言类型专属徽章图标组件。
- *
- * 根据 [SnippetType]（HTML / JS / Markdown / Prompt）自动选取特征前景色、背景色与视觉 Icon 图案。
- *
- * @param type 代码片段语言分类类型
- * @param modifier 外部修饰符
- * @param size 图标按钮正方形尺寸（默认 40.dp）
- */
 @Composable
 fun TypeIcon(
     type: SnippetType,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp
 ) {
-
     val tc = LocalThemeColors.current
+    val style = LocalColorThemeStyle.current
+    val palette = ColorThemeRegistry.paletteOf(style)
+    val iconColors = palette.typeIcons
 
-    val (bg, fg) = when (type) {
-        SnippetType.HTML -> if (tc.isDark) C_Html.copy(alpha = 0.2f) to C_Html else C_HtmlBg to C_Html
-        SnippetType.JS -> if (tc.isDark) C_Js.copy(alpha = 0.2f) to C_Js else C_JsBg to C_Js
-        SnippetType.MARKDOWN -> if (tc.isDark) C_Md.copy(alpha = 0.2f) to C_Md else C_MdBg to C_Md
-        SnippetType.PROMPT -> if (tc.isDark) C_Prompt.copy(alpha = 0.2f) to tc.primary2 else C_PromptBg to C_Prompt
+    val fg = when (type) {
+        SnippetType.HTML -> iconColors.html
+        SnippetType.JS -> iconColors.js
+        SnippetType.MARKDOWN -> iconColors.md
+        SnippetType.PROMPT -> iconColors.prompt
+    }
+    val bg = if (tc.isDark) fg.copy(alpha = 0.2f) else {
+        when (type) {
+            SnippetType.HTML -> C_HtmlBg
+            SnippetType.JS -> C_JsBg
+            SnippetType.MARKDOWN -> C_MdBg
+            SnippetType.PROMPT -> C_PromptBg
+        }
+    }
+
+    val mdRes = when (style.iconSuffix) {
+        "ocean" -> R.drawable.ic_md_ocean
+        "sunset" -> R.drawable.ic_md_sunset
+        "lavender" -> R.drawable.ic_md_lavender
+        "mono" -> R.drawable.ic_md_mono
+        else -> R.drawable.ic_md_forest
+    }
+    val sparkRes = when (style.iconSuffix) {
+        "ocean" -> R.drawable.ic_spark_ocean
+        "sunset" -> R.drawable.ic_spark_sunset
+        "lavender" -> R.drawable.ic_spark_lavender
+        "mono" -> R.drawable.ic_spark_mono
+        else -> R.drawable.ic_spark_forest
     }
 
     Box(
@@ -72,7 +87,7 @@ fun TypeIcon(
             }
             SnippetType.MARKDOWN -> {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_markdown),
+                    painter = painterResource(id = mdRes),
                     contentDescription = "Markdown",
                     tint = fg,
                     modifier = Modifier.size(size * 0.55f)
@@ -80,7 +95,7 @@ fun TypeIcon(
             }
             SnippetType.PROMPT -> {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_spark),
+                    painter = painterResource(id = sparkRes),
                     contentDescription = "Prompt",
                     tint = fg,
                     modifier = Modifier.size(size * 0.55f)
