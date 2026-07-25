@@ -1,8 +1,14 @@
 package com.feige.snippetstudio.ui.files
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,25 +24,20 @@ import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.theme.*
 
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.AccountTree
-
 /**
  * [FilesScreen] 文件与全量代码片段仓库主界面。
  *
  * 功能结构：
  * 1. **TopBar 顶部控制栏**：
+ *    - 支持显式新建空文件夹 [FolderCreateDialog]。
  *    - 切换【平铺列表 ViewMode.FLAT】与【树状文件夹 ViewMode.TREE】的视觉视图。
  *    - 循环切换排序模式 (SortMode: 修改时间降序 / 片段名称升序 / 类型升序)。
  * 2. **SearchBar 搜索输入框**：支持实时搜索正文与标签。
  * 3. **FilterChipsRow 筛选 Chip 滚动条**：按【全部 / 收藏 / HTML / JS / Markdown / Prompt】进行分类筛选。
  * 4. **双视图模式渲染**：
  *    - **FLAT 平铺视图**：单列高密度卡片列表。
- *    - **TREE 树状分组视图**：自动提取 `folder` 相对路径形成树状卡片组。
- * 5. **交互弹框集合**：涵盖重命名 [RenameDialog]、移动文件夹 [FolderMoveDialog] 与删除弹窗 [ConfirmDialog]。
+ *    - **TREE 树状分组视图**：自动提取 `folder` 相对路径及 Room `FolderEntity` 表空文件夹，支持展示空文件夹。
+ * 5. **交互弹框集合**：涵盖重命名 [RenameDialog]、移动文件夹 [FolderMoveDialog]、新建文件夹 [FolderCreateDialog] 与删除弹窗 [ConfirmDialog]。
  *
  * @param viewModel 文件仓库 ViewModel
  * @param onNavigateToDetail 导航至详情页
@@ -63,6 +64,7 @@ fun FilesScreen(
     var pendingTrashId by remember { mutableStateOf<String?>(null) }
     var pendingRenameSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
     var pendingFolderSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
+    var showCreateFolderDialog by remember { mutableStateOf(false) }
 
     val sortLabel = when (uiState.sortMode) {
         SortMode.UPDATED_DESC -> stringResource(R.string.sort_updated)
@@ -81,6 +83,19 @@ fun FilesScreen(
                     )
                 },
                 actions = {
+                    // ===== 按钮 0: 新建文件夹按钮 =====
+                    IconButton(
+                        onClick = { showCreateFolderDialog = true },
+                        modifier = Modifier.testTag("files_create_folder_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CreateNewFolder,
+                            contentDescription = "Create Folder",
+                            tint = Primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
                     // ===== 按钮 1: 切换【平铺 / 树状】视图模式 =====
                     IconButton(
                         onClick = { viewModel.toggleViewMode() },
@@ -143,7 +158,7 @@ fun FilesScreen(
             // ===== 3. 代码片段列表或空状态展示 =====
             if (uiState.isLoading) {
                 LoadingState()
-            } else if (uiState.snippets.isEmpty()) {
+            } else if (uiState.snippets.isEmpty() && uiState.groupedFolders.isEmpty()) {
                 val isFiltered = uiState.searchQuery.isNotEmpty() || uiState.filterOption != FilterOption.All
                 EmptyState(
                     title = if (isFiltered) stringResource(R.string.empty_filter_title) else stringResource(R.string.empty_none_title),
@@ -213,30 +228,41 @@ fun FilesScreen(
                                 }
                             }
 
-                            items(
-                                items = folderSnippets,
-                                key = { it.id }
-                            ) { snippet ->
-                                SnippetCard(
-                                    snippet = snippet,
-                                    onOpen = {
-                                        if (uiState.cardClickAction == "editor") {
-                                            onNavigateToEditor(snippet.id)
-                                        } else {
-                                            onNavigateToDetail(snippet.id)
-                                        }
-                                    },
-                                    onCopySnippet = {
-                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(snippet.content))
-                                        onShowSnackbar(context.getString(R.string.toast_copied))
-                                    },
-                                    onRename = { pendingRenameSnippet = snippet },
-                                    onMoveFolder = { pendingFolderSnippet = snippet },
-                                    onToggleStar = { viewModel.toggleStar(snippet.id, snippet.starred) },
-                                    onMore = { pendingTrashId = snippet.id },
-                                    showFullDateTime = true,
-                                    modifier = Modifier.padding(start = 24.dp, end = Spacing.S4, top = Spacing.S1, bottom = Spacing.S1)
-                                )
+                            if (folderSnippets.isEmpty()) {
+                                item(key = "empty_folder_$folderName") {
+                                    Text(
+                                        text = "(空文件夹)",
+                                        style = CaptionStyle,
+                                        color = textSecondary,
+                                        modifier = Modifier.padding(start = 44.dp, top = 2.dp, bottom = 8.dp)
+                                    )
+                                }
+                            } else {
+                                items(
+                                    items = folderSnippets,
+                                    key = { it.id }
+                                ) { snippet ->
+                                    SnippetCard(
+                                        snippet = snippet,
+                                        onOpen = {
+                                            if (uiState.cardClickAction == "editor") {
+                                                onNavigateToEditor(snippet.id)
+                                            } else {
+                                                onNavigateToDetail(snippet.id)
+                                            }
+                                        },
+                                        onCopySnippet = {
+                                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(snippet.content))
+                                            onShowSnackbar(context.getString(R.string.toast_copied))
+                                        },
+                                        onRename = { pendingRenameSnippet = snippet },
+                                        onMoveFolder = { pendingFolderSnippet = snippet },
+                                        onToggleStar = { viewModel.toggleStar(snippet.id, snippet.starred) },
+                                        onMore = { pendingTrashId = snippet.id },
+                                        showFullDateTime = true,
+                                        modifier = Modifier.padding(start = 24.dp, end = Spacing.S4, top = Spacing.S1, bottom = Spacing.S1)
+                                    )
+                                }
                             }
                         }
                     }
@@ -245,6 +271,15 @@ fun FilesScreen(
         }
 
         // ===== 弹框集合 =====
+        FolderCreateDialog(
+            show = showCreateFolderDialog,
+            onDismiss = { showCreateFolderDialog = false },
+            onConfirm = { folderName ->
+                viewModel.createFolder(folderName)
+                onShowSnackbar("已创建文件夹 $folderName")
+            }
+        )
+
         RenameDialog(
             show = (pendingRenameSnippet != null),
             initialTitle = pendingRenameSnippet?.title.orEmpty(),

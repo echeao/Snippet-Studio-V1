@@ -1,6 +1,8 @@
 package com.feige.snippetstudio.data.repo
 
 import android.content.Context
+import com.feige.snippetstudio.data.local.FolderDao
+import com.feige.snippetstudio.data.local.FolderEntity
 import com.feige.snippetstudio.data.local.SnippetDao
 import com.feige.snippetstudio.data.local.SnippetEntity
 import com.feige.snippetstudio.model.Snippet
@@ -9,6 +11,7 @@ import com.feige.snippetstudio.util.LocalFileManager
 import com.feige.snippetstudio.util.SnippetTemplateManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -21,24 +24,51 @@ import com.feige.snippetstudio.data.git.GitManager
  * 架构中心作用：
  * 采用 Repository 模式统筹三方数据源联动：
  * 1. **Room 本地 SQLite 数据库**：持久化元数据与本地代码片段，支持 Flow 响应式实时观察。
- * 2. **Android SAF 本地目录**：调用 [LocalFileManager] 将文件同步保存到用户指定的外部存储文件夹。
+ * 2. **Android SAF 本地目录**：调用 [LocalFileManager] 将文件与文件夹同步保存到用户指定的外部存储。
  * 3. **Git 沙盒仓与远程仓库**：调用 [GitManager] 将变动落盘到 Git 本地沙盒，为 Commit / Push / Pull 做准备。
  *
- * @param snippetDao Room 数据库访问对象
+ * @param snippetDao Room 数据库代码片段 DAO
+ * @param folderDao Room 数据库文件夹持久化 DAO（可选）
  * @param context 应用 Context（可选，用于 SAF 文件写入与 Assets 模板读取）
  * @param gitManager Git 版本控制管理器（可选，用于 Git 仓增删改）
  */
 class SnippetRepository(
     private val snippetDao: SnippetDao,
+    private val folderDao: FolderDao? = null,
     private val context: Context? = null,
     private val gitManager: GitManager? = null
 ) {
 
     /**
-     * 将外部授权的 SAF 目录中的代码文件全量扫描并同步更新至本地 Room 数据库。
+     * 将外部授权的 SAF 目录或本地私有存储中的物理文件与文件夹全量扫描并同步更新至 Room 数据库。
      */
     suspend fun syncWithLocalRepository(context: Context, repoTreeUriStr: String) = withContext(Dispatchers.IO) {
-        LocalFileManager.syncRepositoryToDatabase(context, repoTreeUriStr, snippetDao)
+        LocalFileManager.syncRepositoryToDatabase(context, repoTreeUriStr, snippetDao, folderDao)
+    }
+
+    /**
+     * 响应式观察全量已持久化的文件夹列表。
+     */
+    fun observeFolders(): Flow<List<FolderEntity>> = folderDao?.observeAll() ?: flowOf(emptyList())
+
+    /**
+     * 显式创建新文件夹。
+     * 依据双向一致性原则：同步在 Room SQLite 的 `folders` 表中新增记录，并在本地物理磁盘/SAF 构建物理目录。
+     *
+     * @param folderPath 相对文件夹路径 (如 "components/button")
+     * @param repoTreeUriStr SAF 授权目录 URI 字符串
+     */
+    suspend fun createFolder(folderPath: String, repoTreeUriStr: String = "") = withContext(Dispatchers.IO) {
+        val cleanPath = folderPath.trim().trim('/')
+        if (cleanPath.isBlank()) return@withContext
+
+        val parentPath = if (cleanPath.contains("/")) cleanPath.substringBeforeLast("/") else ""
+        val entity = FolderEntity(path = cleanPath, parentPath = parentPath)
+        folderDao?.upsert(entity)
+
+        context?.let { ctx ->
+            LocalFileManager.createPhysicalFolder(ctx, cleanPath, repoTreeUriStr)
+        }
     }
 
     /**
@@ -246,8 +276,13 @@ class SnippetRepository(
      */
     suspend fun updateFolder(id: String, newFolder: String, repoTreeUriStr: String = "") {
         val snippet = getById(id) ?: return
+        val cleanFolder = newFolder.trim().trim('/')
+        if (cleanFolder.isNotBlank()) {
+            val parentPath = if (cleanFolder.contains("/")) cleanFolder.substringBeforeLast("/") else ""
+            folderDao?.upsert(FolderEntity(path = cleanFolder, parentPath = parentPath))
+        }
         val updated = snippet.copy(
-            folder = newFolder,
+            folder = cleanFolder,
             updatedAt = System.currentTimeMillis()
         )
         saveOrUpdate(updated, repoTreeUriStr)

@@ -3,13 +3,12 @@ package com.feige.snippetstudio.ui.files
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.feige.snippetstudio.data.repo.SettingsRepository
 import com.feige.snippetstudio.data.repo.SnippetRepository
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.components.FilterOption
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-
-import com.feige.snippetstudio.data.repo.SettingsRepository
 
 /**
  * [SortMode] 列表排序模式枚举。
@@ -70,8 +69,8 @@ private data class FilterParams(
  *
  * 核心逻辑：
  * 1. 使用 Flow 管道组合：搜索词 + 筛选选项 + 排序模式 + 视图模式 => `_filterParams`。
- * 2. 结合 `repository.observeActive()` 实时获取活动片段，计算 `groupedFolders`（按文件夹路径归类分组）。
- * 3. 驱动星标切换、重命名、移动文件夹与放入回收站。
+ * 2. 结合 `repository.observeActive()` 与 `repository.observeFolders()` 实时获取活动片段与文件夹数据库记录。
+ * 3. 驱动星标切换、重命名、移动文件夹、显式新建文件夹与放入回收站。
  */
 class FilesViewModel(
     private val repository: SnippetRepository,
@@ -90,9 +89,10 @@ class FilesViewModel(
     /** 暴露给 FilesScreen 调用的单向 StateFlow UI 状态 */
     val uiState: StateFlow<FilesUiState> = combine(
         repository.observeActive(),
+        repository.observeFolders(),
         _filterParams,
         settingsRepository?.settingsFlow ?: flowOf(com.feige.snippetstudio.model.AppSettings())
-    ) { allSnippets, params, settings ->
+    ) { allSnippets, allDbFolders, params, settings ->
         var list = allSnippets
 
         // ===== 1. 按类型/收藏状态过滤 =====
@@ -118,17 +118,32 @@ class FilesViewModel(
             SortMode.TYPE_ASC -> list.sortedBy { it.type.displayName }
         }
 
-        // ===== 4. 树状分组算子 (Folder Tree Grouping) =====
-        // 教学解析：使用 Kotlin 集合扩展函数 `groupBy`，将平铺代码片段按 `folder` 相对路径归类，
-        // 空字符串表示项目根目录 "根目录"，产出类型为 Map<String, List<Snippet>> 的两层树状数据集供 UI LazyColumn 展开渲染。
-        val grouped = list.groupBy { if (it.folder.isBlank()) "根目录" else it.folder }
-        // 提炼去重后的非空文件夹名字列表
-        val folders = allSnippets.map { it.folder }.filter { it.isNotBlank() }.distinct()
+        // ===== 4. 融合文件夹与树状分组算子 (Folder Tree Grouping) =====
+        // 提取 Room 数据库中 FolderEntity 持久化的所有文件夹与所有 Snippet 中出现的文件夹，去重合并
+        val dbFolderPaths = allDbFolders.map { it.path }
+        val snippetFolderPaths = allSnippets.map { it.folder }
+        val existingFoldersList = (dbFolderPaths + snippetFolderPaths)
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+
+        // 使用 LinkedHashMap 保持有序展示
+        val groupedMap = LinkedHashMap<String, List<Snippet>>()
+        
+        // A. 放入根目录 Snippet
+        val rootSnippets = list.filter { it.folder.isBlank() }
+        groupedMap["根目录"] = rootSnippets
+
+        // B. 遍历所有的已存在文件夹（包含没有文件包含的物理/数据库空文件夹）
+        existingFoldersList.forEach { folderName ->
+            val folderSnippets = list.filter { it.folder == folderName }
+            groupedMap[folderName] = folderSnippets
+        }
 
         FilesUiState(
             snippets = list,
-            groupedFolders = grouped,
-            existingFolders = folders,
+            groupedFolders = groupedMap,
+            existingFolders = existingFoldersList,
             searchQuery = params.query,
             filterOption = params.filter,
             sortMode = params.sort,
@@ -136,8 +151,7 @@ class FilesViewModel(
             cardClickAction = settings.cardClickAction,
             isLoading = false
         )
-    }
-.stateIn(
+    }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = FilesUiState(isLoading = true)
@@ -188,6 +202,18 @@ class FilesViewModel(
         }
     }
 
+    /**
+     * 显式创建新文件夹（同步更新 Room SQLite 数据库与物理磁盘）。
+     *
+     * @param folderName 相对文件夹路径（如 "components" 或 "utils/string"）
+     * @param repoTreeUriStr SAF 目录 URI 字符串
+     */
+    fun createFolder(folderName: String, repoTreeUriStr: String = "") {
+        viewModelScope.launch {
+            repository.createFolder(folderName, repoTreeUriStr)
+        }
+    }
+
     /** 移入回收站 */
     fun trashSnippet(id: String) {
         viewModelScope.launch {
@@ -208,4 +234,3 @@ class FilesViewModel(
         }
     }
 }
-

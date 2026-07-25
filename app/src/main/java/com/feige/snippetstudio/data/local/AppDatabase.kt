@@ -16,11 +16,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * 2. 数据库升版机制：当 AppEntity 表结构增加/改动字段时，需要提升 version 版本号，并提供 Migration 迁移对象，
  *    否则数据库在老用户升级 App 后首次打开时会因为 Schema 不匹配而崩溃。
  *
- * @property entities 数据库包含的表实体数组 [SnippetEntity]
- * @property version 数据库当前版本号 (版本 2 为 snippets 表新增了 folder 文件夹目录字段)
+ * @property entities 数据库包含的表实体数组 [SnippetEntity], [FolderEntity]
+ * @property version 数据库当前版本号 (版本 3 新增了 folders 文件夹实体表)
  * @property exportSchema 是否导出 Schema 架构 JSON 描述文件（生产环境下设为 false 减少构建产物体积）
  */
-@Database(entities = [SnippetEntity::class], version = 2, exportSchema = false)
+@Database(entities = [SnippetEntity::class, FolderEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     /**
@@ -28,6 +28,11 @@ abstract class AppDatabase : RoomDatabase() {
      * Room 在编译期会自动生成该抽象方法的具体派生实现。
      */
     abstract fun snippetDao(): SnippetDao
+
+    /**
+     * 抽象方法：获取 [FolderDao] 文件夹持久化数据访问对象接口。
+     */
+    abstract fun folderDao(): FolderDao
 
     companion object {
         /**
@@ -44,6 +49,27 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         /**
+         * 数据库版本迁移脚本：从版本 2 (v2) 平滑升级至版本 3 (v3)。
+         *
+         * 教学解析：
+         * 使用 SQL `CREATE TABLE` 语句创建新的 `folders` 实体表。
+         * 存储文件夹相对路径 `path` (主键)、父级路径 `parentPath` 以及创建时间戳 `createdAt`。
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS folders (
+                        path TEXT PRIMARY KEY NOT NULL,
+                        parentPath TEXT NOT NULL DEFAULT '',
+                        createdAt INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /**
          * 构建并创建 [AppDatabase] 实例。
          *
          * @param ctx 上下文对象 (内部自动转为 applicationContext 防止泄露 Activity)
@@ -54,7 +80,7 @@ abstract class AppDatabase : RoomDatabase() {
             AppDatabase::class.java,
             "snippet_studio.db" // 物理存储在 app 沙盒 databases/snippet_studio.db 中
         )
-            .addMigrations(MIGRATION_1_2) // 优先尝试执行 SQL 平滑迁移
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3) // 优先尝试执行 SQL 平滑迁移
             .fallbackToDestructiveMigration() // 兜底策略：当版本跨度过大或无对应 Migration 脚本时重建表，防止 Fatal Crash
             .build()
     }

@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
+import com.feige.snippetstudio.data.local.FolderDao
+import com.feige.snippetstudio.data.local.FolderEntity
 import com.feige.snippetstudio.data.local.SnippetDao
 import com.feige.snippetstudio.data.local.SnippetEntity
 import com.feige.snippetstudio.model.Snippet
@@ -18,6 +20,7 @@ import java.util.UUID
  * 1. 优先使用用户通过 SAF 授权的外部文件夹目录 (DocumentFile Tree URI)。
  * 2. 当无 SAF 授权时自动降级 fallback 使用 App 私有扩展存储 `getExternalFilesDir/snippets` 文件夹。
  * 3. 实现物理文件系统与 Room 数据库之间的双向同步与增删改落盘。
+ * 4. 支持文件夹（包含空文件夹）在 SQLite 数据库与物理磁盘之间的双向联动同步。
  */
 object LocalFileManager {
     private const val TAG = "LocalFileManager"
@@ -39,14 +42,20 @@ object LocalFileManager {
     /**
      * 扫描物理文件系统（SAF DocumentTree 或默认应用私有存储），将其同步至 Room 数据库。
      *
+     * 教学解析：
+     * 不仅扫描带代码文件的目录，还递归扫描空文件夹，并将其作为 [FolderEntity] 存入 [folderDao]，
+     * 实现物理空文件夹在应用界面树状视图中的 100% 双向同步显示。
+     *
      * @param context 上下文
      * @param repoTreeUriStr SAF 授权目录 URI 字符串
-     * @param snippetDao 数据库 DAO
+     * @param snippetDao 代码片段数据库 DAO
+     * @param folderDao 文件夹数据库 DAO（可选）
      */
     suspend fun syncRepositoryToDatabase(
         context: Context,
         repoTreeUriStr: String,
-        snippetDao: SnippetDao
+        snippetDao: SnippetDao,
+        folderDao: FolderDao? = null
     ) {
         try {
             if (repoTreeUriStr.isNotBlank()) {
@@ -55,7 +64,11 @@ object LocalFileManager {
                 if (docTree != null && docTree.exists() && docTree.isDirectory) {
                     val files = docTree.listFiles()
                     for (doc in files) {
-                        if (doc.isFile && doc.name != null && !doc.name!!.startsWith(".")) {
+                        if (doc.isDirectory && doc.name != null && !doc.name!!.startsWith(".")) {
+                            // SAF 模式下扫描到文件夹，存入 folderDao
+                            val folderPath = doc.name!!
+                            folderDao?.upsert(FolderEntity(path = folderPath))
+                        } else if (doc.isFile && doc.name != null && !doc.name!!.startsWith(".")) {
                             val name = doc.name!!
                             val type = SnippetType.fromFileName(name)
                             readAndSyncDocumentFile(context, doc, name, type, snippetDao)
@@ -65,10 +78,16 @@ object LocalFileManager {
                 }
             }
 
-            // 降级使用应用本地文件私有目录
+            // 降级使用应用本地文件私有目录，递归扫描文件与文件夹
             val localDir = getDefaultRepoDir(context)
             localDir.walkTopDown().forEach { file ->
-                if (file.isFile && !file.name.startsWith(".")) {
+                if (file.isDirectory && file != localDir && !file.name.startsWith(".")) {
+                    val relativePath = file.relativeToOrNull(localDir)?.path?.replace('\\', '/') ?: ""
+                    if (relativePath.isNotBlank()) {
+                        val parent = file.parentFile?.relativeToOrNull(localDir)?.path?.replace('\\', '/') ?: ""
+                        folderDao?.upsert(FolderEntity(path = relativePath, parentPath = parent))
+                    }
+                } else if (file.isFile && !file.name.startsWith(".")) {
                     val relativeParent = file.parentFile?.relativeToOrNull(localDir)?.path?.replace('\\', '/') ?: ""
                     val name = file.name
                     val type = SnippetType.fromFileName(name)
@@ -77,6 +96,51 @@ object LocalFileManager {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error syncing repository to database", e)
+        }
+    }
+
+    /**
+     * 在物理磁盘或 SAF 授权目录下显式创建物理子文件夹。
+     * 响应用户指示：保证应用内新建文件夹与物理文件管理器 100% 双向一致。
+     *
+     * @param context 上下文
+     * @param folderPath 待创建的相对文件夹路径（如 "components/ui"）
+     * @param repoTreeUriStr SAF 授权目录 URI 字符串
+     */
+    fun createPhysicalFolder(
+        context: Context,
+        folderPath: String,
+        repoTreeUriStr: String
+    ) {
+        if (folderPath.isBlank()) return
+        try {
+            if (repoTreeUriStr.isNotBlank()) {
+                val treeUri = Uri.parse(repoTreeUriStr)
+                val docTree = DocumentFile.fromTreeUri(context, treeUri)
+                if (docTree != null && docTree.exists() && docTree.isDirectory) {
+                    val parts = folderPath.split("/").filter { it.isNotBlank() }
+                    var currentDoc: DocumentFile? = docTree
+                    for (part in parts) {
+                        val parent = currentDoc ?: break
+                        val existing = parent.findFile(part)
+                        currentDoc = if (existing != null && existing.isDirectory) {
+                            existing
+                        } else {
+                            parent.createDirectory(part)
+                        }
+                    }
+                    return
+                }
+            }
+
+            // 本地文件系统模式：物理递归创建子目录
+            val localDir = getDefaultRepoDir(context)
+            val targetDir = File(localDir, folderPath)
+            if (!targetDir.exists()) {
+                targetDir.mkdirs()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating physical folder: $folderPath", e)
         }
     }
 

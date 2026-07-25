@@ -37,10 +37,15 @@ class AppContainer(private val context: Context) {
 
     /**
      * 代码片段业务仓库 (Snippet Repository)。
-     * 依赖组合：注入 `database.snippetDao()` 数据访问对象、`context` 上下文及 `gitManager` 底层组件。
+     * 依赖组合：注入 `database.snippetDao()` 与 `database.folderDao()` 数据访问对象、`context` 上下文及 `gitManager` 底层组件。
      */
     val snippetRepository: SnippetRepository by lazy {
-        SnippetRepository(database.snippetDao(), context, gitManager)
+        SnippetRepository(
+            snippetDao = database.snippetDao(),
+            folderDao = database.folderDao(),
+            context = context,
+            gitManager = gitManager
+        )
     }
 
     /**
