@@ -4,13 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,7 +87,7 @@ fun FilesScreen(
                         modifier = Modifier.testTag("files_create_folder_btn")
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.CreateNewFolder,
+                            painter = painterResource(id = R.drawable.ic_folder_plus),
                             contentDescription = "Create Folder",
                             tint = tc.primary,
                             modifier = Modifier.size(20.dp)
@@ -107,7 +100,7 @@ fun FilesScreen(
                         modifier = Modifier.testTag("files_density_mode_btn")
                     ) {
                         Icon(
-                            imageVector = if (uiState.densityMode == DensityMode.COMFORT) Icons.Filled.ViewModule else Icons.Filled.GridView,
+                            painter = painterResource(id = if (uiState.densityMode == DensityMode.COMFORT) R.drawable.ic_list else R.drawable.ic_grid),
                             contentDescription = "Toggle Density Mode",
                             tint = tc.primary,
                             modifier = Modifier.size(20.dp)
@@ -120,7 +113,7 @@ fun FilesScreen(
                         modifier = Modifier.testTag("files_view_mode_btn")
                     ) {
                         Icon(
-                            imageVector = if (uiState.viewMode == ViewMode.FLAT) Icons.Filled.AccountTree else Icons.Filled.List,
+                            painter = painterResource(id = if (uiState.viewMode == ViewMode.FLAT) R.drawable.ic_tree else R.drawable.ic_list),
                             contentDescription = "Toggle View Mode",
                             tint = tc.primary,
                             modifier = Modifier.size(20.dp)
@@ -277,7 +270,7 @@ fun FilesScreen(
                                         .padding(horizontal = Spacing.S4, vertical = Spacing.S2)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Folder,
+                                        painter = painterResource(id = R.drawable.ic_folder),
                                         contentDescription = "Folder Group",
                                         tint = tc.primary,
                                         modifier = Modifier.size(20.dp)

@@ -7,16 +7,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -63,7 +60,7 @@ fun TagEditDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Tag,
+                    painter = painterResource(id = R.drawable.ic_tag),
                     contentDescription = null,
                     tint = tc.primary,
                     modifier = Modifier.size(24.dp)
@@ -119,7 +116,7 @@ fun TagEditDialog(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Icon(
-                                        imageVector = Icons.Filled.Close,
+                                        painter = painterResource(id = R.drawable.ic_close),
                                         contentDescription = "Remove Tag",
                                         tint = C_Tag,
                                         modifier = Modifier
@@ -155,7 +152,7 @@ fun TagEditDialog(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Add,
+                                        painter = painterResource(id = R.drawable.ic_plus),
                                         contentDescription = null,
                                         tint = tc.text2,
                                         modifier = Modifier.size(14.dp)
@@ -198,7 +195,7 @@ fun TagEditDialog(
                         modifier = Modifier.testTag("tag_add_btn")
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Add,
+                            painter = painterResource(id = R.drawable.ic_plus),
                             contentDescription = "Add Tag",
                             tint = if (tagInput.trim().isNotEmpty()) tc.primary else tc.text2
                         )

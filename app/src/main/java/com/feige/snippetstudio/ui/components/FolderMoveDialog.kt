@@ -5,14 +5,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.feige.snippetstudio.R
@@ -77,7 +75,7 @@ fun FolderMoveDialog(
                                         .padding(horizontal = Spacing.S2, vertical = Spacing.S2)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.FolderOpen,
+                                        painter = painterResource(id = R.drawable.ic_folder_open),
                                         contentDescription = "Root Folder",
                                         tint = tc.primary,
                                         modifier = Modifier.size(18.dp)
@@ -96,7 +94,7 @@ fun FolderMoveDialog(
                                         .padding(horizontal = Spacing.S2, vertical = Spacing.S2)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Folder,
+                                        painter = painterResource(id = R.drawable.ic_folder),
                                         contentDescription = "Folder",
                                         tint = tc.primary,
                                         modifier = Modifier.size(18.dp)

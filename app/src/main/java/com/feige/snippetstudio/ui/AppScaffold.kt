@@ -5,9 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -92,7 +90,7 @@ fun AppScaffold(
                         },
                         icon = {
                             Icon(
-                                imageVector = if (currentRoute == Screen.Home.route) Icons.Filled.Home else Icons.Outlined.Home,
+                                painter = painterResource(id = R.drawable.ic_home),
                                 contentDescription = "Home"
                             )
                         },
@@ -121,7 +119,7 @@ fun AppScaffold(
                         },
                         icon = {
                             Icon(
-                                imageVector = if (currentRoute == Screen.Files.route) Icons.Filled.Folder else Icons.Outlined.Folder,
+                                painter = painterResource(id = R.drawable.ic_folder),
                                 contentDescription = "Files"
                             )
                         },
@@ -150,7 +148,7 @@ fun AppScaffold(
                         },
                         icon = {
                             Icon(
-                                imageVector = if (currentRoute == Screen.Settings.route) Icons.Filled.Settings else Icons.Outlined.Settings,
+                                painter = painterResource(id = R.drawable.ic_settings),
                                 contentDescription = "Settings"
                             )
                         },
@@ -176,7 +174,7 @@ fun AppScaffold(
                     modifier = Modifier.testTag("fab_new")
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Add,
+                        painter = painterResource(id = R.drawable.ic_plus),
                         contentDescription = "New Snippet",
                         modifier = Modifier.size(28.dp)
                     )

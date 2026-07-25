@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,7 +93,7 @@ fun SettingsScreen(
             // ===== 分组 1: 工作区仓库设置 =====
             SettingsGroup(title = stringResource(R.string.set_repo)) {
                 SettingsItem(
-                    iconRes = R.drawable.ic_layers,
+                    iconRes = R.drawable.ic_folder,
                     title = stringResource(R.string.set_repo_cur),
                     subTitle = settings.repoPath,
                     onClick = { onNavigateToSubPage("repo") }
@@ -115,7 +113,7 @@ fun SettingsScreen(
             // ===== 分组 3: 内容组织与标签 =====
             SettingsGroup(title = stringResource(R.string.set_org)) {
                 SettingsItem(
-                    iconRes = R.drawable.ic_layers,
+                    iconRes = R.drawable.ic_folder_open,
                     title = stringResource(R.string.set_cat),
                     onClick = { onNavigateToSubPage("cat") }
                 )
@@ -130,7 +128,7 @@ fun SettingsScreen(
             // ===== 分组 4: 数据维护与备份备份 =====
             SettingsGroup(title = stringResource(R.string.set_maintain)) {
                 SettingsItem(
-                    iconRes = R.drawable.ic_spark,
+                    iconRes = R.drawable.ic_download,
                     title = stringResource(R.string.set_backup),
                     onClick = {
                         createDocLauncher.launch("snippet-studio-backup.json")
@@ -138,7 +136,7 @@ fun SettingsScreen(
                 )
                 HorizontalDivider(color = tc.line)
                 SettingsItem(
-                    iconRes = R.drawable.ic_spark,
+                    iconRes = R.drawable.ic_trash,
                     title = stringResource(R.string.set_trash),
                     onClick = { onNavigateToSubPage("trash") }
                 )
@@ -149,31 +147,34 @@ fun SettingsScreen(
                 // 配色风格选择入口
                 val colorThemeLabel = ColorThemeStyle.fromId(settings.colorTheme).displayName
                 SettingsItem(
-                    iconRes = R.drawable.ic_spark,
+                    iconRes = R.drawable.ic_palette,
                     title = stringResource(R.string.set_color_theme),
                     subTitle = colorThemeLabel,
                     onClick = { onNavigateToSubPage("theme") }
                 )
                 HorizontalDivider(color = tc.line)
 
-                // 明暗模式切换
+                // 明暗模式切换 (使用 ic_moon 月亮图标)
                 AppSwitch(
                     checked = (settings.theme == "dark" || (settings.theme == "system" && tc.isDark)),
                     onCheckedChange = { viewModel.toggleDarkMode(it) },
-                    label = stringResource(R.string.set_dark)
+                    label = stringResource(R.string.set_dark),
+                    iconRes = R.drawable.ic_moon
                 )
                 HorizontalDivider(color = tc.line)
 
+                // 新建片段注入模板设置 (使用 ic_code 代码图标)
                 AppSwitch(
                     checked = settings.useBoilerplate,
                     onCheckedChange = { viewModel.toggleUseBoilerplate(it) },
-                    label = stringResource(R.string.set_use_boilerplate)
+                    label = stringResource(R.string.set_use_boilerplate),
+                    iconRes = R.drawable.ic_code
                 )
                 HorizontalDivider(color = tc.line)
                 
                 val cardClickLabel = if (settings.cardClickAction == "editor") "直接进入编辑器" else "查看片段详情"
                 SettingsItem(
-                    iconRes = R.drawable.ic_spark,
+                    iconRes = R.drawable.ic_touch,
                     title = "卡片默认点击行为",
                     subTitle = cardClickLabel,
                     onClick = {
@@ -281,7 +282,7 @@ fun SettingsItem(
         }
 
         Icon(
-            imageVector = Icons.Filled.ChevronRight,
+            painter = painterResource(id = R.drawable.ic_chevron_right),
             contentDescription = "Navigate",
             tint = tc.text2,
             modifier = Modifier.size(20.dp)

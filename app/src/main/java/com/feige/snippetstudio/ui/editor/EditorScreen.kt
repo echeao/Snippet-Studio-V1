@@ -13,8 +13,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -193,7 +191,7 @@ fun EditorScreen(
                             .testTag("fullscreen_toggle_btn")
                     ) {
                         Icon(
-                            imageVector = if (uiState.isFullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
+                            painter = painterResource(id = if (uiState.isFullscreen) R.drawable.ic_minimize else R.drawable.ic_maximize),
                             contentDescription = if (uiState.isFullscreen) "Exit Fullscreen" else "Fullscreen",
                             tint = if (uiState.isFullscreen) tc.primary else tc.text2,
                             modifier = Modifier.size(22.dp)
@@ -319,7 +317,7 @@ fun EditorScreen(
                             modifier = Modifier.testTag("editor_back_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.ArrowBack,
+                                painter = painterResource(id = R.drawable.ic_arrow_back),
                                 contentDescription = "Back",
                                 tint = tc.text
                             )
@@ -377,7 +375,7 @@ fun EditorScreen(
                                 modifier = Modifier.testTag("editor_more_menu_btn")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.MoreVert,
+                                    painter = painterResource(id = R.drawable.ic_more_vert),
                                     contentDescription = "More",
                                     tint = tc.text
                                 )
@@ -389,7 +387,7 @@ fun EditorScreen(
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("编辑区设置", style = CaptionStyle, fontWeight = FontWeight.Bold) },
-                                    leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                    leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_settings), contentDescription = null, modifier = Modifier.size(20.dp)) },
                                     onClick = {
                                         menuExpanded = false
                                         showSettingsSheet = true
@@ -398,7 +396,7 @@ fun EditorScreen(
                                 )
                                 DropdownMenuItem(
                                     text = { Text("切换语言类型", style = CaptionStyle) },
-                                    leadingIcon = { Icon(Icons.Filled.Code, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                    leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_code), contentDescription = null, modifier = Modifier.size(20.dp)) },
                                     onClick = {
                                         menuExpanded = false
                                         showTypeDialog = true
@@ -406,7 +404,7 @@ fun EditorScreen(
                                 )
                                 DropdownMenuItem(
                                     text = { Text("编辑片段标签", style = CaptionStyle) },
-                                    leadingIcon = { Icon(Icons.Filled.Tag, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                    leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_tag), contentDescription = null, modifier = Modifier.size(20.dp)) },
                                     onClick = {
                                         menuExpanded = false
                                         showTagDialog = true
@@ -414,7 +412,7 @@ fun EditorScreen(
                                 )
                                 DropdownMenuItem(
                                     text = { Text("复制全部代码", style = CaptionStyle) },
-                                    leadingIcon = { Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                    leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_copy), contentDescription = null, modifier = Modifier.size(20.dp)) },
                                     onClick = {
                                         menuExpanded = false
                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -425,7 +423,7 @@ fun EditorScreen(
                                 )
                                 DropdownMenuItem(
                                     text = { Text("立即保存", style = CaptionStyle) },
-                                    leadingIcon = { Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                    leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_save), contentDescription = null, modifier = Modifier.size(20.dp)) },
                                     onClick = {
                                         menuExpanded = false
                                         viewModel.forceSaveNow()
@@ -608,7 +606,7 @@ private fun EditorSettingsContent(
                 color = tc.text
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = tc.text2)
+                Icon(painter = painterResource(id = R.drawable.ic_close), contentDescription = "Close", tint = tc.text2)
             }
         }
 
@@ -634,7 +632,7 @@ private fun EditorSettingsContent(
                     color = tc.text2
                 )
             }
-            Icon(imageVector = Icons.Filled.ChevronRight, contentDescription = null, tint = tc.text2)
+            Icon(painter = painterResource(id = R.drawable.ic_chevron_right), contentDescription = null, tint = tc.text2)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -780,9 +778,17 @@ private fun SettingSwitchRow(
             Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = tc.text)
             Text(text = subtitle, style = CaptionStyle, color = tc.text2)
         }
+        // 绑定主题语义色，保障在浅色/深色模式及不同配色风格下开启与关闭状态均美观协调
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = tc.primary,
+                checkedThumbColor = tc.surface,
+                uncheckedTrackColor = tc.surface2,
+                uncheckedThumbColor = tc.text3,
+                uncheckedBorderColor = tc.line
+            )
         )
     }
 }

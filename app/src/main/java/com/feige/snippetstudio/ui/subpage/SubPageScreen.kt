@@ -10,11 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -31,9 +27,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.theme.*
-
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 
 /**
  * [SubPageScreen] 系统设置二级通用功能子页面视图。
@@ -111,7 +104,7 @@ fun SubPageScreen(
                         modifier = Modifier.testTag("subpage_back_btn")
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ArrowBack,
+                            painter = painterResource(id = R.drawable.ic_arrow_back),
                             contentDescription = "Back",
                             tint = tc.text
                         )
@@ -365,7 +358,7 @@ fun SubPageScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = Primary),
                                     shape = AppShapes.small
                                 ) {
-                                    Icon(imageVector = Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Icon(painter = painterResource(id = R.drawable.ic_plus), contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("添加")
                                 }
@@ -402,7 +395,7 @@ fun SubPageScreen(
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Icon(
-                                                imageVector = Icons.Filled.Close,
+                                                painter = painterResource(id = R.drawable.ic_close),
                                                 contentDescription = "Remove Tag",
                                                 tint = C_Tag,
                                                 modifier = Modifier
@@ -462,7 +455,7 @@ fun SubPageScreen(
                                                     onShowSnackbar(context.getString(R.string.toast_restored))
                                                 }
                                             ) {
-                                                Icon(imageVector = Icons.Filled.Restore, contentDescription = "Restore", tint = Success)
+                                                Icon(painter = painterResource(id = R.drawable.ic_restore), contentDescription = "Restore", tint = Success)
                                                 Spacer(modifier = Modifier.width(2.dp))
                                                 Text(stringResource(R.string.act_restore), color = Success)
                                             }
@@ -470,7 +463,7 @@ fun SubPageScreen(
                                             TextButton(
                                                 onClick = { pendingPurgeId = snippet.id }
                                             ) {
-                                                Icon(imageVector = Icons.Filled.Delete, contentDescription = "Purge", tint = Danger)
+                                                Icon(painter = painterResource(id = R.drawable.ic_trash), contentDescription = "Purge", tint = Danger)
                                                 Spacer(modifier = Modifier.width(2.dp))
                                                 Text(stringResource(R.string.act_purge), color = Danger)
                                             }
@@ -519,7 +512,7 @@ fun SubPageScreen(
                                     )
                                     if (isSelected) {
                                         Icon(
-                                            imageVector = Icons.Filled.Check,
+                                            painter = painterResource(id = R.drawable.ic_check),
                                             contentDescription = "Selected",
                                             tint = tc.primary
                                         )
@@ -586,7 +579,7 @@ fun SubPageScreen(
                                     }
                                     if (isSelected) {
                                         Icon(
-                                            imageVector = Icons.Filled.Check,
+                                            painter = painterResource(id = R.drawable.ic_check),
                                             contentDescription = "Selected",
                                             tint = palette.primary
                                         )

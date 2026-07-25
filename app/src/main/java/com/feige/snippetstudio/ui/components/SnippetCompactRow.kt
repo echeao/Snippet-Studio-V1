@@ -3,17 +3,13 @@ package com.feige.snippetstudio.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -101,7 +97,7 @@ fun SnippetCompactRow(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 1.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.Folder,
+                                    painter = painterResource(id = R.drawable.ic_folder),
                                     contentDescription = "Folder",
                                     tint = tc.primary,
                                     modifier = Modifier.size(10.dp)
@@ -144,7 +140,7 @@ fun SnippetCompactRow(
                     modifier = Modifier.size(28.dp).testTag("star_button_${snippet.id}")
                 ) {
                     Icon(
-                        imageVector = if (snippet.starred) Icons.Filled.Star else Icons.Outlined.Star,
+                        painter = painterResource(id = R.drawable.ic_star),
                         contentDescription = stringResource(R.string.filter_fav),
                         tint = if (snippet.starred) StarOn else tc.text2,
                         modifier = Modifier.size(16.dp)
@@ -157,7 +153,7 @@ fun SnippetCompactRow(
                         modifier = Modifier.size(28.dp).testTag("more_button_${snippet.id}")
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.MoreVert,
+                            painter = painterResource(id = R.drawable.ic_more_vert),
                             contentDescription = "More",
                             tint = tc.text2,
                             modifier = Modifier.size(16.dp)

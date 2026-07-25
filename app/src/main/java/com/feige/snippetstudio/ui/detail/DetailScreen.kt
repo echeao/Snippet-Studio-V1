@@ -8,14 +8,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -90,7 +87,7 @@ fun DetailScreen(
                         modifier = Modifier.testTag("detail_back_btn")
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ArrowBack,
+                            painter = painterResource(id = R.drawable.ic_arrow_back),
                             contentDescription = "Back",
                             tint = tc.text
                         )
@@ -168,7 +165,7 @@ fun DetailScreen(
                             modifier = Modifier.size(24.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Edit,
+                                painter = painterResource(id = R.drawable.ic_edit),
                                 contentDescription = "Rename",
                                 tint = tc.text2,
                                 modifier = Modifier.size(16.dp)
@@ -203,7 +200,7 @@ fun DetailScreen(
                             )
                             Spacer(modifier = Modifier.width(Spacing.S2))
                             Icon(
-                                imageVector = Icons.Filled.Edit,
+                                painter = painterResource(id = R.drawable.ic_edit),
                                 contentDescription = "Edit Filename",
                                 tint = tc.text2,
                                 modifier = Modifier.size(12.dp)
@@ -230,7 +227,7 @@ fun DetailScreen(
                                     modifier = Modifier.padding(horizontal = Spacing.S3, vertical = Spacing.S1)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Add,
+                                        painter = painterResource(id = R.drawable.ic_plus),
                                         contentDescription = "Add Tag",
                                         tint = tc.primary,
                                         modifier = Modifier.size(16.dp)
@@ -271,7 +268,7 @@ fun DetailScreen(
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.Edit,
+                                    painter = painterResource(id = R.drawable.ic_edit),
                                     contentDescription = "Edit Tags",
                                     tint = tc.text2,
                                     modifier = Modifier.size(16.dp)
@@ -288,19 +285,19 @@ fun DetailScreen(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.S3)
             ) {
                 DetailActionButton(
-                    iconVector = Icons.Filled.Edit,
+                    iconRes = R.drawable.ic_edit,
                     label = stringResource(R.string.act_edit),
                     onClick = { onNavigateToEditor(snippet.id) },
                     modifier = Modifier.weight(1f)
                 )
                 DetailActionButton(
-                    iconVector = Icons.Filled.PlayArrow,
+                    iconRes = R.drawable.ic_play,
                     label = stringResource(R.string.act_run),
                     onClick = { onNavigateToEditor(snippet.id) },
                     modifier = Modifier.weight(1f)
                 )
                 DetailActionButton(
-                    iconVector = Icons.Filled.ContentCopy,
+                    iconRes = R.drawable.ic_copy,
                     label = stringResource(R.string.act_copy),
                     onClick = {
                         clipboardManager.setText(AnnotatedString(snippet.content))
@@ -309,7 +306,7 @@ fun DetailScreen(
                     modifier = Modifier.weight(1f)
                 )
                 DetailActionButton(
-                    iconVector = Icons.Filled.Delete,
+                    iconRes = R.drawable.ic_trash,
                     label = stringResource(R.string.act_delete),
                     onClick = { showTrashDialog = true },
                     isDanger = true,
@@ -436,7 +433,7 @@ fun DetailScreen(
  */
 @Composable
 fun DetailActionButton(
-    iconVector: ImageVector,
+    iconRes: Int,
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -466,7 +463,7 @@ fun DetailActionButton(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = iconVector,
+                    painter = painterResource(id = iconRes),
                     contentDescription = label,
                     tint = iconColor,
                     modifier = Modifier.size(20.dp)
@@ -552,7 +549,7 @@ fun InfoRow(
             if (onClick != null) {
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
-                    imageVector = Icons.Filled.Edit,
+                    painter = painterResource(id = R.drawable.ic_edit),
                     contentDescription = "Edit",
                     tint = tc.primary,
                     modifier = Modifier.size(14.dp)

@@ -7,13 +7,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -95,7 +94,7 @@ fun SymbolBar(
                         fontWeight = FontWeight.Bold
                     )
                     Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
+                        painter = painterResource(id = R.drawable.ic_arrow_drop_down),
                         contentDescription = "Select language symbols",
                         tint = tc.primary,
                         modifier = Modifier.size(16.dp)

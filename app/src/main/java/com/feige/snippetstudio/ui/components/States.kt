@@ -4,14 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -27,7 +23,6 @@ import com.feige.snippetstudio.ui.theme.*
  * @param desc 描述信息
  * @param modifier 外部修饰符
  * @param iconRes 图标 drawable 资源 ID (可选)
- * @param iconVector 图标 ImageVector 资源 (可选)
  * @param actionLabel 底部操作按钮文案 (可选)
  * @param onAction 底部操作按钮点击闭包 (可选)
  */
@@ -37,7 +32,6 @@ fun EmptyState(
     desc: String,
     modifier: Modifier = Modifier,
     iconRes: Int? = null,
-    iconVector: ImageVector? = null,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null
 ) {
@@ -65,17 +59,9 @@ fun EmptyState(
                         modifier = Modifier.size(40.dp)
                     )
                 }
-                iconVector != null -> {
-                    Icon(
-                        imageVector = iconVector,
-                        contentDescription = "Empty State Icon",
-                        tint = tc.primary,
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
                 else -> {
                     Icon(
-                        imageVector = Icons.Filled.Code,
+                        painter = painterResource(id = R.drawable.ic_code),
                         contentDescription = "Empty State Icon",
                         tint = tc.primary,
                         modifier = Modifier.size(40.dp)
@@ -195,7 +181,7 @@ fun ErrorState(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = Icons.Filled.Warning,
+            painter = painterResource(id = R.drawable.ic_warning),
             contentDescription = "Error",
             tint = Danger,
             modifier = Modifier.size(48.dp)
