@@ -26,6 +26,32 @@ import java.io.File
  */
 class GitManager(private val context: Context) {
 
+    companion object {
+        /**
+         * 支持导入的文件扩展名白名单。
+         * 只有匹配这些扩展名的文本文件才会被导入到数据库中，
+         * 避免二进制文件（如 .zip, .rar, .png）被错误读取导致应用卡死。
+         */
+        private val SUPPORTED_EXTENSIONS = setOf(
+            "html", "htm",
+            "js", "jsx", "ts", "tsx",
+            "md", "markdown",
+            "txt", "text",
+            "json", "xml", "css", "csv"
+        )
+
+        /** 单文件最大导入大小：2MB。超过此大小的文件将被跳过。 */
+        private const val MAX_IMPORT_FILE_SIZE = 2L * 1024 * 1024
+
+        /**
+         * 判断文件是否为受支持的文本文件类型。
+         */
+        private fun isSupportedFile(file: File): Boolean {
+            val ext = file.extension.lowercase()
+            return ext in SUPPORTED_EXTENSIONS && file.length() <= MAX_IMPORT_FILE_SIZE
+        }
+    }
+
     /**
      * Git 本地工作树在 Android 应用内部私有存储目录中的根路径。
      */
@@ -77,6 +103,12 @@ class GitManager(private val context: Context) {
             if (!gitDir.exists()) {
                 // 如果本地不存在 .git 目录且提供了远端 URL，尝试执行 clone
                 if (url.isNotBlank()) {
+                    // JGit cloneRepository 要求目标目录不存在或为空
+                    // 而 gitRepoDir 可能已被 lazy init 创建为空目录，需先清理
+                    if (gitRepoDir.exists()) {
+                        gitRepoDir.deleteRecursively()
+                    }
+
                     val cloneCmd = Git.cloneRepository()
                         .setURI(url)
                         .setDirectory(gitRepoDir)
@@ -146,6 +178,7 @@ class GitManager(private val context: Context) {
     suspend fun importGitDirToDatabase(snippetDao: com.feige.snippetstudio.data.local.SnippetDao) = withContext(Dispatchers.IO) {
         val files = gitRepoDir.walkTopDown().filter {
             it.isFile && !it.name.startsWith(".") && !it.name.startsWith("README") && !it.path.contains(".git")
+                    && isSupportedFile(it)
         }.toList()
 
         val now = System.currentTimeMillis()
@@ -305,7 +338,181 @@ class GitManager(private val context: Context) {
         } ?: emptyList()
     }
 
+    /**
+     * 获取 Git 沙盒仓中的所有有效文件夹相对路径（排除 .git 和隐藏目录）。
+     * 用于同步后在用户物理工作区中重建目录结构。
+     */
+    suspend fun getFolderStructure(): List<String> = withContext(Dispatchers.IO) {
+        gitRepoDir.walkTopDown()
+            .filter { it.isDirectory && it != gitRepoDir && !it.name.startsWith(".") && !it.path.contains(".git") }
+            .mapNotNull { it.relativeToOrNull(gitRepoDir)?.path?.replace('\\', '/') }
+            .filter { it.isNotBlank() }
+            .toList()
+    }
+
+    /**
+     * 检测 Git 沙盒工作树中尚未提交的变更（含未追踪的新文件）。
+     *
+     * 执行 `git add .` 后读取 status，返回所有已暂存的变更文件路径集合。
+     * 用于 Push 预览阶段判断是否有内容需要推送。
+     *
+     * @return 有变更的文件相对路径 → 变更类型 ("ADDED" / "MODIFIED" / "DELETED")
+     */
+    suspend fun getUncommittedChanges(): Map<String, String> = withContext(Dispatchers.IO) {
+        val gitDir = File(gitRepoDir, ".git")
+        if (!gitDir.exists()) return@withContext emptyMap()
+
+        Git.open(gitRepoDir).use { git ->
+            // 将所有未暂存与新增文件添加至暂存区
+            git.add().addFilepattern(".").call()
+
+            val status = git.status().call()
+            val changes = mutableMapOf<String, String>()
+
+            // 新增文件（之前未追踪，现已暂存）
+            status.added.forEach { changes[it] = "ADDED" }
+            // 已修改文件
+            status.changed.forEach { changes[it] = "MODIFIED" }
+            // 已删除文件
+            status.removed.forEach { changes[it] = "DELETED" }
+            // 仍未追踪的文件（理论上 add . 后不应有，但保险起见）
+            status.untracked.forEach { changes[it] = "ADDED" }
+
+            changes
+        }
+    }
+
+    // ===== 同步预览与细粒度控制 API =====
+
+    /**
+     * 执行 `git fetch`：仅下载远端最新对象，不修改本地工作树。
+     * 用于预览阶段安全地获取远端最新状态。
+     *
+     * @param branch 目标分支名
+     * @param pat 鉴权 Token
+     */
+    suspend fun fetch(branch: String, pat: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            if (!File(gitRepoDir, ".git").exists()) {
+                throw IllegalStateException("本地仓库未初始化，请先执行连接/克隆")
+            }
+            Git.open(gitRepoDir).use { git ->
+                val fetchCmd = git.fetch()
+                    .setRemote("origin")
+                    .setRefSpecs(org.eclipse.jgit.transport.RefSpec("+refs/heads/${branch.ifBlank { "main" }}:refs/remotes/origin/${branch.ifBlank { "main" }}"))
+                if (pat.isNotBlank()) {
+                    fetchCmd.setCredentialsProvider(UsernamePasswordCredentialsProvider("token", pat))
+                }
+                fetchCmd.setTimeout(30)
+                fetchCmd.call()
+            }
+            Unit
+        }
+    }
+
+    /**
+     * 获取远端分支的文件内容映射（需在 fetch 之后调用）。
+     * 通过读取 `origin/<branch>` 引用的 tree 对象，遍历所有 blob 并返回内容。
+     *
+     * @param branch 目标分支名
+     * @return relativePath → content 映射
+     */
+    suspend fun getRemoteFileContents(branch: String): Result<Map<String, String>> = withContext(Dispatchers.IO) {
+        runCatching {
+            if (!File(gitRepoDir, ".git").exists()) {
+                throw IllegalStateException("本地仓库未初始化")
+            }
+            val result = mutableMapOf<String, String>()
+            Git.open(gitRepoDir).use { git ->
+                val repository = git.repository
+                val branchName = branch.ifBlank { "main" }
+                val remoteRef = repository.resolve("origin/$branchName")
+                    ?: throw IllegalStateException("远端分支 origin/$branchName 不存在，请先 fetch")
+
+                val commit = repository.parseCommit(remoteRef)
+                val treeWalk = org.eclipse.jgit.treewalk.TreeWalk(repository)
+                treeWalk.addTree(commit.tree)
+                treeWalk.isRecursive = true
+
+                while (treeWalk.next()) {
+                    val path = treeWalk.pathString
+                    val fileName = path.substringAfterLast('/')
+                    // 跳过隐藏文件、README 及不支持的文件类型
+                    if (fileName.startsWith(".") || fileName.startsWith("README")) continue
+                    val file = File(gitRepoDir, path)
+                    if (!isSupportedFile(file)) continue
+
+                    val objectId = treeWalk.getObjectId(0)
+                    val loader = repository.open(objectId)
+                    val content = String(loader.bytes, Charsets.UTF_8)
+                    result[path] = content
+                }
+                treeWalk.close()
+            }
+            result
+        }
+    }
+
+    /**
+     * 获取 Git 沙盒工作树中所有受支持文件的内容映射。
+     *
+     * @return relativePath → content 映射
+     */
+    suspend fun getSandboxFileContents(): Map<String, String> = withContext(Dispatchers.IO) {
+        val result = mutableMapOf<String, String>()
+        gitRepoDir.walkTopDown()
+            .filter { it.isFile && !it.name.startsWith(".") && !it.name.startsWith("README") && !it.path.contains(".git") && isSupportedFile(it) }
+            .forEach { file ->
+                val relativePath = file.relativeToOrNull(gitRepoDir)?.path?.replace('\\', '/') ?: return@forEach
+                result[relativePath] = file.readText(Charsets.UTF_8)
+            }
+        result
+    }
+
+    /**
+     * 将指定内容写入 Git 沙盒工作树中的文件（用于冲突解决后覆写）。
+     *
+     * @param relativePath 相对路径
+     * @param content 文件内容
+     */
+    suspend fun writeSandboxFile(relativePath: String, content: String) = withContext(Dispatchers.IO) {
+        val file = File(gitRepoDir, relativePath)
+        file.parentFile?.let { if (!it.exists()) it.mkdirs() }
+        file.writeText(content, Charsets.UTF_8)
+    }
+
     // ===== Git 历史履历查询 API =====
+
+    /**
+     * 获取整个 Git 沙盒仓库的全量提交历史（不限定文件）。
+     *
+     * @param maxCount 最大返回条数（默认 50）
+     * @return 提交历史列表（时间降序）
+     */
+    suspend fun getRepoLog(maxCount: Int = 50): Result<List<GitCommitInfo>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val gitDir = File(gitRepoDir, ".git")
+            if (!gitDir.exists()) return@runCatching emptyList()
+
+            Git.open(gitRepoDir).use { git ->
+                val logCommand = git.log().setMaxCount(maxCount)
+                val commits = mutableListOf<GitCommitInfo>()
+
+                for (revCommit in logCommand.call()) {
+                    commits.add(
+                        GitCommitInfo(
+                            commitId = revCommit.name,
+                            shortId = revCommit.name.take(7),
+                            message = revCommit.shortMessage,
+                            author = revCommit.authorIdent.name,
+                            timestamp = revCommit.commitTime * 1000L
+                        )
+                    )
+                }
+                commits
+            }
+        }
+    }
 
     /**
      * 获取指定文件的 Git 提交历史列表。

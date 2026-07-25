@@ -99,12 +99,9 @@ class DetailViewModel(
     fun renameSnippet(newTitle: String, newFileName: String) {
         val currentSnippet = _uiState.value.snippet ?: return
         viewModelScope.launch {
-            val updated = currentSnippet.copy(
-                title = newTitle,
-                fileName = newFileName
-            )
-            repository.saveOrUpdate(updated)
-            _uiState.update { it.copy(snippet = updated) }
+            val repoUri = settingsRepository.settingsFlow.first().repoTreeUri
+            repository.updateRename(currentSnippet.id, newTitle, newFileName, repoUri)
+            _uiState.update { it.copy(snippet = currentSnippet.copy(title = newTitle, fileName = newFileName)) }
         }
     }
 

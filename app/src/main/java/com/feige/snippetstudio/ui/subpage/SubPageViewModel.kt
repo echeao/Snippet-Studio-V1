@@ -7,12 +7,17 @@ import androidx.lifecycle.viewModelScope
 import com.feige.snippetstudio.data.repo.SettingsRepository
 import com.feige.snippetstudio.data.repo.SnippetRepository
 import com.feige.snippetstudio.model.AppSettings
+import com.feige.snippetstudio.model.ConflictResolution
 import com.feige.snippetstudio.model.Snippet
+import com.feige.snippetstudio.model.SyncConflict
+import com.feige.snippetstudio.model.SyncDirection
+import com.feige.snippetstudio.model.SyncPreview
 import com.feige.snippetstudio.util.LocaleHelper
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 import com.feige.snippetstudio.data.git.GitManager
+import com.feige.snippetstudio.data.git.SyncEngine
 
 /**
  * [SubPageUiState] 设置子页面的响应式 UI 状态实体。
@@ -38,7 +43,14 @@ data class SubPageUiState(
     val gitBranchInput: String = "main",
     val gitPatInput: String = "",
     val isGitOperating: Boolean = false,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val syncPreview: SyncPreview? = null,
+    val isPreviewing: Boolean = false,
+    val syncProgress: String? = null,
+    /** Git Log 提交历史列表 */
+    val gitLogCommits: List<com.feige.snippetstudio.model.GitCommitInfo> = emptyList(),
+    val isGitLogLoading: Boolean = false,
+    val gitLogError: String? = null
 )
 
 /**
@@ -61,6 +73,24 @@ class SubPageViewModel(
     private val _gitBranch = MutableStateFlow("main")
     private val _gitPat = MutableStateFlow("")
     private val _isGitOperating = MutableStateFlow(false)
+    private val _syncPreview = MutableStateFlow<SyncPreview?>(null)
+    private val _isPreviewing = MutableStateFlow(false)
+    private val _syncProgress = MutableStateFlow<String?>(null)
+    private val _gitLogCommits = MutableStateFlow<List<com.feige.snippetstudio.model.GitCommitInfo>>(emptyList())
+    private val _isGitLogLoading = MutableStateFlow(false)
+    private val _gitLogError = MutableStateFlow<String?>(null)
+
+    /** SyncEngine 细粒度同步引擎（延迟初始化） */
+    private val syncEngine: SyncEngine? by lazy {
+        gitManager?.let { SyncEngine(it, snippetRepository, snippetRepository.getSnippetDao()) }
+    }
+
+    init {
+        // 若当前子页面为 Git Log，自动加载提交历史
+        if (key == "gitlog") {
+            loadGitLog()
+        }
+    }
 
     /** 暴露给 SubPageScreen 调用的单向 StateFlow UI 状态 */
     val uiState: StateFlow<SubPageUiState> = combine(
@@ -70,7 +100,13 @@ class SubPageViewModel(
         _gitUrl,
         _gitBranch,
         _gitPat,
-        _isGitOperating
+        _isGitOperating,
+        _syncPreview,
+        _isPreviewing,
+        _syncProgress,
+        _gitLogCommits,
+        _isGitLogLoading,
+        _gitLogError
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         val settings = flows[0] as AppSettings
@@ -82,6 +118,13 @@ class SubPageViewModel(
         val gBranch = flows[4] as String
         val gPat = flows[5] as String
         val isOperating = flows[6] as Boolean
+        val preview = flows[7] as SyncPreview?
+        val previewing = flows[8] as Boolean
+        val progress = flows[9] as String?
+        @Suppress("UNCHECKED_CAST")
+        val logCommits = flows[10] as List<com.feige.snippetstudio.model.GitCommitInfo>
+        val logLoading = flows[11] as Boolean
+        val logError = flows[12] as String?
 
         val counts = active.groupBy { it.type.displayName }.mapValues { it.value.size }
         val allTags = (settings.customTags + active.flatMap { it.tags }).distinct()
@@ -96,7 +139,13 @@ class SubPageViewModel(
             gitBranchInput = if (gBranch.isEmpty()) settings.gitBranch else gBranch,
             gitPatInput = if (gPat.isEmpty()) settings.gitPat else gPat,
             isGitOperating = isOperating,
-            isLoading = false
+            isLoading = false,
+            syncPreview = preview,
+            isPreviewing = previewing,
+            syncProgress = progress,
+            gitLogCommits = logCommits,
+            isGitLogLoading = logLoading,
+            gitLogError = logError
         )
     }.stateIn(
         scope = viewModelScope,
@@ -144,6 +193,9 @@ class SubPageViewModel(
                     snippetRepository.exportAllToGit()
                     snippetRepository.syncGitFilesToDb()
 
+                    // 回写到用户物理工作区
+                    snippetRepository.syncAllToPhysicalStorage(uiState.value.settings.repoTreeUri)
+
                     settingsRepository.updateSettings {
                         it.copy(
                             gitUrl = url,
@@ -161,6 +213,146 @@ class SubPageViewModel(
             } else {
                 _isGitOperating.value = false
                 onResult(false, testRes.exceptionOrNull()?.localizedMessage ?: "远程连接或鉴权失败，请检查 URL 和 Token")
+            }
+        }
+    }
+
+    // ===== 细粒度同步控制 API =====
+
+    /** 生成 Pull 预览：fetch 远端并对比差异，不修改任何数据 */
+    fun previewPull(onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _isPreviewing.value = true
+            val settings = uiState.value.settings
+            val engine = syncEngine
+            if (engine == null || !settings.gitConnected) {
+                _isPreviewing.value = false
+                onResult(false, "Git 未连接")
+                return@launch
+            }
+
+            val result = engine.previewPull(settings.gitBranch, settings.gitPat)
+            _isPreviewing.value = false
+            if (result.isSuccess) {
+                val preview = result.getOrThrow()
+                if (preview.changes.isEmpty() && preview.conflicts.isEmpty()) {
+                    onResult(false, "远端没有新的变更，已是最新状态")
+                } else {
+                    _syncPreview.value = preview
+                    onResult(true, null)
+                }
+            } else {
+                onResult(false, result.exceptionOrNull()?.localizedMessage ?: "预览失败")
+            }
+        }
+    }
+
+    /** 生成 Push 预览：对比本地 DB 与沙盒差异 */
+    fun previewPush(onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _isPreviewing.value = true
+            val settings = uiState.value.settings
+            val engine = syncEngine
+            if (engine == null || !settings.gitConnected) {
+                _isPreviewing.value = false
+                onResult(false, "Git 未连接")
+                return@launch
+            }
+
+            val result = engine.previewPush()
+            _isPreviewing.value = false
+            if (result.isSuccess) {
+                val preview = result.getOrThrow()
+                if (preview.changes.isEmpty()) {
+                    onResult(false, "本地没有需要推送的变更，已与仓库一致")
+                } else {
+                    _syncPreview.value = preview
+                    onResult(true, null)
+                }
+            } else {
+                onResult(false, result.exceptionOrNull()?.localizedMessage ?: "预览失败")
+            }
+        }
+    }
+
+    /** 解决指定索引的冲突 */
+    fun resolveConflict(index: Int, resolution: ConflictResolution) {
+        val preview = _syncPreview.value ?: return
+        val updatedConflicts = preview.conflicts.mapIndexed { i, conflict ->
+            if (i == index) conflict.copy(resolution = resolution) else conflict
+        }
+        _syncPreview.value = preview.copy(conflicts = updatedConflicts)
+    }
+
+    /** 确认执行当前预览中的同步操作 */
+    fun confirmSync(onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            val preview = _syncPreview.value ?: return@launch
+            val settings = uiState.value.settings
+            val engine = syncEngine ?: return@launch
+
+            _isGitOperating.value = true
+            _syncProgress.value = "准备中..."
+
+            val result = when (preview.direction) {
+                SyncDirection.INCOMING -> {
+                    engine.executePull(
+                        conflicts = preview.conflicts,
+                        branch = settings.gitBranch,
+                        pat = settings.gitPat,
+                        repoTreeUri = settings.repoTreeUri,
+                        onProgress = { _syncProgress.value = it }
+                    )
+                }
+                SyncDirection.OUTGOING -> {
+                    engine.executePush(
+                        url = settings.gitUrl,
+                        branch = settings.gitBranch,
+                        pat = settings.gitPat,
+                        onProgress = { _syncProgress.value = it }
+                    )
+                }
+            }
+
+            if (result.isSuccess) {
+                settingsRepository.updateSettings { it.copy(lastSyncTime = System.currentTimeMillis()) }
+                _syncPreview.value = null
+                _syncProgress.value = null
+                _isGitOperating.value = false
+                onResult(true, if (preview.direction == SyncDirection.INCOMING) "拉取完成" else "推送完成")
+            } else {
+                _syncProgress.value = null
+                _isGitOperating.value = false
+                onResult(false, result.exceptionOrNull()?.localizedMessage ?: "同步失败")
+            }
+        }
+    }
+
+    /** 取消当前预览 */
+    fun cancelSync() {
+        _syncPreview.value = null
+        _syncProgress.value = null
+    }
+
+    /** 加载 Git 仓库全量提交历史 (Git Log) */
+    fun loadGitLog() {
+        viewModelScope.launch {
+            _isGitLogLoading.value = true
+            _gitLogError.value = null
+
+            if (gitManager == null) {
+                _isGitLogLoading.value = false
+                _gitLogError.value = "GitManager 未初始化"
+                return@launch
+            }
+
+            val result = gitManager.getRepoLog(50)
+            result.onSuccess { commits ->
+                _gitLogCommits.value = commits
+                _isGitLogLoading.value = false
+            }.onFailure { e ->
+                _gitLogError.value = e.localizedMessage ?: "加载提交历史失败"
+                _isGitLogLoading.value = false
             }
         }
     }
@@ -198,6 +390,10 @@ class SubPageViewModel(
             if (pullRes.isSuccess) {
                 // 4. 将 Pull 到的新文件导入写入 Room 数据库
                 snippetRepository.syncGitFilesToDb()
+
+                // 5. 将拉取到的内容回写到用户物理工作区（SAF 或内部存储）
+                snippetRepository.syncAllToPhysicalStorage(settings.repoTreeUri)
+
                 settingsRepository.updateSettings { it.copy(lastSyncTime = System.currentTimeMillis()) }
                 _isGitOperating.value = false
                 onResult(true, "Git 同步成功！")

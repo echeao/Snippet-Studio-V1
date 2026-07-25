@@ -58,8 +58,9 @@ class MainActivity : ComponentActivity() {
             // 获取当前 Compose 组合环境中的 Context 实例对象
             val context = LocalContext.current
 
-            // 【副效应挂起】LaunchedEffect 会在其 key (settings.repoTreeUri) 发生变化时在协程作用域中自动执行内部闭包。
-            // 当用户在设置中选定了新的本地物理磁盘文件夹路径时，自动触发后台线程的本地文件同步
+            // 【副效应挂起】监听工作区 URI 变化，执行本地文件同步与反向清理。
+            // 当 DataStore 加载完成发射真实 URI 时会自动触发，
+            // 从而检测到用户在外部文件管理器中删除的文件并清理数据库中的幽灵记录。
             LaunchedEffect(settings.repoTreeUri) {
                 appContainer.snippetRepository.syncWithLocalRepository(context, settings.repoTreeUri)
             }

@@ -39,6 +39,9 @@ class SnippetRepository(
     private val gitManager: GitManager? = null
 ) {
 
+    /** 暴露 SnippetDao 供 SyncEngine 等内部组件使用 */
+    fun getSnippetDao(): SnippetDao = snippetDao
+
     /**
      * 将外部授权的 SAF 目录或本地私有存储中的物理文件与文件夹全量扫描并同步更新至 Room 数据库。
      */
@@ -289,6 +292,7 @@ class SnippetRepository(
 
     /**
      * 重命名代码片段的标题及文件名。
+     * 若文件名发生变更，同步清理旧文件名在 Git 沙盒与 SAF 工作区中的残留物理文件。
      */
     suspend fun updateRename(id: String, newTitle: String, newFileName: String, repoTreeUriStr: String = "") {
         val snippet = getById(id) ?: return
@@ -297,11 +301,23 @@ class SnippetRepository(
             fileName = newFileName,
             updatedAt = System.currentTimeMillis()
         )
+
+        // 若文件名变更，清理旧文件名的物理残留（避免推送预览出现幽灵文件）
+        if (snippet.fileName != newFileName && snippet.fileName.isNotBlank()) {
+            gitManager?.removeSnippetFile(snippet)
+            context?.let { ctx ->
+                withContext(Dispatchers.IO) {
+                    LocalFileManager.deleteSnippetFile(ctx, snippet, repoTreeUriStr)
+                }
+            }
+        }
+
         saveOrUpdate(updated, repoTreeUriStr)
     }
 
     /**
      * 修改代码片段所属的文件夹分类路径。
+     * 若文件夹发生变更，同步清理旧路径下的物理文件残留。
      */
     suspend fun updateFolder(id: String, newFolder: String, repoTreeUriStr: String = "") {
         val snippet = getById(id) ?: return
@@ -310,6 +326,17 @@ class SnippetRepository(
             val parentPath = if (cleanFolder.contains("/")) cleanFolder.substringBeforeLast("/") else ""
             folderDao?.upsert(FolderEntity(path = cleanFolder, parentPath = parentPath))
         }
+
+        // 若文件夹路径变更，清理旧路径下的物理文件残留
+        if (snippet.folder != cleanFolder) {
+            gitManager?.removeSnippetFile(snippet)
+            context?.let { ctx ->
+                withContext(Dispatchers.IO) {
+                    LocalFileManager.deleteSnippetFile(ctx, snippet, repoTreeUriStr)
+                }
+            }
+        }
+
         val updated = snippet.copy(
             folder = cleanFolder,
             updatedAt = System.currentTimeMillis()
@@ -323,6 +350,27 @@ class SnippetRepository(
     suspend fun exportAllToGit() {
         val snippets = allForExport()
         gitManager?.exportAllSnippetsToDir(snippets)
+    }
+
+    /**
+     * 将数据库中的活动代码片段与文件夹结构同步回写到用户物理工作区（SAF 或内部存储）。
+     * 用于 Git Pull 完成后，确保拉取到的新内容在用户的物理文件夹中可见。
+     *
+     * @param repoTreeUriStr SAF 授权目录 URI 字符串
+     */
+    suspend fun syncAllToPhysicalStorage(repoTreeUriStr: String) = withContext(Dispatchers.IO) {
+        val ctx = context ?: return@withContext
+
+        // 1. 先创建文件夹结构（包含空文件夹）
+        gitManager?.getFolderStructure()?.forEach { folderPath ->
+            LocalFileManager.createPhysicalFolder(ctx, folderPath, repoTreeUriStr)
+        }
+
+        // 2. 将所有活动片段写入物理存储
+        val snippets = snippetDao.allActiveSnapshot().map { it.toDomain() }
+        snippets.forEach { snippet ->
+            LocalFileManager.writeSnippetToFile(ctx, snippet, repoTreeUriStr)
+        }
     }
 }
 

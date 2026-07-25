@@ -150,6 +150,35 @@ fun EditorScreen(
     // 渲染通用编辑/预览区域的核心 Composable Lambda
     val editorContent: @Composable (Modifier) -> Unit = { modifier ->
         Column(modifier = modifier) {
+            // ===== 工作区未配置警告横幅 =====
+            if (uiState.noWorkspaceConfigured) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFFFFF3CD),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Spacing.S3, vertical = Spacing.S2),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.S2)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_folder),
+                            contentDescription = null,
+                            tint = Color(0xFF856404),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "未绑定工作区目录，文件仅存储在应用私有空间，手机文件管理器不可见。请前往 设置 → 工作区仓库 绑定目录。",
+                            style = CaptionStyle,
+                            color = Color(0xFF856404),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
             // ===== 编辑器顶部控制条 (Code/Preview 分段切, 字体 A-/A+ 调节, 全屏按钮) =====
             Row(
                 modifier = Modifier

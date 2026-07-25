@@ -9,18 +9,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,7 +51,8 @@ import com.feige.snippetstudio.ui.theme.*
 fun SubPageScreen(
     viewModel: SubPageViewModel,
     onBack: () -> Unit,
-    onShowSnackbar: (String) -> Unit
+    onShowSnackbar: (String) -> Unit,
+    onNavigateToSubPage: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -87,6 +91,7 @@ fun SubPageScreen(
     val pageTitle = when (uiState.key) {
         "repo" -> stringResource(R.string.set_repo)
         "git" -> stringResource(R.string.set_git)
+        "gitlog" -> "Git Log"
         "cat" -> stringResource(R.string.set_cat)
         "tags" -> stringResource(R.string.set_tags)
         "trash" -> stringResource(R.string.set_trash)
@@ -220,7 +225,7 @@ fun SubPageScreen(
 
                                 Spacer(modifier = Modifier.height(Spacing.S2))
 
-                                if (uiState.isGitOperating) {
+                                if (uiState.isGitOperating && uiState.syncPreview == null) {
                                     Box(
                                         modifier = Modifier.fillMaxWidth(),
                                         contentAlignment = Alignment.Center
@@ -240,23 +245,98 @@ fun SubPageScreen(
                                         },
                                         shape = AppShapes.small,
                                         colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = !uiState.isGitOperating
                                     ) {
                                         Text("校验连接并初始化/克隆")
                                     }
 
                                     if (uiState.settings.gitConnected) {
-                                        OutlinedButton(
-                                            onClick = {
-                                                viewModel.syncGit { success, msg ->
-                                                    onShowSnackbar(msg ?: (if (success) "同步成功" else "同步失败"))
-                                                }
-                                            },
-                                            shape = AppShapes.small,
-                                            modifier = Modifier.fillMaxWidth()
+                                        Spacer(modifier = Modifier.height(Spacing.S2))
+
+                                        // 方向分离按钮：Pull / Push
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(Spacing.S3)
                                         ) {
-                                            Text("手动完整同步 (Pull & Push)")
+                                            OutlinedButton(
+                                                onClick = {
+                                                    viewModel.previewPull { success, msg ->
+                                                        if (!success) onShowSnackbar(msg ?: "预览失败")
+                                                    }
+                                                },
+                                                shape = AppShapes.small,
+                                                modifier = Modifier.weight(1f),
+                                                enabled = !uiState.isGitOperating && !uiState.isPreviewing
+                                            ) {
+                                                Text("拉取远端 (Pull ↓)")
+                                            }
+
+                                            OutlinedButton(
+                                                onClick = {
+                                                    viewModel.previewPush { success, msg ->
+                                                        if (!success) onShowSnackbar(msg ?: "预览失败")
+                                                    }
+                                                },
+                                                shape = AppShapes.small,
+                                                modifier = Modifier.weight(1f),
+                                                enabled = !uiState.isGitOperating && !uiState.isPreviewing
+                                            ) {
+                                                Text("推送本地 (Push ↑)")
+                                            }
                                         }
+
+                                        if (uiState.isPreviewing) {
+                                            Spacer(modifier = Modifier.height(Spacing.S2))
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    color = Primary,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // 同步预览面板
+                                if (uiState.syncPreview != null) {
+                                    SyncPreviewSheet(
+                                        preview = uiState.syncPreview!!,
+                                        syncProgress = uiState.syncProgress,
+                                        onResolveConflict = { index, resolution ->
+                                            viewModel.resolveConflict(index, resolution)
+                                        },
+                                        onConfirm = {
+                                            viewModel.confirmSync { success, msg ->
+                                                onShowSnackbar(msg ?: (if (success) "同步完成" else "同步失败"))
+                                            }
+                                        },
+                                        onCancel = { viewModel.cancelSync() }
+                                    )
+                                }
+
+                                // Git Log 入口按钮
+                                if (uiState.settings.gitConnected) {
+                                    Spacer(modifier = Modifier.height(Spacing.S3))
+                                    OutlinedButton(
+                                        onClick = {
+                                            viewModel.loadGitLog()
+                                            onNavigateToSubPage("gitlog")
+                                        },
+                                        shape = AppShapes.small,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = !uiState.isGitOperating
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_git),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(Spacing.S2))
+                                        Text("查看提交记录 (Git Log)")
                                     }
                                 }
                             }
@@ -271,6 +351,102 @@ fun SubPageScreen(
                             color = textSecondary,
                             modifier = Modifier.padding(horizontal = Spacing.S2)
                         )
+                    }
+                }
+
+                // ===== 子页面 2.5: Git Log 提交历史 =====
+                "gitlog" -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(Spacing.S4),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.S3)
+                    ) {
+                        if (uiState.isGitLogLoading) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(Spacing.S5),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Primary)
+                            }
+                        } else if (uiState.gitLogError != null) {
+                            Text(
+                                text = uiState.gitLogError!!,
+                                style = BodyStyle,
+                                color = Color(0xFFE53935),
+                                modifier = Modifier.padding(Spacing.S3)
+                            )
+                        } else if (uiState.gitLogCommits.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(Spacing.S5),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("暂无提交记录", style = BodyStyle, color = textSecondary)
+                            }
+                        } else {
+                            Text(
+                                text = "共 ${uiState.gitLogCommits.size} 条提交",
+                                style = CaptionStyle,
+                                color = textSecondary,
+                                modifier = Modifier.padding(horizontal = Spacing.S2)
+                            )
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(Spacing.S2)
+                            ) {
+                                items(uiState.gitLogCommits) { commit ->
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(R_SM),
+                                        color = cardBg,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(Spacing.S3),
+                                            horizontalArrangement = Arrangement.spacedBy(Spacing.S3)
+                                        ) {
+                                            // 左侧时间线圆点
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(10.dp)
+                                                    .background(Primary, CircleShape)
+                                            )
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = commit.message,
+                                                    style = ListTitleStyle,
+                                                    color = textPrimary,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(Spacing.S2)
+                                                ) {
+                                                    Text(
+                                                        text = commit.shortId,
+                                                        fontFamily = FontFamily.Monospace,
+                                                        fontSize = 11.sp,
+                                                        color = Primary
+                                                    )
+                                                    Text(
+                                                        text = commit.author,
+                                                        fontSize = 11.sp,
+                                                        color = textSecondary
+                                                    )
+                                                }
+                                                Text(
+                                                    text = com.feige.snippetstudio.util.TimeUtil.formatFullDateTime(commit.timestamp),
+                                                    fontSize = 10.5.sp,
+                                                    color = textSecondary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 

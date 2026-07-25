@@ -211,14 +211,16 @@ class FilesViewModel(
     /** 重命名片段 */
     fun renameSnippet(id: String, newTitle: String, newFileName: String) {
         viewModelScope.launch {
-            repository.updateRename(id, newTitle, newFileName)
+            val repoUri = settingsRepository?.settingsFlow?.first()?.repoTreeUri ?: ""
+            repository.updateRename(id, newTitle, newFileName, repoUri)
         }
     }
 
     /** 移动至文件夹 */
     fun updateFolder(id: String, newFolder: String) {
         viewModelScope.launch {
-            repository.updateFolder(id, newFolder)
+            val repoUri = settingsRepository?.settingsFlow?.first()?.repoTreeUri ?: ""
+            repository.updateFolder(id, newFolder, repoUri)
         }
     }
 

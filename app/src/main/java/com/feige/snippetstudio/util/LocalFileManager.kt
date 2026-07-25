@@ -246,8 +246,13 @@ object LocalFileManager {
                             readAndSyncDocumentFile(context, doc, name, type, snippetDao)
                         }
                     }
+
+                    // ===== 反向清理：将物理文件已被外部删除的数据库记录移入回收站 =====
+                    cleanupMissingPhysicalFiles(docTree, snippetDao, folderDao)
                     return
                 }
+                // SAF 目录不可用时不执行清理（可能是临时不可用，不能误删）
+                return
             }
 
             // 降级使用应用本地文件私有目录，递归扫描文件与文件夹
@@ -269,8 +274,96 @@ object LocalFileManager {
                     readAndSyncLocalFile(file, name, relativeParent, type, snippetDao)
                 }
             }
+
+            // ===== 反向清理：将物理文件已被外部删除的数据库记录移入回收站 =====
+            cleanupMissingLocalFiles(localDir, snippetDao, folderDao)
         } catch (e: Exception) {
             Log.e(TAG, "Error syncing repository to database", e)
+        }
+    }
+
+    /**
+     * SAF 模式反向清理：检查数据库中的活动记录对应的物理文件是否存在于 SAF 目录中。
+     * 若物理文件已被外部删除，则将对应数据库记录移入回收站。
+     *
+     * 注意：SAF 模式下文件以扁平方式存储在根目录，不检查子文件夹路径。
+     * 仅当 SAF 目录确认可访问时才执行清理，避免目录临时不可用时误删记录。
+     */
+    private suspend fun cleanupMissingPhysicalFiles(
+        docTree: DocumentFile,
+        snippetDao: SnippetDao,
+        folderDao: FolderDao?
+    ) {
+        try {
+            val activeSnippets = snippetDao.allActiveSnapshot()
+            val now = System.currentTimeMillis()
+
+            // SAF 模式下文件存储在根目录，按文件名检查是否存在
+            activeSnippets.forEach { entity ->
+                val fileName = entity.fileName.ifBlank {
+                    entity.toDomain().defaultFileName
+                }
+                if (docTree.findFile(fileName) == null) {
+                    snippetDao.trash(entity.id, now)
+                    Log.d(TAG, "Cleanup: trashed missing SAF file '${fileName}'")
+                }
+            }
+
+            // 清理物理目录已不存在的文件夹记录
+            folderDao?.let { dao ->
+                val allFolders = dao.allSnapshot()
+                allFolders.forEach { folder ->
+                    // SAF 模式只支持一级目录
+                    val topDir = folder.path.split("/").firstOrNull() ?: folder.path
+                    if (docTree.findFile(topDir) == null) {
+                        dao.deleteByPath(folder.path)
+                        Log.d(TAG, "Cleanup: removed missing SAF folder '${folder.path}'")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during SAF cleanup", e)
+        }
+    }
+
+    /**
+     * 本地文件模式反向清理：检查数据库中的活动记录对应的物理文件是否存在于本地目录中。
+     * 若物理文件已被外部删除，则将对应数据库记录移入回收站。
+     */
+    private suspend fun cleanupMissingLocalFiles(
+        localDir: File,
+        snippetDao: SnippetDao,
+        folderDao: FolderDao?
+    ) {
+        try {
+            val activeSnippets = snippetDao.allActiveSnapshot()
+            val now = System.currentTimeMillis()
+
+            activeSnippets.forEach { entity ->
+                val fileName = entity.fileName.ifBlank {
+                    entity.toDomain().defaultFileName
+                }
+                val targetDir = if (entity.folder.isBlank()) localDir else File(localDir, entity.folder)
+                val file = File(targetDir, fileName)
+                if (!file.exists()) {
+                    snippetDao.trash(entity.id, now)
+                    Log.d(TAG, "Cleanup: trashed missing local file '${entity.folder}/$fileName'")
+                }
+            }
+
+            // 清理物理目录已不存在的文件夹记录
+            folderDao?.let { dao ->
+                val allFolders = dao.allSnapshot()
+                allFolders.forEach { folder ->
+                    val dir = File(localDir, folder.path)
+                    if (!dir.exists() || !dir.isDirectory) {
+                        dao.deleteByPath(folder.path)
+                        Log.d(TAG, "Cleanup: removed missing local folder '${folder.path}'")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during local cleanup", e)
         }
     }
 

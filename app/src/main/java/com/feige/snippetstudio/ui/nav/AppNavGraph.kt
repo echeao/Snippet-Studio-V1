@@ -179,7 +179,8 @@ fun AppNavGraph(
             SubPageScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
-                onShowSnackbar = onShowSnackbar
+                onShowSnackbar = onShowSnackbar,
+                onNavigateToSubPage = { targetKey -> navController.navigate(Screen.SubPage.of(targetKey)) }
             )
         }
 

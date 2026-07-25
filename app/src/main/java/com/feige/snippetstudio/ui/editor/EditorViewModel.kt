@@ -82,7 +82,9 @@ data class EditorUiState(
     val isLoading: Boolean = true,
     val promptVariables: List<PromptVariable> = emptyList(),
     val showVariablePanel: Boolean = false,
-    val variableValues: Map<String, String> = emptyMap()
+    val variableValues: Map<String, String> = emptyMap(),
+    /** 工作区未配置警告：文件仅存储在应用私有目录，手机文件管理器不可见 */
+    val noWorkspaceConfigured: Boolean = false
 )
 
 /**
@@ -149,6 +151,12 @@ class EditorViewModel(
         // ===== 3. 加载已有片段或初始化新建片段 =====
         viewModelScope.launch {
             val currentSettings = settingsRepository.settingsFlow.first()
+
+            // 检测工作区是否已配置：若 repoTreeUri 为空，文件将存储在应用私有目录，手机文件管理器不可见
+            if (currentSettings.repoTreeUri.isBlank()) {
+                _uiState.update { it.copy(noWorkspaceConfigured = true) }
+            }
+
             if (snippetId == "new") {
                 val type = SnippetType.fromCode(initialTypeStr ?: "html")
                 val snippet = snippetRepository.create(type, repoTreeUriStr = currentSettings.repoTreeUri, useBoilerplate = currentSettings.useBoilerplate)
@@ -437,18 +445,48 @@ class EditorViewModel(
         val state = _uiState.value
         val snippet = state.snippet ?: return
         val currentSettings = settingsRepository.settingsFlow.first()
-        val updated = snippet.copy(
-            title = state.title,
-            content = state.textFieldValue.text,
-            type = state.type,
-            tags = state.tags
-        )
-        snippetRepository.saveOrUpdate(updated, currentSettings.repoTreeUri)
-        _uiState.update {
-            it.copy(
-                snippet = updated,
-                saveState = SaveState.SAVED
+
+        // 检测标题是否变更：若变更则同步更新 fileName，避免标题与物理文件名脱节
+        val titleChanged = state.title != snippet.title
+        val newFileName = if (titleChanged) {
+            if (state.title.isBlank()) "snippet${state.type.extension}"
+            else "${state.title.take(20).replace("\\s+".toRegex(), "_")}${state.type.extension}"
+        } else {
+            snippet.fileName
+        }
+
+        if (titleChanged && newFileName != snippet.fileName) {
+            // 标题变更且文件名随之变化：走 updateRename 路径（自动清理旧文件残留）
+            snippetRepository.updateRename(snippet.id, state.title, newFileName, currentSettings.repoTreeUri)
+            val updated = snippet.copy(
+                title = state.title,
+                fileName = newFileName,
+                content = state.textFieldValue.text,
+                type = state.type,
+                tags = state.tags
             )
+            // 内容也需要同步落盘
+            snippetRepository.saveOrUpdate(updated, currentSettings.repoTreeUri)
+            _uiState.update {
+                it.copy(
+                    snippet = updated,
+                    saveState = SaveState.SAVED
+                )
+            }
+        } else {
+            val updated = snippet.copy(
+                title = state.title,
+                content = state.textFieldValue.text,
+                type = state.type,
+                tags = state.tags
+            )
+            snippetRepository.saveOrUpdate(updated, currentSettings.repoTreeUri)
+            _uiState.update {
+                it.copy(
+                    snippet = updated,
+                    saveState = SaveState.SAVED
+                )
+            }
         }
     }
 
