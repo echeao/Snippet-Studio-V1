@@ -15,6 +15,13 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [FilterOption] 代码片段筛选选项密封类 (Sealed Class)。
+ *
+ * @param labelRes 对应 string 资源 ID
+ * @param type 指定匹配的 [SnippetType] 类型（为空表示全部类型）
+ * @param isFav 是否仅过滤标记为收藏的片段
+ */
 sealed class FilterOption(val labelRes: Int, val type: SnippetType? = null, val isFav: Boolean = false) {
     object All : FilterOption(R.string.filter_all)
     object Html : FilterOption(R.string.type_html, SnippetType.HTML)
@@ -29,12 +36,20 @@ sealed class FilterOption(val labelRes: Int, val type: SnippetType? = null, val 
     }
 }
 
+/**
+ * [FilterChipsRow] 代码片段分类/状态水平可滚动 FilterChip 选项栏组件。
+ *
+ * @param selected 当前高亮选中的筛选选项
+ * @param onSelect 选项选中切换闭包
+ * @param modifier 外部修饰符
+ */
 @Composable
 fun FilterChipsRow(
     selected: FilterOption,
     onSelect: (FilterOption) -> Unit,
     modifier: Modifier = Modifier
 ) {
+
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(Spacing.S2),

@@ -25,9 +25,27 @@ import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.SyntaxHighlighter
-
 import androidx.compose.ui.unit.Dp
 
+/**
+ * [CodeEditor] 是专为 Snippet Studio 设计的现代 Jetpack Compose 代码编辑器核心 UI 组件。
+ *
+ * 核心功能与架构特性：
+ * 1. **实时语法高亮**：通过 [VisualTransformation] 与 [SyntaxHighlighter] 将纯文本渲染为具有不同色彩的富文本 [AnnotatedString]。
+ * 2. **左侧行号装订轨 (Gutter Line Numbers)**：独立测算行数并显示行号，高亮当前光标所在行，并且行号轨道与代码区域同步滚动。
+ * 3. **当前行高亮背景层**：根据当前光标所在的 [currentLineIndex]，在编辑器背景绘制突出显示的高亮带。
+ * 4. **自动换行与横向滚动控制**：通过 [isWordWrap] 参数切换软换行还是横向自由滚动。
+ *
+ * @param textFieldValue 当前编辑框的 [TextFieldValue]（包含文本内容与光标 Selection 选中信息）
+ * @param onValueChange 文本变动回调
+ * @param fontSp 字体大小 (sp)
+ * @param currentLineIndex 当前光标所在的行索引 (0-based)
+ * @param snippetType 代码片段类型
+ * @param isWordWrap 是否开启自动换行
+ * @param showLineNumbers 是否显示行号栏
+ * @param highlightCurrentLine 是否高亮当前行背景
+ * @param topContentPadding 顶部留白内边距（防遮挡）
+ */
 @Composable
 fun CodeEditor(
     textFieldValue: TextFieldValue,
@@ -48,6 +66,9 @@ fun CodeEditor(
     val editorBg = if (isDark) SurfaceDark else SurfaceLight
     val highlightLineBg = if (isDark) PrimarySoft.copy(alpha = 0.15f) else PrimarySoft
 
+    // 记住并构建语法高亮转换器 VisualTransformation
+    // 教学解析：Compose TextField 的 visualTransformation 允许在不改变输入框底层文本真实数据 (String) 的情况下，
+    // 在视觉上将其包装显示为富文本 AnnotatedString。OffsetMapping.Identity 表示字符位置映射 1:1 无偏移。
     val syntaxTransformation = remember(snippetType, isDark) {
         VisualTransformation { text ->
             val highlighted = SyntaxHighlighter.highlight(text.text, snippetType, isDark)
@@ -55,9 +76,12 @@ fun CodeEditor(
         }
     }
 
+    // 记住垂直与水平滚动状态 State
+    // 教学解析：将同一个 verticalScrollState 分别赋予左侧行号栏与右侧代码区域，从而实现滚动时的完美像素级同步！
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
 
+    // 统计代码总行数（通过计算换行符 '\n' 数量加 1，最小值为 1 行）
     val linesCount = remember(textFieldValue.text) {
         val count = textFieldValue.text.count { it == '\n' } + 1
         maxOf(1, count)
@@ -68,29 +92,31 @@ fun CodeEditor(
             .fillMaxSize()
             .background(editorBg)
     ) {
-        // Line number Gutter
+        // ===== 1. 左侧行号装订轨 (Line Number Gutter) =====
         if (showLineNumbers) {
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(44.dp)
                     .background(gutterBg)
-                    .verticalScroll(verticalScrollState)
+                    .verticalScroll(verticalScrollState) // 与右侧代码区绑着同一个 verticalScrollState 共用垂直滚动
                     .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3),
                 horizontalAlignment = Alignment.End
             ) {
+                // 循环渲染每一行的数字文本
                 for (i in 0 until linesCount) {
                     val isCurrent = (i == currentLineIndex)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            // 动态指定行高为 fontSp * 1.6f，确保与右侧代码输入框的 lineHeight (fontSp * 1.6f) 绝对基线对齐
                             .height((fontSp * 1.6f).dp)
                             .padding(end = Spacing.S2),
                         contentAlignment = Alignment.CenterEnd
                     ) {
                         Text(
                             text = "${i + 1}",
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = FontFamily.Monospace, // 等宽字体对齐
                             fontSize = (fontSp * 0.85f).sp,
                             fontWeight = if (isCurrent) FontWeight.W800 else FontWeight.W400,
                             color = if (isCurrent) Primary else gutterText
@@ -100,15 +126,16 @@ fun CodeEditor(
             }
         }
 
-        // Code Area
+        // ===== 2. 右侧主代码编辑区域 (Code Text Area) =====
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .verticalScroll(verticalScrollState)
+                .verticalScroll(verticalScrollState) // 与左侧行号轨共用垂直滚动
                 .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3, start = Spacing.S3, end = Spacing.S3)
         ) {
-            // Current line highlight background layer
+            // 当前焦点行高亮背景绘制层
+            // 通过 offset 偏移计算 y 轴物理坐标: currentLineIndex * 行高 (fontSp * 1.6f)
             if (highlightCurrentLine && currentLineIndex in 0 until linesCount) {
                 Box(
                     modifier = Modifier
@@ -119,13 +146,15 @@ fun CodeEditor(
                 )
             }
 
+            // 基础无原生框架装饰的文本输入框 BasicTextField
             if (isWordWrap) {
+                // 模式 A: 开启自动换行 (Word Wrap)
                 BasicTextField(
                     value = textFieldValue,
                     onValueChange = onValueChange,
                     visualTransformation = syntaxTransformation,
                     textStyle = TextStyle(
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = FontFamily.Monospace, // 强制使用代码标准等宽字体
                         fontSize = fontSp.sp,
                         lineHeight = (fontSp * 1.6f).sp,
                         color = textPrimary
@@ -136,6 +165,7 @@ fun CodeEditor(
                         .testTag("code_editor_input")
                 )
             } else {
+                // 模式 B: 禁用换行，开启横向自由滚动 (Horizontal Scrollable Box)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -153,7 +183,7 @@ fun CodeEditor(
                         ),
                         cursorBrush = SolidColor(Primary),
                         modifier = Modifier
-                            .widthIn(min = 1200.dp)
+                            .widthIn(min = 1200.dp) // 给定最小 1200.dp 支撑宽文本横向拖拽
                             .fillMaxHeight()
                             .testTag("code_editor_input")
                     )
@@ -162,3 +192,5 @@ fun CodeEditor(
         }
     }
 }
+
+

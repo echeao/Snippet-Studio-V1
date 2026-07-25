@@ -20,6 +20,17 @@ import androidx.compose.ui.unit.dp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [EmptyState] 页面或列表内容为空时的统一缺省占位 UI 组件。
+ *
+ * @param title 标题
+ * @param desc 描述信息
+ * @param modifier 外部修饰符
+ * @param iconRes 图标 drawable 资源 ID (可选)
+ * @param iconVector 图标 ImageVector 资源 (可选)
+ * @param actionLabel 底部操作按钮文案 (可选)
+ * @param onAction 底部操作按钮点击闭包 (可选)
+ */
 @Composable
 fun EmptyState(
     title: String,
@@ -30,6 +41,7 @@ fun EmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null
 ) {
+
     val isDark = LocalIsDarkTheme.current
     val textPrimary = if (isDark) TextDark else TextLight
     val textSecondary = if (isDark) Text2Dark else Text2Light
@@ -108,6 +120,9 @@ fun EmptyState(
     }
 }
 
+/**
+ * [LoadingState] 骨架屏 (Skeleton) 加载动画占位视图。
+ */
 @Composable
 fun LoadingState(
     modifier: Modifier = Modifier
@@ -162,12 +177,20 @@ fun LoadingState(
     }
 }
 
+/**
+ * [ErrorState] 加载失败与重试界面。
+ *
+ * @param title 错误信息标题
+ * @param onRetry 重试回调函数
+ * @param modifier 外部修饰符
+ */
 @Composable
 fun ErrorState(
     title: String = stringResource(R.string.error_title),
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+
     val isDark = LocalIsDarkTheme.current
 
     Column(

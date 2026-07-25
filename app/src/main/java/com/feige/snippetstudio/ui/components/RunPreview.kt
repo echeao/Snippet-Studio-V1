@@ -32,8 +32,16 @@ import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.MarkdownRenderer
 
+/**
+ * [ConsoleLog] 控制台日志实体数据模型。
+ */
 data class ConsoleLog(val message: String, val level: String)
 
+/**
+ * [WebConsoleBridge] 网页 JavaScript 原生控制台拦截桥接器。
+ *
+ * 通过 `@JavascriptInterface` 将 JavaScript 的 `console.log` / `console.error` 等输出捕获并重定向回 Android 原生界面展示。
+ */
 class WebConsoleBridge(private val onLog: (String, String) -> Unit) {
     @JavascriptInterface
     fun postMessage(msg: String, level: String) {
@@ -41,6 +49,19 @@ class WebConsoleBridge(private val onLog: (String, String) -> Unit) {
     }
 }
 
+/**
+ * [RunPreview] 实时运行预览面板组件。
+ *
+ * 根据片段类型 [SnippetType] 提供针对性的交互式运行与效果渲染：
+ * 1. **HTML**：内置 WebView 动态渲染 HTML/CSS 样式。
+ * 2. **JS**：内置 WebView 执行 JavaScript 代码，结合 [WebConsoleBridge] 在下方控制台面板实能拦截输出日志。
+ * 3. **Markdown**：调用 [MarkdownRenderer] 转换为 HTML 并通过 WebView 展示富文本样式。
+ * 4. **Prompt**：格式化展示 AI 提示词文本，并提供“一键复制”快捷操作。
+ *
+ * @param type 代码片段类型
+ * @param content 片段代码正文
+ * @param onToast Toast 提示消息回调闭包
+ */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun RunPreview(
@@ -53,6 +74,7 @@ fun RunPreview(
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
 
+    // 保存 JavaScript 控制台日志的响应式列表
     val consoleLogs = remember { mutableStateListOf<ConsoleLog>() }
 
     Column(
@@ -61,6 +83,7 @@ fun RunPreview(
             .background(if (isDark) SurfaceDark else SurfaceLight)
     ) {
         when (type) {
+            // ===== 1. HTML 渲染预览模式 =====
             SnippetType.HTML -> {
                 AndroidView(
                     factory = { ctx ->
@@ -97,21 +120,26 @@ fun RunPreview(
                 )
             }
 
+            // ===== 2. JavaScript 执行与 Console 日志拦截模式 =====
             SnippetType.JS -> {
                 Box(modifier = Modifier.weight(1f)) {
+                    // AndroidView 用于在 Jetpack Compose 中嵌入原生 Android View 组件 (如 WebView)
                     AndroidView(
                         factory = { ctx ->
                             WebView(ctx).apply {
                                 settings.javaScriptEnabled = true
+                                // 实例化 JS <-> Native 桥接通信通道，拦截控制台消息并更新 consoleLogs 列表
                                 val bridge = WebConsoleBridge { msg, level ->
                                     post { consoleLogs.add(ConsoleLog(msg, level)) }
                                 }
+                                // 将 bridge 绑定给 WebView 中的全局 window.AndroidConsole 对象
                                 addJavascriptInterface(bridge, "AndroidConsole")
                                 webViewClient = WebViewClient()
                             }
                         },
                         update = { webView ->
                             consoleLogs.clear()
+                            // 构造 JS 包装沙盒代码：重写 console.log / error / warn，将其转发给 AndroidConsole.postMessage
                             val wrappedJs = """
                                 <!DOCTYPE html>
                                 <html>
@@ -147,7 +175,8 @@ fun RunPreview(
                     )
                 }
 
-                // Console output panel
+
+                // 下方 JS 控制台日志面板 (Console Log Panel)
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -201,6 +230,7 @@ fun RunPreview(
                 }
             }
 
+            // ===== 3. Markdown 富文本渲染模式 =====
             SnippetType.MARKDOWN -> {
                 val renderedHtml = remember(content) { MarkdownRenderer.toHtml(content) }
                 AndroidView(
@@ -220,6 +250,7 @@ fun RunPreview(
                 )
             }
 
+            // ===== 4. Prompt AI 提示词视图 =====
             SnippetType.PROMPT -> {
                 Column(
                     modifier = Modifier
@@ -276,3 +307,4 @@ fun RunPreview(
         }
     }
 }
+

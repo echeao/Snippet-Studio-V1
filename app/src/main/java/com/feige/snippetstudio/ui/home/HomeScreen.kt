@@ -26,6 +26,24 @@ import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [HomeScreen] 应用程序首页主界面视图。
+ *
+ * 界面组成结构：
+ * 1. **TopBar 顶部栏**：应用名称标题与实时刷新同步按钮。
+ * 2. **ClipBar 剪贴板识别条**：当 Activity 处于 Resume 状态时触发扫描，展示识别到的智能代码条。
+ * 3. **SearchBar 搜索输入框**：支持按标题、正文与标签实时过滤代码片段。
+ * 4. **2x2 快捷新建卡片区**：一键快速创建 HTML, JS, Markdown 与 Prompt 代码片段。
+ * 5. **最近代码片段列表**：使用 [LazyColumn] 展示前 5 个活动片段，集成 [SnippetCard] 的富文本交互。
+ * 6. **交互模态对话框**：包含重命名 [RenameDialog]、移动文件夹 [FolderMoveDialog] 与确认移入回收站 [ConfirmDialog]。
+ *
+ * @param viewModel 首页 ViewModel 依赖
+ * @param onNavigateToEditor 打开编辑器路由
+ * @param onNavigateToNewEditor 打开新建类型编辑器路由
+ * @param onNavigateToDetail 打开片段详情路由
+ * @param onNavigateToFiles 跳转至文件列表管理路由
+ * @param onShowSnackbar 显示底部 Snack 提示
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -36,6 +54,7 @@ fun HomeScreen(
     onNavigateToFiles: () -> Unit,
     onShowSnackbar: (String) -> Unit
 ) {
+    // 监听 ViewModel 中的 Flow 状态
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -47,11 +66,12 @@ fun HomeScreen(
 
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
 
+    // 各种交互操作的临时挂起状态
     var pendingTrashId by remember { mutableStateOf<String?>(null) }
     var pendingRenameSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
     var pendingFolderSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
 
-    // Clipboard detection on ON_RESUME
+    // ===== 监听 Lifecycle 声明周期：返回前台 ON_RESUME 时自动检索系统剪贴板 =====
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -112,7 +132,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // ClipBar
+            // ===== 1. 剪贴板识别快捷添加条 =====
             ClipBar(
                 clip = uiState.detectedClip,
                 onSave = { clip ->
@@ -125,7 +145,7 @@ fun HomeScreen(
                 }
             )
 
-            // SearchBar
+            // ===== 2. 搜索框 =====
             SearchBar(
                 value = uiState.searchQuery,
                 onValueChange = { viewModel.onSearchQueryChange(it) },
@@ -137,7 +157,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                // Quick New 2x2 Grid
+                // ===== 3. 2x2 快捷新建类型入口卡片区 =====
                 item {
                     Column(
                         modifier = Modifier
@@ -188,7 +208,7 @@ fun HomeScreen(
                     }
                 }
 
-                // Recent Snippets Section Header
+                // ===== 4. 最近修改代码片段列表 Header =====
                 item {
                     Row(
                         modifier = Modifier
@@ -214,7 +234,7 @@ fun HomeScreen(
                     }
                 }
 
-                // List / States
+                // ===== 5. 最近代码片段列表或空状态 =====
                 if (uiState.isLoading) {
                     item { LoadingState() }
                 } else if (uiState.recentSnippets.isEmpty()) {
@@ -255,7 +275,7 @@ fun HomeScreen(
             }
         }
 
-        // Rename Dialog
+        // ===== 弹框 1: 重命名对话框 =====
         RenameDialog(
             show = (pendingRenameSnippet != null),
             initialTitle = pendingRenameSnippet?.title.orEmpty(),
@@ -269,7 +289,7 @@ fun HomeScreen(
             }
         )
 
-        // Folder Move Dialog
+        // ===== 弹框 2: 移动文件夹对话框 =====
         FolderMoveDialog(
             show = (pendingFolderSnippet != null),
             currentFolder = pendingFolderSnippet?.folder.orEmpty(),
@@ -283,7 +303,7 @@ fun HomeScreen(
             }
         )
 
-        // Confirmation dialog for moving to trash
+        // ===== 弹框 3: 移入回收站二次确认对话框 =====
         ConfirmDialog(
             show = (pendingTrashId != null),
             title = stringResource(R.string.confirm_trash_title),
@@ -300,6 +320,9 @@ fun HomeScreen(
     }
 }
 
+/**
+ * [QuickNewCard] 首页 2x2 网格中单个快捷创建类型的卡片按钮组件。
+ */
 @Composable
 fun QuickNewCard(
     type: SnippetType,
@@ -332,3 +355,4 @@ fun QuickNewCard(
         }
     }
 }
+

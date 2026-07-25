@@ -27,6 +27,20 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [SettingsScreen] 系统设置与系统偏好主界面。
+ *
+ * 分组构成：
+ * 1. **工作区仓库 [Group 1]**：绑定外部 SAF 磁盘目录树。
+ * 2. **同步与版本控制 [Group 2]**：Git 账号授权配置与全量同步通道。
+ * 3. **内容组织与标签 [Group 3]**：自定义分类与标签管理器。
+ * 4. **数据维护与备份 [Group 4]**：导出 JSON 备份文件（调用 SAF CreateDocument Launcher）与回收站清空。
+ * 5. **外观与系统偏好 [Group 5]**：深色/浅色模式切换、卡片点击触发动作与多语言选择。
+ *
+ * @param viewModel 设置页 ViewModel
+ * @param onNavigateToSubPage 打开二级设置子页面路由 (如 "git", "repo", "lang")
+ * @param onShowSnackbar 显示提示消息闭包
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -40,7 +54,7 @@ fun SettingsScreen(
     val textPrimary = if (isDark) TextDark else TextLight
     val textSecondary = if (isDark) Text2Dark else Text2Light
 
-    // SAF Document Creator Launcher for JSON Backup
+    // ===== Android SAF 系统文件创建 Launcher (保存 JSON 全量备份文件) =====
     val createDocLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -80,7 +94,7 @@ fun SettingsScreen(
                 .padding(Spacing.S4),
             verticalArrangement = Arrangement.spacedBy(Spacing.S5)
         ) {
-            // Group 1: Workspace Repo
+            // ===== 分组 1: 工作区仓库设置 =====
             SettingsGroup(title = stringResource(R.string.set_repo)) {
                 SettingsItem(
                     iconRes = R.drawable.ic_layers,
@@ -90,7 +104,7 @@ fun SettingsScreen(
                 )
             }
 
-            // Group 2: Sync & Version Control
+            // ===== 分组 2: 同步与 Git 版本控制 =====
             SettingsGroup(title = stringResource(R.string.set_sync)) {
                 SettingsItem(
                     iconRes = R.drawable.ic_git,
@@ -100,7 +114,7 @@ fun SettingsScreen(
                 )
             }
 
-            // Group 3: Content Organization
+            // ===== 分组 3: 内容组织与标签 =====
             SettingsGroup(title = stringResource(R.string.set_org)) {
                 SettingsItem(
                     iconRes = R.drawable.ic_layers,
@@ -115,7 +129,7 @@ fun SettingsScreen(
                 )
             }
 
-            // Group 4: Data Maintenance
+            // ===== 分组 4: 数据维护与备份备份 =====
             SettingsGroup(title = stringResource(R.string.set_maintain)) {
                 SettingsItem(
                     iconRes = R.drawable.ic_spark,
@@ -132,7 +146,7 @@ fun SettingsScreen(
                 )
             }
 
-            // Group 5: Appearance & System
+            // ===== 分组 5: 外观与多语言偏好设置 =====
             SettingsGroup(title = stringResource(R.string.set_look)) {
                 AppSwitch(
                     checked = (settings.theme == "dark" || (settings.theme == "system" && isDark)),
@@ -169,6 +183,9 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * [SettingsGroup] 设置分组外框卡片组件。
+ */
 @Composable
 fun SettingsGroup(
     title: String,
@@ -200,6 +217,9 @@ fun SettingsGroup(
     }
 }
 
+/**
+ * [SettingsItem] 单个设置跳转条目组件。
+ */
 @Composable
 fun SettingsItem(
     iconRes: Int,
@@ -257,3 +277,4 @@ fun SettingsItem(
         )
     }
 }
+

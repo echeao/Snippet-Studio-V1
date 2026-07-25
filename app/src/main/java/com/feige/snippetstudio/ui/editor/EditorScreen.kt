@@ -42,6 +42,20 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 
+/**
+ * [EditorScreen] 全功能专业代码编辑器主视图。
+ *
+ * 核心交互特性：
+ * 1. **标题与保存状态 Badge**：顶部 TopBar 可直接修改片段标题，并实时反馈【已保存/正在保存/未保存】指示徽章。
+ * 2. **全屏沉浸沉浸模式 (Immersive Mode)**：点击全屏按钮后调用 [SystemUiUtil.setImmersiveFullscreen] 隐藏系统状态栏与导航栏，支持 [FloatingControlIsland] 控制岛和动态手势唤出。
+ * 3. **快捷键盘工具栏 [SymbolBar]**：包含智能符号快速点击插入。
+ * 4. **底部专业状态栏**：展示当前光标行/列号、总行数、字符数、文件编码格式与换行符。
+ * 5. **设置弹窗 [EditorSettingsContent]**：支持调节字号 (Slider)、控制 WordWrap 换行、开闭行号、缩进空格与编码切换。
+ *
+ * @param viewModel 编辑器 ViewModel 依赖
+ * @param onBack 页面返回闭包
+ * @param onShowSnackbar 全局 Snackbar 提示闭包
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(
@@ -64,6 +78,7 @@ fun EditorScreen(
     var showFloatingIsland by remember { mutableStateOf(true) }
     var showFullscreenSymbolBar by remember { mutableStateOf(true) }
 
+    // ===== 全屏沉浸模式与系统 WindowInsets 的交互处理 =====
     val activity = remember(context) { SystemUiUtil.findActivity(context) }
     DisposableEffect(uiState.isFullscreen) {
         if (uiState.isFullscreen) {
@@ -74,6 +89,7 @@ fun EditorScreen(
         }
     }
 
+    // 全屏模式下滚动手势隐显控制岛
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -95,6 +111,7 @@ fun EditorScreen(
         }
     }
 
+    // 拦截物理/系统返回按键
     BackHandler(enabled = true) {
         if (uiState.isFullscreen) {
             viewModel.setFullscreen(false)
@@ -133,9 +150,10 @@ fun EditorScreen(
         SaveState.UNSAVED -> Danger
     }
 
+    // 渲染通用编辑/预览区域的核心 Composable Lambda
     val editorContent: @Composable (Modifier) -> Unit = { modifier ->
         Column(modifier = modifier) {
-            // Editor Toolbar Row
+            // ===== 编辑器顶部控制条 (Code/Preview 分段切, 字体 A-/A+ 调节, 全屏按钮) =====
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -143,7 +161,6 @@ fun EditorScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Segmented Control [Code | Preview]
                 SegmentedControl(
                     options = listOf(stringResource(R.string.editor_code), stringResource(R.string.editor_preview)),
                     selectedIndex = uiState.selectedTab,
@@ -154,7 +171,6 @@ fun EditorScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Font Size - / +
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(
                             onClick = { viewModel.adjustFontSize(-1f) },
@@ -172,7 +188,6 @@ fun EditorScreen(
                         }
                     }
 
-                    // Fullscreen Button
                     IconButton(
                         onClick = { viewModel.toggleFullscreen() },
                         modifier = Modifier
@@ -189,9 +204,9 @@ fun EditorScreen(
                 }
             }
 
-            // Main Editor / Preview View
+            // ===== 主编辑视图 / 预览视图切换 =====
             if (uiState.selectedTab == 0) {
-                // Code Tab
+                // 代码编辑 Tab
                 Column(modifier = Modifier.weight(1f)) {
                     SymbolBar(
                         snippetType = uiState.type,
@@ -211,7 +226,7 @@ fun EditorScreen(
                     )
                 }
             } else {
-                // Preview Tab
+                // 实时预览 Tab
                 RunPreview(
                     type = uiState.type,
                     content = uiState.textFieldValue.text,
@@ -223,7 +238,7 @@ fun EditorScreen(
     }
 
     if (uiState.isFullscreen) {
-        // True Immersive Fullscreen Container
+        // ===== 模式 A：全屏沉浸沉浸视图容器 =====
         val safeTopPadding = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
 
         Box(
@@ -238,7 +253,6 @@ fun EditorScreen(
                     showFloatingIsland = !showFloatingIsland
                 }
         ) {
-            // Main Code / Preview Layout in Fullscreen
             if (uiState.selectedTab == 0) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     CodeEditor(
@@ -254,7 +268,6 @@ fun EditorScreen(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Floating SymbolBar in Fullscreen
                     AnimatedVisibility(
                         visible = showFullscreenSymbolBar && showFloatingIsland,
                         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -278,7 +291,7 @@ fun EditorScreen(
                 )
             }
 
-            // Top Floating Control Island
+            // 悬浮全屏控制岛 (顶部岛状按钮)
             AnimatedVisibility(
                 visible = showFloatingIsland,
                 enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
@@ -298,6 +311,7 @@ fun EditorScreen(
             }
         }
     } else {
+        // ===== 模式 B：标准带有 Scaffold TopBar / BottomBar 的编辑视图 =====
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -344,7 +358,7 @@ fun EditorScreen(
 
                             Spacer(modifier = Modifier.width(Spacing.S2))
 
-                            // Save status badge
+                            // 保存状态指示徽章
                             Surface(
                                 color = saveBadgeBg,
                                 shape = RoundedCornerShape(R_SM)
@@ -429,7 +443,7 @@ fun EditorScreen(
                 )
             },
             bottomBar = {
-                // Status bar at bottom
+                // 底部专业代码编辑器状态栏 (行列号 / 编码格式 / 换行符 / 语言)
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -478,7 +492,7 @@ fun EditorScreen(
         }
     }
 
-    // Editor Settings Sheet
+    // ===== 弹框 A: 编辑器个性化设置 ModalBottomSheet =====
     if (showSettingsSheet) {
         ModalBottomSheet(
             onDismissRequest = { showSettingsSheet = false },
@@ -497,7 +511,7 @@ fun EditorScreen(
         }
     }
 
-    // Type Switcher Dialog
+    // ===== 弹框 B: 切换语言类型对话框 =====
     if (showTypeDialog) {
         AlertDialog(
             onDismissRequest = { showTypeDialog = false },
@@ -539,7 +553,7 @@ fun EditorScreen(
         )
     }
 
-    // Tag Edit Dialog
+    // ===== 弹框 C: 标签编辑对话框 =====
     TagEditDialog(
         show = showTagDialog,
         initialTags = uiState.tags,
@@ -551,7 +565,7 @@ fun EditorScreen(
         }
     )
 
-    // Discard Confirmation Dialog
+    // ===== 弹框 D: 未保存离开二次确认弹窗 =====
     ConfirmDialog(
         show = showDiscardDialog,
         title = stringResource(R.string.confirm_discard_title),
@@ -565,6 +579,9 @@ fun EditorScreen(
     )
 }
 
+/**
+ * [EditorSettingsContent] 编辑器选项设置弹层正文面板组件。
+ */
 @Composable
 private fun EditorSettingsContent(
     uiState: EditorUiState,
@@ -601,7 +618,7 @@ private fun EditorSettingsContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Section 0: Fragment Tags
+        // ===== 属性分组 1: 片段标签管理 =====
         Text("片段属性", style = CaptionStyle, color = Primary, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -626,11 +643,10 @@ private fun EditorSettingsContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Section 1: Display & Layout
+        // ===== 属性分组 2: 显示与排版开关 (WordWrap / 行号 / 高亮) =====
         Text("显示与排版", style = CaptionStyle, color = Primary, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Word Wrap
         SettingSwitchRow(
             title = "自动换行 (Word Wrap)",
             subtitle = "超出编辑器边缘时自动换行",
@@ -638,7 +654,6 @@ private fun EditorSettingsContent(
             onCheckedChange = { viewModel.setWordWrap(it) }
         )
 
-        // Show Line Numbers
         SettingSwitchRow(
             title = "显示行号 (Line Numbers)",
             subtitle = "在代码左侧展示行号栏",
@@ -646,7 +661,6 @@ private fun EditorSettingsContent(
             onCheckedChange = { viewModel.setShowLineNumbers(it) }
         )
 
-        // Highlight Current Line
         SettingSwitchRow(
             title = "高亮当前行",
             subtitle = "高亮背景标记光标所在行",
@@ -654,7 +668,6 @@ private fun EditorSettingsContent(
             onCheckedChange = { viewModel.setHighlightCurrentLine(it) }
         )
 
-        // Auto Pair Brackets
         SettingSwitchRow(
             title = "自动括号/引号配对",
             subtitle = "输入括号与引号时自动补全闭合",
@@ -664,7 +677,7 @@ private fun EditorSettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Font Size Slider
+        // ===== 字号调整 Slider =====
         Text("代码字号: ${uiState.fontSp} sp", style = CaptionStyle, color = textPrimary, fontWeight = FontWeight.Medium)
         Slider(
             value = uiState.fontSp,
@@ -675,11 +688,10 @@ private fun EditorSettingsContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Section 2: File & Encoding
+        // ===== 属性分组 3: 编码与换行符 (UTF-8, LF / CRLF) =====
         Text("编码与换行符", style = CaptionStyle, color = Primary, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Encoding Choice
         Text("字符编码格式", style = CaptionStyle, color = textSecondary)
         Spacer(modifier = Modifier.height(4.dp))
         val encodings = listOf("UTF-8", "GBK", "UTF-16", "ISO-8859-1", "US-ASCII")
@@ -710,7 +722,6 @@ private fun EditorSettingsContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Line Endings
         Text("换行符格式", style = CaptionStyle, color = textSecondary)
         Spacer(modifier = Modifier.height(4.dp))
         val lineEndings = listOf("LF" to "LF (Unix/Mac)", "CRLF" to "CRLF (Windows)", "CR" to "CR (Classic)")
@@ -729,7 +740,6 @@ private fun EditorSettingsContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Tab Size
         Text("Tab 缩进大小", style = CaptionStyle, color = textSecondary)
         Spacer(modifier = Modifier.height(4.dp))
         val tabSizes = listOf(2, 4, 8)
@@ -750,6 +760,9 @@ private fun EditorSettingsContent(
     }
 }
 
+/**
+ * [SettingSwitchRow] 开关型设置项组件。
+ */
 @Composable
 private fun SettingSwitchRow(
     title: String,
@@ -779,3 +792,4 @@ private fun SettingSwitchRow(
         )
     }
 }
+

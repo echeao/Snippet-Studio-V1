@@ -10,6 +10,15 @@ import androidx.compose.ui.unit.dp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [RenameDialog] 重命名代码片段标题与文件名模态对话框。
+ *
+ * @param show 显隐开关
+ * @param initialTitle 初始标题
+ * @param initialFileName 初始文件名
+ * @param onDismiss 关闭弹窗回调
+ * @param onConfirm 保存新标题与新文件名回调
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RenameDialog(
@@ -80,3 +89,4 @@ fun RenameDialog(
         shape = AppShapes.large
     )
 }
+

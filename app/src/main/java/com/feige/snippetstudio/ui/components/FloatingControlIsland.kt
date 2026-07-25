@@ -19,6 +19,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [FloatingControlIsland] 全屏焦点沉浸模式下浮动悬浮控制岛组件。
+ *
+ * 当用户在代码编辑器中进入全屏沉浸模式时，该控制岛悬浮位于页面顶部/底部，
+ * 采用现代毛玻璃透明度与圆角岛状设计，包含：
+ * 1. 【代码 / 预览】Segmented 分段切换选项卡。
+ * 2. 快捷符号栏 [SymbolBar] 显隐开关。
+ * 3. 退出全屏模式快捷按钮。
+ *
+ * @param selectedTab 选中的 Tab 索引 (0: 代码编辑, 1: 实时预览)
+ * @param onSelectTab 切换 Tab 回调
+ * @param showSymbolBar 符号栏当前是否显示
+ * @param onToggleSymbolBar 切换符号栏显示/隐藏回调
+ * @param onExitFullscreen 退出全屏沉浸模式回调
+ */
 @Composable
 fun FloatingControlIsland(
     selectedTab: Int,
@@ -47,7 +62,7 @@ fun FloatingControlIsland(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.S2)
         ) {
-            // Tab Switch: Code / Preview
+            // ===== 代码 / 预览 切换分段按钮 =====
             Row(
                 modifier = Modifier
                     .background(if (isDark) Surface2Dark else Surface2Light, RoundedCornerShape(R_MD))
@@ -103,7 +118,7 @@ fun FloatingControlIsland(
                 }
             }
 
-            // SymbolBar Toggle Button
+            // ===== 快捷符号栏 Toggle 按钮 =====
             if (selectedTab == 0) {
                 IconButton(
                     onClick = onToggleSymbolBar,
@@ -123,7 +138,7 @@ fun FloatingControlIsland(
                 color = borderColor
             )
 
-            // Exit Fullscreen Button
+            // ===== 退出全屏沉浸模式按钮 =====
             IconButton(
                 onClick = onExitFullscreen,
                 modifier = Modifier.size(32.dp)
@@ -138,3 +153,4 @@ fun FloatingControlIsland(
         }
     }
 }
+

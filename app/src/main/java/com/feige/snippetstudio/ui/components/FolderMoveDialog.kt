@@ -18,6 +18,19 @@ import androidx.compose.ui.unit.dp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [FolderMoveDialog] 移动代码片段至指定文件夹模态对话框。
+ *
+ * 功能：
+ * 1. 允许用户手动输入新的文件夹相对路径 (如 "utils/string")，空字符串代表根目录 `/`。
+ * 2. 自动列出当前已存在的文件夹列表，支持一键点击填入。
+ *
+ * @param show 显隐开关
+ * @param currentFolder 当前代码片段原所在的文件夹路径
+ * @param existingFolders 当前库中已存在的所有文件夹列表
+ * @param onDismiss 关闭弹窗回调
+ * @param onConfirm 确认移动到的目标文件夹路径回调
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderMoveDialog(
@@ -57,6 +70,7 @@ fun FolderMoveDialog(
                         .testTag("folder_input")
                 )
 
+                // 已存在文件夹快捷选单
                 if (existingFolders.isNotEmpty()) {
                     Text(text = "已存在文件夹：", style = CaptionStyle, color = textSecondary)
                     
@@ -134,3 +148,4 @@ fun FolderMoveDialog(
         shape = AppShapes.large
     )
 }
+

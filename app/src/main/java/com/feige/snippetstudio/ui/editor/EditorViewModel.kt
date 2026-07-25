@@ -12,10 +12,45 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+/**
+ * [SaveState] 代码保存状态枚举。
+ */
 enum class SaveState {
-    SAVED, SAVING, UNSAVED
+    /** 已保存 */
+    SAVED, 
+    /** 正在保存中 */
+    SAVING, 
+    /** 未保存 (有未提交修改) */
+    UNSAVED
 }
 
+/**
+ * [EditorUiState] 代码编辑器的完整 UI 响应式状态模型。
+ *
+ * @param id 当前编辑的片段 ID ("new" 表示新建)
+ * @param snippet 当前加载的领域模型
+ * @param title 标题
+ * @param textFieldValue Compose 带有光标位置的光标状态结构 [TextFieldValue]
+ * @param type 片段类型 (HTML, JS, Markdown, Prompt)
+ * @param tags 片段拥有的标签列表
+ * @param allAvailableTags 全局可用的候选标签
+ * @param selectedTab 选中的 Tab 选项卡 (0: 代码编辑, 1: 实时预览)
+ * @param saveState 当前保存状态
+ * @param fontSp 字体字号大小 (sp)
+ * @param isWordWrap 是否开启自动换行
+ * @param encoding 编码格式 (如 UTF-8)
+ * @param lineEnding 换行符 (LF / CRLF)
+ * @param showLineNumbers 是否显示左侧行号
+ * @param highlightCurrentLine 是否高亮光标所在行
+ * @param tabSize Tab 缩进空格数
+ * @param autoPairBrackets 是否开启括号自动成对补全
+ * @param isFullscreen 是否处于全屏沉浸焦点模式
+ * @param currentLineIndex 光标当前行号 (0-indexed)
+ * @param currentColumnIndex 光标当前列号 (0-indexed)
+ * @param lineCount 总行数
+ * @param charCount 总字符数
+ * @param isLoading 加载状态
+ */
 data class EditorUiState(
     val id: String = "",
     val snippet: Snippet? = null,
@@ -42,6 +77,14 @@ data class EditorUiState(
     val isLoading: Boolean = true
 )
 
+/**
+ * [EditorViewModel] 代码编辑器的 ViewModel 控制器。
+ *
+ * 核心技术点：
+ * 1. **Debounce 防抖自动保存**：使用 Coroutines Flow 管道，当用户连续打字时挂起保存，停止输入 800ms 后异步触发 [performSave]，避免高频写 SQLite / 文件。
+ * 2. **精准光标与行列计算**：根据 [TextFieldValue] 的 selection 计算光标所在行号与列号。
+ * 3. **全屏沉浸模式切换**：提供焦点模式、快捷符号插入、Tab 切换与实时偏好调整。
+ */
 @OptIn(FlowPreview::class)
 class EditorViewModel(
     private val snippetId: String,
@@ -53,10 +96,11 @@ class EditorViewModel(
     private val _uiState = MutableStateFlow(EditorUiState(isLoading = true))
     val uiState: StateFlow<EditorUiState> = _uiState.asStateFlow()
 
+    // 触发防抖自动保存的管道
     private val _autoSaveTrigger = MutableSharedFlow<Unit>(replay = 1)
 
     init {
-        // Observe settings
+        // ===== 1. 订阅偏好设置流变更 =====
         viewModelScope.launch {
             settingsRepository.settingsFlow.collect { settings ->
                 _uiState.update {
@@ -74,7 +118,7 @@ class EditorViewModel(
             }
         }
 
-        // Observe all available tags
+        // ===== 2. 收集全局候选标签库 =====
         viewModelScope.launch {
             combine(
                 settingsRepository.settingsFlow,
@@ -86,7 +130,7 @@ class EditorViewModel(
             }
         }
 
-        // Load or create snippet
+        // ===== 3. 加载已有片段或初始化新建片段 =====
         viewModelScope.launch {
             val currentSettings = settingsRepository.settingsFlow.first()
             if (snippetId == "new") {
@@ -104,7 +148,10 @@ class EditorViewModel(
             }
         }
 
-        // Auto-save debounce pipeline (800ms)
+        // ===== 4. 800ms debounce 防抖自动保存管线 =====
+        // 教学解析：在实时代码编辑器中，如果用户每打一个字就调用一次磁盘写入/SQLite 事务，
+        // 会极大地消耗 IO 性能并可能造成 UI 卡顿。
+        // 通过 MutableSharedFlow 结合 `debounce(800)` 算子，只有在用户停止输入持续满 800 毫秒后，才会真正触发 `performSave()` 落盘！
         viewModelScope.launch {
             _autoSaveTrigger
                 .debounce(800)
@@ -133,6 +180,7 @@ class EditorViewModel(
         }
     }
 
+    /** 修改片段标题并触发防抖保存 */
     fun onTitleChange(newTitle: String) {
         _uiState.update {
             it.copy(
@@ -143,13 +191,26 @@ class EditorViewModel(
         triggerAutoSave()
     }
 
+    /**
+     * 文本编辑区输入内容变动：精准计算当前光标所在行号、列号与字符总数。
+     *
+     * 算位逻辑解析：
+     * 1. `caret`: 获取 TextFieldValue 选区的起始光标偏移量，限制在 [0, text.length] 范围内。
+     * 2. `textBeforeCaret`: 截取光标之前的子字符串。
+     * 3. `currentLine`: 统计 `textBeforeCaret` 中换行符 `\n` 的个数，即为当前光标所在的 0-indexed 行索引。
+     * 4. `currentCol`: 查找 `textBeforeCaret` 中最后一个 `\n` 的位置，算得从该行起点到光标的距离作为列索引。
+     */
     fun onTextFieldValueChange(tfv: TextFieldValue) {
         val text = tfv.text
         val caret = tfv.selection.start.coerceIn(0, text.length)
 
-        // Calculate current line and column index
+        // ===== 步骤 1: 截取光标前的文本子集 =====
         val textBeforeCaret = text.take(caret)
+
+        // ===== 步骤 2: 计算 0-indexed 光标行号 =====
         val currentLine = textBeforeCaret.count { it == '\n' }
+
+        // ===== 步骤 3: 计算 0-indexed 光标列号 =====
         val lastNewlinePos = textBeforeCaret.lastIndexOf('\n')
         val currentCol = if (lastNewlinePos == -1) caret else caret - lastNewlinePos - 1
         val lines = text.count { it == '\n' } + 1
@@ -167,6 +228,8 @@ class EditorViewModel(
         triggerAutoSave()
     }
 
+
+    /** 从快捷符号栏插入特定代码符号到当前光标处 */
     fun insertSymbol(symbol: String) {
         val currentTfv = _uiState.value.textFieldValue
         val text = currentTfv.text
@@ -179,60 +242,71 @@ class EditorViewModel(
         onTextFieldValueChange(TextFieldValue(newText, androidx.compose.ui.text.TextRange(newSelection)))
     }
 
+    /** 切换代码编辑 / 实时预览选项卡 */
     fun selectTab(tabIndex: Int) {
         _uiState.update { it.copy(selectedTab = tabIndex) }
     }
 
+    /** 设置全屏焦点沉浸模式 */
     fun setFullscreen(fullscreen: Boolean) {
         _uiState.update { it.copy(isFullscreen = fullscreen) }
     }
 
+    /** 切换全屏沉浸模式开/关 */
     fun toggleFullscreen() {
         _uiState.update { it.copy(isFullscreen = !it.isFullscreen) }
     }
 
+    /** 更新偏好设置：自动换行 */
     fun setWordWrap(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateSettings { it.copy(isWordWrap = enabled) }
         }
     }
 
+    /** 更新偏好设置：编码格式 */
     fun setEncoding(encoding: String) {
         viewModelScope.launch {
             settingsRepository.updateSettings { it.copy(encoding = encoding) }
         }
     }
 
+    /** 更新偏好设置：换行符 */
     fun setLineEnding(lineEnding: String) {
         viewModelScope.launch {
             settingsRepository.updateSettings { it.copy(lineEnding = lineEnding) }
         }
     }
 
+    /** 更新偏好设置：显示行号 */
     fun setShowLineNumbers(show: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateSettings { it.copy(showLineNumbers = show) }
         }
     }
 
+    /** 更新偏好设置：高亮当前行 */
     fun setHighlightCurrentLine(highlight: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateSettings { it.copy(highlightCurrentLine = highlight) }
         }
     }
 
+    /** 更新偏好设置：Tab 缩进长度 */
     fun setTabSize(size: Int) {
         viewModelScope.launch {
             settingsRepository.updateSettings { it.copy(tabSize = size) }
         }
     }
 
+    /** 更新偏好设置：自动成对补全括号 */
     fun setAutoPairBrackets(autoPair: Boolean) {
         viewModelScope.launch {
             settingsRepository.updateSettings { it.copy(autoPairBrackets = autoPair) }
         }
     }
 
+    /** 修改当前代码片段语言类型 (如从 HTML 更改为 JS) */
     fun setSnippetType(type: SnippetType) {
         _uiState.update {
             it.copy(type = type, saveState = SaveState.UNSAVED)
@@ -240,6 +314,7 @@ class EditorViewModel(
         triggerAutoSave()
     }
 
+    /** 更新片段标签列表 */
     fun updateTags(tags: List<String>) {
         _uiState.update {
             it.copy(tags = tags, saveState = SaveState.UNSAVED)
@@ -247,6 +322,7 @@ class EditorViewModel(
         triggerAutoSave()
     }
 
+    /** 快捷缩放编辑器字体大小 */
     fun adjustFontSize(deltaSp: Float) {
         val current = _uiState.value.fontSp
         val next = (current + deltaSp).coerceIn(11f, 22f)
@@ -255,6 +331,7 @@ class EditorViewModel(
         }
     }
 
+    /** 手动强制立即执行保存 (忽略防抖) */
     fun forceSaveNow() {
         viewModelScope.launch {
             performSave()
@@ -288,6 +365,7 @@ class EditorViewModel(
     }
 
     companion object {
+        /** 创建带参数依赖的 ViewModelProvider.Factory 工厂对象 */
         fun factory(
             snippetId: String,
             initialTypeStr: String?,
@@ -301,3 +379,4 @@ class EditorViewModel(
         }
     }
 }
+

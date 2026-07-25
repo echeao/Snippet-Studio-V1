@@ -22,6 +22,18 @@ import com.feige.snippetstudio.ui.settings.SettingsViewModel
 import com.feige.snippetstudio.ui.subpage.SubPageScreen
 import com.feige.snippetstudio.ui.subpage.SubPageViewModel
 
+/**
+ * [AppNavGraph] 应用程序的中心导航路由图 (Navigation Host Graph)。
+ *
+ * 职责：
+ * 1. 声明 [NavHost]，管理 6 个主/子页面路线 (Home, Files, Settings, Editor, Detail, SubPage)。
+ * 2. 在每个路线页面定义处，通过 自定义 ViewModel.factory 将 [AppContainer] 中的依赖对象注入对应的 ViewModel。
+ * 3. 闭包式连接各 Screen 之间的跳转动作 (`navController.navigate(...)`) 与页面返回动作 (`navController.popBackStack()`)。
+ *
+ * @param navController 导航控制器
+ * @param appContainer 依赖注入容器
+ * @param onShowSnackbar 全局显示 Snackbar 提示函数
+ */
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
@@ -34,7 +46,7 @@ fun AppNavGraph(
         startDestination = Screen.Home.route,
         modifier = modifier
     ) {
-        // Home Screen
+        // ===== 1. 首页 (Home Screen) =====
         composable(Screen.Home.route) {
             val viewModel: HomeViewModel = viewModel(
                 factory = HomeViewModel.factory(
@@ -52,7 +64,7 @@ fun AppNavGraph(
             )
         }
 
-        // Files Screen
+        // ===== 2. 文件与仓库管理页 (Files Screen) =====
         composable(Screen.Files.route) {
             val viewModel: FilesViewModel = viewModel(
                 factory = FilesViewModel.factory(
@@ -69,7 +81,7 @@ fun AppNavGraph(
             )
         }
 
-        // Settings Screen
+        // ===== 3. 全局设置页 (Settings Screen) =====
         composable(Screen.Settings.route) {
             val viewModel: SettingsViewModel = viewModel(
                 factory = SettingsViewModel.factory(
@@ -84,7 +96,7 @@ fun AppNavGraph(
             )
         }
 
-        // Editor Screen
+        // ===== 4. 代码编辑器页面 (Editor Screen) =====
         composable(
             route = Screen.Editor.route,
             arguments = listOf(
@@ -114,7 +126,7 @@ fun AppNavGraph(
             )
         }
 
-        // Detail Screen
+        // ===== 5. 代码片段详情页面 (Detail Screen) =====
         composable(
             route = Screen.Detail.route,
             arguments = listOf(navArgument("id") { type = NavType.StringType })
@@ -136,7 +148,7 @@ fun AppNavGraph(
             )
         }
 
-        // SubPage Screen
+        // ===== 6. 设置子功能页面 (SubPage Screen, 如 Git 配置页 / 关于页) =====
         composable(
             route = Screen.SubPage.route,
             arguments = listOf(navArgument("key") { type = NavType.StringType })
@@ -159,3 +171,4 @@ fun AppNavGraph(
         }
     }
 }
+

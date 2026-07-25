@@ -19,6 +19,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [SearchBar] 全局通用搜索框组件。
+ *
+ * 包含搜索 Icon 放大镜图标、占位占位符 Placeholder、文本输入框以及输入非空时的“一键清空”按钮。
+ *
+ * @param value 当前输入的搜索关键字
+ * @param onValueChange 搜索文本变动回调
+ * @param placeholder 占位符提示文字
+ */
 @Composable
 fun SearchBar(
     value: String,
@@ -82,6 +91,7 @@ fun SearchBar(
                 )
             }
 
+            // 一键清空搜索输入内容
             if (value.isNotEmpty()) {
                 IconButton(
                     onClick = { onValueChange("") },
@@ -100,3 +110,4 @@ fun SearchBar(
         }
     }
 }
+

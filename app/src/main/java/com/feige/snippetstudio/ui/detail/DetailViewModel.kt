@@ -14,6 +14,15 @@ import kotlinx.coroutines.launch
 import com.feige.snippetstudio.data.repo.SettingsRepository
 import kotlinx.coroutines.flow.combine
 
+/**
+ * [DetailUiState] 片段详情页面的 UI 响应式状态模型。
+ *
+ * @param snippet 当前加载展示的代码片段领域实体
+ * @param isSourceExpanded 源代码折叠/展开展开控制开关
+ * @param allAvailableTags 全局可用候选标签列表
+ * @param existingFolders 全局所有存在的文件夹列表
+ * @param isLoading 页面加载中状态
+ */
 data class DetailUiState(
     val snippet: Snippet? = null,
     val isSourceExpanded: Boolean = false,
@@ -22,6 +31,14 @@ data class DetailUiState(
     val isLoading: Boolean = true
 )
 
+/**
+ * [DetailViewModel] 代码片段详情查看页面的 ViewModel 控制器。
+ *
+ * 职责：
+ * 1. 根据 [snippetId] 异步加载片段详情。
+ * 2. 结合设置与数据库观察者更新标签与文件夹候选集。
+ * 3. 响应用户在详情页进行的快捷更改：修改标签、重命名、移动文件夹与放入回收站。
+ */
 class DetailViewModel(
     private val snippetId: String,
     private val repository: SnippetRepository,
@@ -34,7 +51,7 @@ class DetailViewModel(
     init {
         loadSnippet()
 
-        // Observe all available tags and existing folders
+        // 监听系统全量候选标签与文件夹列表
         viewModelScope.launch {
             combine(
                 settingsRepository.settingsFlow,
@@ -49,6 +66,7 @@ class DetailViewModel(
         }
     }
 
+    /** 从 Repository 异步获取指定 ID 的代码片段数据 */
     fun loadSnippet() {
         viewModelScope.launch {
             val snippet = repository.getById(snippetId)
@@ -61,10 +79,12 @@ class DetailViewModel(
         }
     }
 
+    /** 切换源代码卡片的展开与折叠状态 */
     fun toggleSourceExpanded() {
         _uiState.update { it.copy(isSourceExpanded = !it.isSourceExpanded) }
     }
 
+    /** 更新此代码片段的标签 */
     fun updateTags(tags: List<String>) {
         val currentSnippet = _uiState.value.snippet ?: return
         viewModelScope.launch {
@@ -74,6 +94,7 @@ class DetailViewModel(
         }
     }
 
+    /** 在详情页中快捷重命名 */
     fun renameSnippet(newTitle: String, newFileName: String) {
         val currentSnippet = _uiState.value.snippet ?: return
         viewModelScope.launch {
@@ -86,6 +107,7 @@ class DetailViewModel(
         }
     }
 
+    /** 在详情页中快捷移动归属文件夹 */
     fun updateFolder(newFolder: String) {
         val currentSnippet = _uiState.value.snippet ?: return
         viewModelScope.launch {
@@ -95,6 +117,7 @@ class DetailViewModel(
         }
     }
 
+    /** 将片段移入回收站并触发删除完成回调 [onDeleted] */
     fun trashSnippet(onDeleted: () -> Unit) {
         viewModelScope.launch {
             repository.trash(snippetId)
@@ -103,6 +126,7 @@ class DetailViewModel(
     }
 
     companion object {
+        /** ViewModelFactory 工厂构造器 */
         fun factory(
             snippetId: String,
             repository: SnippetRepository,
@@ -115,3 +139,4 @@ class DetailViewModel(
         }
     }
 }
+

@@ -21,12 +21,22 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [TypeIcon] 代码片段语言类型专属徽章图标组件。
+ *
+ * 根据 [SnippetType]（HTML / JS / Markdown / Prompt）自动选取特征前景色、背景色与视觉 Icon 图案。
+ *
+ * @param type 代码片段语言分类类型
+ * @param modifier 外部修饰符
+ * @param size 图标按钮正方形尺寸（默认 40.dp）
+ */
 @Composable
 fun TypeIcon(
     type: SnippetType,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp
 ) {
+
     val isDark = isSystemInDarkTheme()
 
     val (bg, fg) = when (type) {

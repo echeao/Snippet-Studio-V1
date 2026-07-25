@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Snippet Studio</string>
     <string name="home_subtitle">代码片段</string>
-    <string name="home_title">Snippet Studio</string>
+    <string name="home_title">首页</string>
     <string name="home_quick_new">快速新建</string>
     <string name="home_recent">最近编辑</string>
     <string name="home_view_all">查看全部</string>

@@ -1,6 +1,18 @@
 package com.feige.snippetstudio.util
 
+/**
+ * [MarkdownRenderer] 是一个轻量级 Markdown 语法向 HTML 网页渲染转换器。
+ *
+ * 用于在 WebView 或简易 HTML 容器中渲染展示 Markdown 代码片段。
+ * 支持内嵌 CSS 样式（兼容浅色与深色深色模式 prefers-color-scheme）、标题 (#, ##, ###)、代码块 (```)、列表 (- ) 及行内样式 (**粗体**, *斜体*, `代码`, [链接](url))。
+ */
 object MarkdownRenderer {
+    /**
+     * 将输入的原始 Markdown 文本解析转换为完整的带有样式表的 HTML 文档字符串。
+     *
+     * @param markdown 原始 Markdown 字符串
+     * @return 可用 WebView 加载渲染的 HTML 网页文本
+     */
     fun toHtml(markdown: String): String {
         val lines = markdown.lines()
         val htmlBuilder = StringBuilder()
@@ -36,6 +48,7 @@ object MarkdownRenderer {
         for (line in lines) {
             val trimmed = line.trim()
 
+            // 匹配多行代码块分隔线 (```)
             if (trimmed.startsWith("```")) {
                 if (inCodeBlock) {
                     htmlBuilder.append("</code></pre>\n")
@@ -77,6 +90,7 @@ object MarkdownRenderer {
         return htmlBuilder.toString()
     }
 
+    /** 转义 HTML 特殊敏感字符，防御 XSS 风险 */
     private fun escapeHtml(text: String): String {
         return text.replace("&", "&amp;")
             .replace("<", "&lt;")
@@ -85,16 +99,18 @@ object MarkdownRenderer {
             .replace("'", "&#39;")
     }
 
+    /** 使用正则解析 Markdown 行内富文本标记 (粗体/斜体/行内代码/超链接) */
     private fun parseInline(text: String): String {
         var result = text
-        // **bold**
+        // **bold** 粗体
         result = result.replace(Regex("\\*\\*(.*?)\\*\\*"), "<strong>$1</strong>")
-        // *italic*
+        // *italic* 斜体
         result = result.replace(Regex("\\*(.*?)\\*"), "<em>$1</em>")
-        // `code`
+        // `code` 行内代码
         result = result.replace(Regex("`(.*?)`"), "<code>$1</code>")
-        // [text](url)
+        // [text](url) 链接
         result = result.replace(Regex("\\[(.*?)\\]\\((.*?)\\)"), "<a href=\"$2\">$1</a>")
         return result
     }
 }
+

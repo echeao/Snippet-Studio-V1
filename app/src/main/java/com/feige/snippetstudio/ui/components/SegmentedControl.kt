@@ -18,6 +18,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [SegmentedControl] iOS 胶囊样式分段选择器组件。
+ *
+ * 用于编辑器视图模式（【编辑代码】/【效果预览】）的平滑切换。
+ *
+ * @param options 可选标签文本数组
+ * @param selectedIndex 当前选中项索引
+ * @param onSelect 选项切换闭包
+ * @param modifier 外部修饰符
+ */
 @Composable
 fun SegmentedControl(
     options: List<String>,
@@ -25,6 +35,7 @@ fun SegmentedControl(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+
     val isDark = LocalIsDarkTheme.current
     val containerBg = if (isDark) Surface2Dark else Surface2Light
     val activeBg = if (isDark) SurfaceDark else SurfaceLight

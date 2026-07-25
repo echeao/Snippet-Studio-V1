@@ -13,6 +13,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+/**
+ * 浅色模式 (Light Theme) 下的 Material 3 颜色方案。
+ */
 private val LightColorScheme = lightColorScheme(
     primary = Primary,
     onPrimary = Color.White,
@@ -30,6 +33,9 @@ private val LightColorScheme = lightColorScheme(
     onError = Color.White
 )
 
+/**
+ * 深色模式 (Dark Theme) 下的 Material 3 颜色方案。
+ */
 private val DarkColorScheme = darkColorScheme(
     primary = Primary,
     onPrimary = Color.White,
@@ -47,8 +53,22 @@ private val DarkColorScheme = darkColorScheme(
     onError = Color.White
 )
 
+/**
+ * CompositionLocal：标记当前 UI 是否运行在深色主题下。
+ */
 val LocalIsDarkTheme = staticCompositionLocalOf { false }
 
+/**
+ * [SnippetStudioTheme] 应用程序的主题根容器组件。
+ *
+ * 职责：
+ * 1. 结合用户设置 (浅色/深色/跟随系统) 动态判定是否使用深色主题。
+ * 2. 自动设置 Android 原生窗口状态栏 (StatusBar) 颜色与图标亮暗风格。
+ * 3. 注入 Material 3 的 ColorScheme, Shapes 与 Typography。
+ *
+ * @param themeSetting 用户主题配置 ("light", "dark", "system")
+ * @param content 包裹的 Compose UI 内容
+ */
 @Composable
 fun SnippetStudioTheme(
     themeSetting: String = "system", // light, dark, system
@@ -82,3 +102,4 @@ fun SnippetStudioTheme(
         )
     }
 }
+

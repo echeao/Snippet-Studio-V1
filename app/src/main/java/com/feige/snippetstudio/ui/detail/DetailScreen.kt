@@ -33,6 +33,21 @@ import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.SizeUtil
 import com.feige.snippetstudio.util.TimeUtil
 
+/**
+ * [DetailScreen] 代码片段详情查看主界面。
+ *
+ * 布局划分：
+ * 1. **Hero 顶层头部卡片**：展示语言图标、大字标题、创建时间、文件名与 FlowRow 标签集合。
+ * 2. **4 大核心动作网格**：【编辑】、【运行】、【复制】与【删除】。
+ * 3. **实时运行预览面板 [RunPreview]**：交互式嵌入效果展现。
+ * 4. **源代码预览面板 [DetailPanel]**：可展开/收起完整源代码。
+ * 5. **元数据面板**：展示文件真实大小、路径、修改时间与 Git 仓同步状态。
+ *
+ * @param viewModel 详情页 ViewModel
+ * @param onBack 页面返回闭包
+ * @param onNavigateToEditor 打开编辑页面路由闭包
+ * @param onShowSnackbar 底部提示闭包
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(
@@ -51,6 +66,7 @@ fun DetailScreen(
     val cardBg = if (isDark) SurfaceDark else SurfaceLight
     val borderColor = if (isDark) LineDark else LineLight
 
+    // 交互弹窗挂起状态
     var showTrashDialog by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
@@ -107,7 +123,7 @@ fun DetailScreen(
                 .padding(Spacing.S4),
             verticalArrangement = Arrangement.spacedBy(Spacing.S4)
         ) {
-            // Hero Card (Surface R_XL)
+            // ===== 1. Hero 顶层头部卡片 =====
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -202,7 +218,7 @@ fun DetailScreen(
 
                     Spacer(modifier = Modifier.height(Spacing.S3))
 
-                    // Tags Display / Add Section
+                    // 标签展示与编辑触发区
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -271,7 +287,7 @@ fun DetailScreen(
                 }
             }
 
-            // 4 Action Grid (Edit, Run, Copy, Delete)
+            // ===== 2. 4 大快捷动作按钮网格 =====
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.S3)
@@ -306,7 +322,7 @@ fun DetailScreen(
                 )
             }
 
-            // Panel "运行预览"
+            // ===== 3. "运行预览" 面板 =====
             DetailPanel(
                 title = stringResource(R.string.detail_preview)
             ) {
@@ -323,7 +339,7 @@ fun DetailScreen(
                 }
             }
 
-            // Panel "源码片段"
+            // ===== 4. "源码片段" 可折叠/展开面板 =====
             DetailPanel(
                 title = stringResource(R.string.detail_source),
                 headerAction = {
@@ -351,7 +367,7 @@ fun DetailScreen(
                 }
             }
 
-            // Panel "详细信息"
+            // ===== 5. "详细信息与元数据" 面板 =====
             DetailPanel(
                 title = stringResource(R.string.detail_info)
             ) {
@@ -370,7 +386,7 @@ fun DetailScreen(
             }
         }
 
-        // Rename Dialog
+        // ===== 交互弹窗集合 =====
         RenameDialog(
             show = showRenameDialog,
             initialTitle = snippet.title,
@@ -382,7 +398,6 @@ fun DetailScreen(
             }
         )
 
-        // Folder Move Dialog
         FolderMoveDialog(
             show = showFolderDialog,
             currentFolder = snippet.folder,
@@ -394,7 +409,6 @@ fun DetailScreen(
             }
         )
 
-        // Tag Edit Dialog
         TagEditDialog(
             show = showTagDialog,
             initialTags = snippet.tags,
@@ -406,7 +420,6 @@ fun DetailScreen(
             }
         )
 
-        // Confirmation Dialog
         ConfirmDialog(
             show = showTrashDialog,
             title = stringResource(R.string.confirm_trash_title),
@@ -423,6 +436,9 @@ fun DetailScreen(
     }
 }
 
+/**
+ * [DetailActionButton] 详情页网格按钮组件。
+ */
 @Composable
 fun DetailActionButton(
     iconVector: ImageVector,
@@ -473,6 +489,9 @@ fun DetailActionButton(
     }
 }
 
+/**
+ * [DetailPanel] 详情页通用带有阴影与 Header 动作的卡片面板组件。
+ */
 @Composable
 fun DetailPanel(
     title: String,
@@ -513,6 +532,9 @@ fun DetailPanel(
     }
 }
 
+/**
+ * [InfoRow] 详情信息键值对单行展示组件。
+ */
 @Composable
 fun InfoRow(
     label: String,
@@ -551,3 +573,4 @@ fun InfoRow(
         }
     }
 }
+

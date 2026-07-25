@@ -11,11 +11,22 @@ import com.feige.snippetstudio.model.SnippetType
 import java.io.File
 import java.util.UUID
 
+/**
+ * [LocalFileManager] 负责 Android 本地存储与 SAF (Storage Access Framework) 授权目录的文件交互工具类。
+ *
+ * 关键特性：
+ * 1. 优先使用用户通过 SAF 授权的外部文件夹目录 (DocumentFile Tree URI)。
+ * 2. 当无 SAF 授权时自动降级 fallback 使用 App 私有扩展存储 `getExternalFilesDir/snippets` 文件夹。
+ * 3. 实现物理文件系统与 Room 数据库之间的双向同步与增删改落盘。
+ */
 object LocalFileManager {
     private const val TAG = "LocalFileManager"
 
     /**
-     * Get default local storage folder if SAF uri is empty
+     * 获取默认的内部应用私有存储目录 `snippets`。
+     *
+     * @param context 上下文
+     * @return 准备就绪的 [File] 目录对象
      */
     fun getDefaultRepoDir(context: Context): File {
         val dir = File(context.getExternalFilesDir(null) ?: context.filesDir, "snippets")
@@ -26,8 +37,11 @@ object LocalFileManager {
     }
 
     /**
-     * Scans physical files in either SAF document tree or default local directory,
-     * and syncs them into Room database.
+     * 扫描物理文件系统（SAF DocumentTree 或默认应用私有存储），将其同步至 Room 数据库。
+     *
+     * @param context 上下文
+     * @param repoTreeUriStr SAF 授权目录 URI 字符串
+     * @param snippetDao 数据库 DAO
      */
     suspend fun syncRepositoryToDatabase(
         context: Context,
@@ -51,7 +65,7 @@ object LocalFileManager {
                 }
             }
 
-            // Fallback to local app storage directory
+            // 降级使用应用本地文件私有目录
             val localDir = getDefaultRepoDir(context)
             localDir.walkTopDown().forEach { file ->
                 if (file.isFile && !file.name.startsWith(".")) {
@@ -66,6 +80,9 @@ object LocalFileManager {
         }
     }
 
+    /**
+     * 读取单个 SAF DocumentFile 内容并写入/更新 Room 数据库。
+     */
     private suspend fun readAndSyncDocumentFile(
         context: Context,
         doc: DocumentFile,
@@ -110,6 +127,9 @@ object LocalFileManager {
         }
     }
 
+    /**
+     * 读取单个应用私有物理文件内容并写入/更新 Room 数据库。
+     */
     private suspend fun readAndSyncLocalFile(
         file: File,
         fileName: String,
@@ -153,7 +173,16 @@ object LocalFileManager {
     }
 
     /**
-     * Saves or updates physical file in either SAF document tree or default local directory.
+     * 将代码片段 [Snippet] 实时保存/写入至 SAF 目录或应用私有物理文件。
+     */
+    /**
+     * 将代码片段 [Snippet] 实时保存/写入至 SAF 授权目录或应用私有物理文件。
+     *
+     * 教学解析：
+     * 1. SAF 模式 (Storage Access Framework): 使用 `DocumentFile.fromTreeUri` 构建授权目录。
+     *    调用 `contentResolver.openOutputStream(uri, "wt")` ("wt" = write truncate)，清空现有内容并写入 UTF-8 字节。
+     * 2. 降级本地 File 模式 (Fallback Internal File): 当用户未设置外部授权文件夹时，
+     *    自动降级写入 `context.getExternalFilesDir(null)/snippets` 私有沙盒，无需申请危险的 READ/WRITE_EXTERNAL_STORAGE 权限。
      */
     fun writeSnippetToFile(
         context: Context,
@@ -161,13 +190,16 @@ object LocalFileManager {
         repoTreeUriStr: String
     ) {
         try {
+            // 计算合法文件名 (若为空则取 defaultFileName)
             val fileName = if (snippet.fileName.isBlank()) snippet.defaultFileName else snippet.fileName
 
+            // ===== 路径分支 1: 存在有效 SAF 目录 URI =====
             if (repoTreeUriStr.isNotBlank()) {
                 val treeUri = Uri.parse(repoTreeUriStr)
                 val docTree = DocumentFile.fromTreeUri(context, treeUri)
                 if (docTree != null && docTree.exists() && docTree.isDirectory) {
                     var targetDoc = docTree.findFile(fileName)
+                    // 若目标文件不存在，则在 SAF 树中依据 MIME 类型新建 DocumentFile
                     if (targetDoc == null) {
                         val mimeType = when (snippet.type) {
                             SnippetType.HTML -> "text/html"
@@ -178,6 +210,7 @@ object LocalFileManager {
                         targetDoc = docTree.createFile(mimeType, fileName)
                     }
                     if (targetDoc != null) {
+                        // 打开 ContentResolver 写入流并以 UTF-8 格式覆写文件
                         context.contentResolver.openOutputStream(targetDoc.uri, "wt")?.use { stream ->
                             stream.write(snippet.content.toByteArray(Charsets.UTF_8))
                         }
@@ -186,8 +219,9 @@ object LocalFileManager {
                 }
             }
 
-            // Fallback to local app storage directory with folder support
+            // ===== 路径分支 2: 降级使用内部 App 物理存储目录 =====
             val localDir = getDefaultRepoDir(context)
+            // 支持子文件夹路径 (例如 folder = "components/ui"，若不存在则先 mkdirs)
             val targetDir = if (snippet.folder.isBlank()) localDir else File(localDir, snippet.folder).apply { if (!exists()) mkdirs() }
             val file = File(targetDir, fileName)
             file.writeText(snippet.content, Charsets.UTF_8)
@@ -196,8 +230,9 @@ object LocalFileManager {
         }
     }
 
+
     /**
-     * Deletes physical file when snippet is purged.
+     * 当彻底物理删除代码片段时，从磁盘删除对应的物理文件。
      */
     fun deleteSnippetFile(
         context: Context,
@@ -228,3 +263,4 @@ object LocalFileManager {
         }
     }
 }
+

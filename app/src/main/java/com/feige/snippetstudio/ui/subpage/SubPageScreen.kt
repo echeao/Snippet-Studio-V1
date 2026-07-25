@@ -35,6 +35,21 @@ import com.feige.snippetstudio.ui.theme.*
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 
+/**
+ * [SubPageScreen] 系统设置二级通用功能子页面视图。
+ *
+ * 依据路由中的 [SubPageUiState.key] 分发展示针对性界面：
+ * 1. `"repo"`: SAF 本地工作区磁盘目录切换。
+ * 2. `"git"`: Git 远程 URL/PAT 设置、初始化与手动双向 Push/Pull 同步。
+ * 3. `"cat"`: 代码分类数量统计情况。
+ * 4. `"tags"`: 全局常用预设标签管理器（支持实时新增与删除）。
+ * 5. `"trash"`: 回收站软删除列表（支持“一键还原”与“永久彻底清除”）。
+ * 6. `"lang"`: 多语言环境 (简体中文 / English / 日本語) 切换。
+ *
+ * @param viewModel 子页面 ViewModel
+ * @param onBack 返回上级页面
+ * @param onShowSnackbar 底部提示闭包
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SubPageScreen(
@@ -52,7 +67,7 @@ fun SubPageScreen(
 
     var pendingPurgeId by remember { mutableStateOf<String?>(null) }
 
-    // SAF Document Tree Launcher
+    // ===== SAF 目录选择器 Launcher (OpenDocumentTree) =====
     val openTreeLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -118,6 +133,7 @@ fun SubPageScreen(
                 .padding(innerPadding)
         ) {
             when (uiState.key) {
+                // ===== 子页面 1: SAF 本地磁盘工作区仓库配置 =====
                 "repo" -> {
                     Column(
                         modifier = Modifier
@@ -162,6 +178,7 @@ fun SubPageScreen(
                     }
                 }
 
+                // ===== 子页面 2: Git 远程通信与版本管理 =====
                 "git" -> {
                     Column(
                         modifier = Modifier
@@ -260,6 +277,7 @@ fun SubPageScreen(
                     }
                 }
 
+                // ===== 子页面 3: 分类片段统计 =====
                 "cat" -> {
                     Column(
                         modifier = Modifier
@@ -299,6 +317,7 @@ fun SubPageScreen(
                     }
                 }
 
+                // ===== 子页面 4: 全局预设标签管理 =====
                 "tags" -> {
                     var newTagInput by remember { mutableStateOf("") }
                     val addAction = {
@@ -315,7 +334,6 @@ fun SubPageScreen(
                             .padding(Spacing.S4),
                         verticalArrangement = Arrangement.spacedBy(Spacing.S4)
                     ) {
-                        // 新建全局标签输入区
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -350,7 +368,6 @@ fun SubPageScreen(
                             }
                         }
 
-                        // 标签列表与快捷移除
                         if (uiState.tags.isEmpty()) {
                             EmptyState(
                                 title = "尚无自定义标签",
@@ -399,6 +416,7 @@ fun SubPageScreen(
                     }
                 }
 
+                // ===== 子页面 5: 回收站与彻底清空管理 =====
                 "trash" -> {
                     if (uiState.trashedSnippets.isEmpty()) {
                         EmptyState(
@@ -460,6 +478,7 @@ fun SubPageScreen(
                     }
                 }
 
+                // ===== 子页面 6: 系统语言 (简体中文 / English / 日本語) 切换 =====
                 "lang" -> {
                     Column(
                         modifier = Modifier
@@ -509,7 +528,7 @@ fun SubPageScreen(
             }
         }
 
-        // Purge confirmation dialog
+        // 彻底永久删除二次确认弹窗
         ConfirmDialog(
             show = (pendingPurgeId != null),
             title = stringResource(R.string.confirm_purge_title),
@@ -525,3 +544,4 @@ fun SubPageScreen(
         )
     }
 }
+

@@ -25,6 +25,20 @@ import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [TagEditDialog] 标签编辑与管理模态对话框。
+ *
+ * 提供可视化的标签交互方式：
+ * 1. 展示已选择的标签 FlowRow，支持直接点击【X】删除。
+ * 2. 快捷候选推荐区：自动提取现有库中所有可用标签，点击【+】一键添加。
+ * 3. 标签新增输入框，支持软键盘 Enter 或【+】按钮保存新标签。
+ *
+ * @param show 对话框控制开关
+ * @param initialTags 初始选中的标签列表
+ * @param allAvailableTags 现有的全量可用预设/自定义候选标签
+ * @param onDismiss 关闭弹窗回调
+ * @param onSave 保存最终选中的标签列表回调
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TagEditDialog(
@@ -91,7 +105,7 @@ fun TagEditDialog(
                     fontWeight = FontWeight.Bold
                 )
 
-                // 已添加的标签 FlowRow
+                // 已添加的标签 FlowRow 布局
                 if (currentTags.isEmpty()) {
                     Text(
                         text = "暂未选择标签，点击下方候选或手动输入添加",
@@ -178,7 +192,7 @@ fun TagEditDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // 标签输入框与添加按钮
+                // 标签文本手动输入框
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -235,3 +249,4 @@ fun TagEditDialog(
         shape = AppShapes.large
     )
 }
+

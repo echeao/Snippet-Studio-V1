@@ -23,6 +23,9 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [SymbolLanguage] 快捷符号栏支持的语言/模板分类。
+ */
 enum class SymbolLanguage(val displayName: String) {
     HTML("HTML"),
     JS("JavaScript"),
@@ -34,6 +37,7 @@ enum class SymbolLanguage(val displayName: String) {
     JSON("JSON");
 
     companion object {
+        /** 从代码片段类型映射默认初始符号语言 */
         fun fromSnippetType(type: SnippetType): SymbolLanguage {
             return when (type) {
                 SnippetType.HTML -> HTML
@@ -45,6 +49,15 @@ enum class SymbolLanguage(val displayName: String) {
     }
 }
 
+/**
+ * [SymbolBar] 编辑器底部的快捷键盘代码符号/短语工具栏。
+ *
+ * 解决移动端软键盘输入代码符号（如 `<`, `>`, `{`, `}`, `=>`, `const`）不便的问题。
+ * 提供支持横向滚动的快捷符号按键，以及切换语言分类的下拉选择器。
+ *
+ * @param snippetType 当前代码片段类型
+ * @param onInsertSymbol 点击符号按键触发的插入符号回调
+ */
 @Composable
 fun SymbolBar(
     snippetType: SnippetType,
@@ -55,6 +68,7 @@ fun SymbolBar(
     var activeLang by remember(snippetType) { mutableStateOf(SymbolLanguage.fromSnippetType(snippetType)) }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
+    // 根据选中的语言类别动态加载对应的符号与短语列表
     val symbols = remember(activeLang) {
         when (activeLang) {
             SymbolLanguage.HTML -> listOf("<", ">", "</", "/>", "=", "\"", "'", "<!--", "-->", "div", "span", "class=", "id=", "style=", "{", "}", "(", ")")
@@ -81,7 +95,7 @@ fun SymbolBar(
             .padding(horizontal = Spacing.S3),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Language Picker Chip
+        // ===== 语言符号分类切换下拉 Chip =====
         Box(modifier = Modifier.padding(end = Spacing.S2)) {
             Surface(
                 color = PrimarySoft,
@@ -131,6 +145,7 @@ fun SymbolBar(
             }
         }
 
+        // ===== 符号按钮横向 LazyRow 列表 =====
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(Spacing.S2),
             verticalAlignment = Alignment.CenterVertically,
@@ -160,3 +175,4 @@ fun SymbolBar(
         }
     }
 }
+

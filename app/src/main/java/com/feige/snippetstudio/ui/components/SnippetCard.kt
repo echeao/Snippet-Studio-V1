@@ -26,6 +26,23 @@ import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.TimeUtil
 
+/**
+ * [SnippetCard] 是列表展示单个代码片段的主体 UI 卡片组件。
+ *
+ * 布局结构：
+ * - 左侧：[TypeIcon] 识别图标 (如 HTML/JS/MD/Prompt 标识)。
+ * - 中间：代码片段标题、自定义标签 Chips、文件夹路径胶囊 Badge、修改时间。
+ * - 右侧：一键复制代码按钮、星标收藏 Toggle 按钮、更多操作下拉菜单 DropdownMenu（编辑/重命名/移动文件夹/删除）。
+ *
+ * @param snippet 关联的代码片段领域模型 [Snippet]
+ * @param onOpen 点击卡片触发的打开/编辑事件回调
+ * @param onToggleStar 点击收藏按钮事件回调
+ * @param onMore 点击删除/更多主要操作事件回调
+ * @param showFullDateTime 是否显示完整标准时间 (true: yyyy-MM-dd HH:mm:ss, false: 相对时间)
+ * @param onCopySnippet 一键复制片段正文到剪贴板的回调
+ * @param onRename 重命名按钮回调
+ * @param onMoveFolder 移动文件夹按钮回调
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SnippetCard(
@@ -64,10 +81,12 @@ fun SnippetCard(
                 .padding(Spacing.S4),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 类型图标
             TypeIcon(type = snippet.type, size = 44.dp)
 
             Spacer(modifier = Modifier.width(Spacing.S3))
 
+            // 中间文本描述与元数据
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -81,7 +100,7 @@ fun SnippetCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Tag Chips or Time / Folder info
+                // 标签、文件夹胶囊与修改时间
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -145,10 +164,11 @@ fun SnippetCard(
 
             Spacer(modifier = Modifier.width(Spacing.S2))
 
+            // 右侧操作按钮组
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Quick Copy Action Button (方案 2A)
+                // 快捷复制按钮
                 if (onCopySnippet != null) {
                     IconButton(
                         onClick = onCopySnippet,
@@ -163,6 +183,7 @@ fun SnippetCard(
                     }
                 }
 
+                // 收藏星标按钮
                 IconButton(
                     onClick = onToggleStar,
                     modifier = Modifier.testTag("star_button_${snippet.id}")
@@ -175,6 +196,7 @@ fun SnippetCard(
                     )
                 }
 
+                // 更多选项下拉菜单按钮
                 Box {
                     IconButton(
                         onClick = { showMenu = true },
@@ -230,3 +252,4 @@ fun SnippetCard(
         }
     }
 }
+

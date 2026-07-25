@@ -2,6 +2,11 @@ package com.feige.snippetstudio.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+/**
+ * [Tokens] 全局设计令牌映射对象。
+ *
+ * 方便在组件层快速引用系统设计定义的规范色彩。
+ */
 object Tokens {
     val primary = Primary
     val primary2 = Primary2
@@ -26,3 +31,4 @@ object Tokens {
 
     val starOn = StarOn
 }
+

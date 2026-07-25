@@ -9,6 +9,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.feige.snippetstudio.ui.theme.*
 
+/**
+ * [AppSwitch] 带标题与副标题描述的开关选项组件。
+ *
+ * @param checked 当前开关选中状态
+ * @param onCheckedChange 开关状态变更触发回调
+ * @param label 主标题文本
+ * @param subLabel 副标题/补充说明文本（可选）
+ * @param modifier 外部修饰符
+ */
 @Composable
 fun AppSwitch(
     checked: Boolean,
@@ -17,6 +26,7 @@ fun AppSwitch(
     subLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
+
     val isDark = LocalIsDarkTheme.current
     val textPrimary = if (isDark) TextDark else TextLight
     val textSecondary = if (isDark) Text2Dark else Text2Light

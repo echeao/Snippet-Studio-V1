@@ -23,6 +23,16 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.DetectedClip
 
+/**
+ * [ClipBar] 剪贴板检测浮动快捷保存横幅组件。
+ *
+ * 当检测到系统剪贴板符合代码/Prompt 特征时弹出，支持快速另存为片段或忽略关闭。
+ *
+ * @param clip 检出的剪贴板内容对象 (未检测到或忽略时为 null)
+ * @param onSave 保存点击回调
+ * @param onDismiss 忽略/关闭点击回调
+ * @param modifier 外部修饰符
+ */
 @Composable
 fun ClipBar(
     clip: DetectedClip?,
@@ -30,6 +40,7 @@ fun ClipBar(
     onDismiss: (DetectedClip) -> Unit,
     modifier: Modifier = Modifier
 ) {
+
     AnimatedVisibility(
         visible = (clip != null),
         exit = slideOutVertically() + fadeOut(),

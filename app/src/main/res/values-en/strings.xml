@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Snippet Studio</string>
     <string name="home_subtitle">Snippets</string>
-    <string name="home_title">Snippet Studio</string>
+    <string name="home_title">HOME</string>
     <string name="home_quick_new">Quick new</string>
     <string name="home_recent">Recent</string>
     <string name="home_view_all">View all</string>

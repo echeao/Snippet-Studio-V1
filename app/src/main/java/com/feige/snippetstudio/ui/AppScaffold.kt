@@ -27,6 +27,19 @@ import com.feige.snippetstudio.ui.nav.Screen
 import com.feige.snippetstudio.ui.theme.*
 import kotlinx.coroutines.launch
 
+/**
+ * [AppScaffold] 应用程序顶层主脚手架组件。
+ *
+ * 架构职责：
+ * 1. 负责呈现应用程序的底部导航栏 [NavigationBar]（包含【首页】、【文件/仓库】与【设置】三个主页面路由）。
+ * 2. 在主页面路由中呈现全局悬浮新建按钮 [FloatingActionButton] (FAB)。
+ * 3. 弹出新建代码片段底栏 [ModalBottomSheet]，提供 2x2 网格让用户选择创建 HTML、JS、Markdown 或 Prompt。
+ * 4. 承载全局消息提示弹框 [SnackbarHost]。
+ *
+ * @param navController Compose 导航控制器
+ * @param snackbarHostState Snackbar 消息状态对象
+ * @param content 包裹的具体 Route 页面内容视图
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScaffold(
@@ -34,9 +47,11 @@ fun AppScaffold(
     snackbarHostState: SnackbarHostState,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    // 监听当前导航路由
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
 
+    // 控制是否在当前页面显示底部导航栏与 FAB 新建按钮（仅在主界面显示，编辑/详情/子页面中自动隐藏）
     val showBottomBarAndFab = currentRoute in listOf(
         Screen.Home.route,
         Screen.Files.route,
@@ -54,12 +69,14 @@ fun AppScaffold(
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
+            // ===== 底部 NavigationBar =====
             if (showBottomBarAndFab) {
                 NavigationBar(
                     containerColor = barBg,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.border(1.dp, borderColor)
                 ) {
+                    // 1. 首页按钮
                     NavigationBarItem(
                         selected = (currentRoute == Screen.Home.route),
                         onClick = {
@@ -88,6 +105,7 @@ fun AppScaffold(
                         modifier = Modifier.testTag("tab_home")
                     )
 
+                    // 2. 文件与仓库按钮
                     NavigationBarItem(
                         selected = (currentRoute == Screen.Files.route),
                         onClick = {
@@ -116,6 +134,7 @@ fun AppScaffold(
                         modifier = Modifier.testTag("tab_files")
                     )
 
+                    // 3. 设置按钮
                     NavigationBarItem(
                         selected = (currentRoute == Screen.Settings.route),
                         onClick = {
@@ -147,6 +166,7 @@ fun AppScaffold(
             }
         },
         floatingActionButton = {
+            // ===== 全局悬浮新建 FAB 按钮 =====
             if (showBottomBarAndFab) {
                 FloatingActionButton(
                     onClick = { showNewSheet = true },
@@ -176,7 +196,7 @@ fun AppScaffold(
     ) { innerPadding ->
         content(innerPadding)
 
-        // ModalBottomSheet for creating a new snippet (2x2 grid)
+        // ===== 点击 FAB 弹出的新建代码片段选单底栏 (2x2 网格) =====
         if (showNewSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showNewSheet = false },
@@ -268,6 +288,9 @@ fun AppScaffold(
     }
 }
 
+/**
+ * [NewSheetTypeItem] 底栏弹出窗中单个新建类型的选择卡片项组件。
+ */
 @Composable
 fun NewSheetTypeItem(
     type: SnippetType,
@@ -300,3 +323,4 @@ fun NewSheetTypeItem(
         }
     }
 }
+
