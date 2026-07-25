@@ -1,5 +1,6 @@
 package com.feige.snippetstudio
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivityResultRegistryOwner
@@ -11,9 +12,14 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.compose.rememberNavController
+import com.feige.snippetstudio.model.Snippet
+import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.AppScaffold
+import com.feige.snippetstudio.ui.components.SharePanel
 import com.feige.snippetstudio.ui.nav.AppNavGraph
+import com.feige.snippetstudio.ui.nav.Screen
 import com.feige.snippetstudio.ui.theme.SnippetStudioTheme
 import com.feige.snippetstudio.util.LocaleHelper
 import kotlinx.coroutines.launch
@@ -29,14 +35,16 @@ import kotlinx.coroutines.launch
  */
 class MainActivity : ComponentActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        // 调用 ComponentActivity 父类的 onCreate 生命周期回调方法，传入系统保存的状态 Bundle 实例
-        super.onCreate(savedInstanceState)
+    /** 从系统分享接收到的文本内容（待导航消费后清空） */
+    private var pendingSharedText: String? = null
 
-        // 启用 Android 13+ / 现代全屏边到边体验 (Edge-to-Edge)，使内容延伸到状态栏和导航栏下方
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // 强转 Application 为 SnippetStudioApp 实例，并获取全局单例依赖容器 container (包含了 Repository、Database 等)
+        // 检测系统分享意图 (ACTION_SEND)
+        handleShareIntent(intent)
+
         val appContainer = (application as SnippetStudioApp).container
 
         // setContent 是 Jetpack Compose 的入口扩展函数，用于将 Compose 组件节点树绑定渲染到 Activity 窗口中
@@ -101,10 +109,91 @@ class MainActivity : ComponentActivity() {
                                 .padding(innerPadding)
                         )
                     }
+
+                    // 消费系统分享意图：根据 shareAction 设置决定静默保存或弹出编辑面板
+                    var showSharePanel by remember { mutableStateOf(false) }
+                    var sharePanelText by remember { mutableStateOf("") }
+                    var sharePanelType by remember { mutableStateOf(SnippetType.PROMPT) }
+
+                    LaunchedEffect(pendingSharedText) {
+                        val text = pendingSharedText
+                        if (!text.isNullOrBlank()) {
+                            val detectedType = SnippetType.fromCode(detectShareType(text))
+                            if (settings.shareAction == "silent") {
+                                // 静默模式：直接保存并提示
+                                val snippet = Snippet(
+                                    id = "share_${System.currentTimeMillis()}_${java.util.UUID.randomUUID().toString().take(4)}",
+                                    type = detectedType,
+                                    title = Snippet.generateDefaultTitle(detectedType),
+                                    fileName = "",
+                                    content = text,
+                                    createdAt = System.currentTimeMillis(),
+                                    updatedAt = System.currentTimeMillis(),
+                                    sizeBytes = text.toByteArray().size
+                                )
+                                appContainer.snippetRepository.saveOrUpdate(snippet, settings.repoTreeUri)
+                                showSnackbar(context.getString(R.string.share_saved_silent))
+                                pendingSharedText = null
+                            } else {
+                                // 面板模式：弹出快速编辑面板
+                                sharePanelText = text
+                                sharePanelType = detectedType
+                                showSharePanel = true
+                                pendingSharedText = null
+                            }
+                        }
+                    }
+
+                    // 分享快速编辑面板
+                    SharePanel(
+                        show = showSharePanel,
+                        sharedText = sharePanelText,
+                        detectedType = sharePanelType,
+                        onDismiss = { showSharePanel = false },
+                        onConfirm = { title, type ->
+                            showSharePanel = false
+                            scope.launch {
+                                val snippet = Snippet(
+                                    id = "share_${System.currentTimeMillis()}_${java.util.UUID.randomUUID().toString().take(4)}",
+                                    type = type,
+                                    title = title,
+                                    fileName = "",
+                                    content = sharePanelText,
+                                    createdAt = System.currentTimeMillis(),
+                                    updatedAt = System.currentTimeMillis(),
+                                    sizeBytes = sharePanelText.toByteArray().size
+                                )
+                                appContainer.snippetRepository.saveOrUpdate(snippet, settings.repoTreeUri)
+                                showSnackbar(context.getString(R.string.share_saved_silent))
+                            }
+                        }
+                    )
                 }
             }
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleShareIntent(intent)
+    }
+
+    /** 解析 ACTION_SEND 意图，提取分享文本 */
+    private fun handleShareIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            pendingSharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+        }
+    }
+
+    /** 根据分享文本内容特征自动推断片段类型 */
+    private fun detectShareType(text: String): String {
+        val trimmed = text.trim()
+        return when {
+            trimmed.contains(Regex("</?[a-zA-Z][\\s\\S]*?>")) && trimmed.contains(Regex("<(html|div|span|p|body|head|a |img )")) -> "html"
+            trimmed.contains(Regex("\\b(const|let|var|function|import|export|=>|console\\.log)\\b")) -> "js"
+            trimmed.contains(Regex("(?m)^#{1,6}\\s")) || trimmed.contains(Regex("\\*\\*.*\\*\\*")) -> "markdown"
+            else -> "prompt"
+        }
+    }
 }
 

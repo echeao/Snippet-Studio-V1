@@ -159,7 +159,8 @@ class HomeViewModel(
     /** 将代码片段移入回收站 */
     fun trashSnippet(id: String) {
         viewModelScope.launch {
-            repository.trash(id)
+            val repoUri = settingsRepository?.settingsFlow?.first()?.repoTreeUri ?: ""
+            repository.trash(id, repoUri)
         }
     }
 

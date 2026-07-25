@@ -201,27 +201,45 @@ class SnippetRepository(
 
     /**
      * 将代码片段移入回收站 (软删除)。
+     * 同步将物理文件移入隐藏 `.trash/` 目录，避免用户在文件管理器中看到"已删除"文件。
      */
-    suspend fun trash(id: String) {
+    suspend fun trash(id: String, repoTreeUriStr: String = "") {
+        val snippet = getById(id)
         snippetDao.trash(id, System.currentTimeMillis())
+        snippet?.let { s ->
+            context?.let { ctx ->
+                withContext(Dispatchers.IO) {
+                    LocalFileManager.moveSnippetToTrash(ctx, s, repoTreeUriStr)
+                }
+            }
+        }
     }
 
     /**
      * 从回收站还原代码片段。
+     * 同步将物理文件从 `.trash/` 恢复到原目录。
      */
-    suspend fun restore(id: String) {
+    suspend fun restore(id: String, repoTreeUriStr: String = "") {
+        val snippet = getById(id)
         snippetDao.restore(id)
+        snippet?.let { s ->
+            context?.let { ctx ->
+                withContext(Dispatchers.IO) {
+                    LocalFileManager.restoreSnippetFromTrash(ctx, s, repoTreeUriStr)
+                }
+            }
+        }
     }
 
     /**
-     * 彻底物理删除代码片段（同步清理数据库、SAF 本地物理文件与 Git 沙盒文件）。
+     * 彻底物理删除代码片段（同步清理数据库、`.trash/` 中的物理文件与 Git 沙盒文件）。
      */
     suspend fun purge(id: String, repoTreeUriStr: String = "") {
         val snippet = getById(id)
         if (snippet != null) {
             context?.let { ctx ->
                 withContext(Dispatchers.IO) {
-                    LocalFileManager.deleteSnippetFile(ctx, snippet, repoTreeUriStr)
+                    LocalFileManager.purgeFromTrash(ctx, snippet, repoTreeUriStr)
                 }
             }
             gitManager?.removeSnippetFile(snippet)
@@ -231,9 +249,20 @@ class SnippetRepository(
 
     /**
      * 清理回收站中停放天数超过 [days] 天的过期废弃代码片段。
+     * 同步清理 `.trash/` 目录中对应的物理文件。
      */
-    suspend fun purgeExpired(days: Int = 30) {
+    suspend fun purgeExpired(days: Int = 30, repoTreeUriStr: String = "") {
         val cutoff = System.currentTimeMillis() - (days * 24L * 3600L * 1000L)
+        val expired = snippetDao.allTrashedSnapshot().filter {
+            it.trashedAt != null && it.trashedAt < cutoff
+        }
+        expired.forEach { entity ->
+            context?.let { ctx ->
+                withContext(Dispatchers.IO) {
+                    LocalFileManager.purgeFromTrash(ctx, entity.toDomain(), repoTreeUriStr)
+                }
+            }
+        }
         snippetDao.purgeExpired(cutoff)
     }
 

@@ -59,7 +59,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 fun EditorScreen(
     viewModel: EditorViewModel,
     onBack: () -> Unit,
-    onShowSnackbar: (String) -> Unit
+    onShowSnackbar: (String) -> Unit,
+    onNavigateToHistory: ((String) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -103,7 +104,7 @@ fun EditorScreen(
         if (uiState.saveState == SaveState.UNSAVED) {
             showDiscardDialog = true
         } else {
-            onBack()
+            viewModel.handleBackWithCleanup(onBack)
         }
     }
 
@@ -410,6 +411,17 @@ fun EditorScreen(
                                         showTagDialog = true
                                     }
                                 )
+                                // Prompt 变量填充快捷入口
+                                if (uiState.type == SnippetType.PROMPT && uiState.promptVariables.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.var_menu_fill), style = CaptionStyle) },
+                                        leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_spark), contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            viewModel.toggleVariablePanel()
+                                        }
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = { Text("复制全部代码", style = CaptionStyle) },
                                     leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_copy), contentDescription = null, modifier = Modifier.size(20.dp)) },
@@ -430,6 +442,17 @@ fun EditorScreen(
                                         onShowSnackbar("已保存")
                                     }
                                 )
+                                // Git 历史履历入口
+                                if (uiState.id != "new" && onNavigateToHistory != null) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.menu_git_history), style = CaptionStyle) },
+                                        leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_git), contentDescription = null, modifier = Modifier.size(20.dp)) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onNavigateToHistory(uiState.id)
+                                        }
+                                    )
+                                }
                             }
                         }
                     },
@@ -568,10 +591,20 @@ fun EditorScreen(
         desc = "有未保存的更改，确定离开吗？",
         onConfirm = {
             showDiscardDialog = false
-            onBack()
+            viewModel.handleBackWithCleanup(onBack)
         },
         onDismiss = { showDiscardDialog = false },
         isDanger = true
+    )
+
+    // ===== 弹框 E: Prompt 变量填充面板 =====
+    VariableFillPanel(
+        show = uiState.showVariablePanel,
+        variables = uiState.promptVariables,
+        variableValues = uiState.variableValues,
+        onValueChange = { name, value -> viewModel.onVariableValueChange(name, value) },
+        onApply = { viewModel.applyVariableFill() },
+        onDismiss = { viewModel.toggleVariablePanel() }
     )
 }
 

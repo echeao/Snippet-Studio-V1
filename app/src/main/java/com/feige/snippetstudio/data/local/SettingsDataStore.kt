@@ -53,6 +53,7 @@ class SettingsDataStore(private val context: Context) {
         val AUTO_SYNC_ENABLED = booleanPreferencesKey("auto_sync_enabled")
         val CARD_CLICK_ACTION = stringPreferencesKey("card_click_action")
         val USE_BOILERPLATE = booleanPreferencesKey("use_boilerplate")
+        val SHARE_ACTION = stringPreferencesKey("share_action")
     }
 
     /**
@@ -81,7 +82,8 @@ class SettingsDataStore(private val context: Context) {
             lastSyncTime = prefs[Keys.LAST_SYNC_TIME] ?: 0L,
             autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true,
             cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail",
-            useBoilerplate = prefs[Keys.USE_BOILERPLATE] ?: true
+            useBoilerplate = prefs[Keys.USE_BOILERPLATE] ?: true,
+            shareAction = prefs[Keys.SHARE_ACTION] ?: "panel"
         )
     }
 
@@ -113,7 +115,8 @@ class SettingsDataStore(private val context: Context) {
                 lastSyncTime = prefs[Keys.LAST_SYNC_TIME] ?: 0L,
                 autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true,
                 cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail",
-                useBoilerplate = prefs[Keys.USE_BOILERPLATE] ?: true
+                useBoilerplate = prefs[Keys.USE_BOILERPLATE] ?: true,
+                shareAction = prefs[Keys.SHARE_ACTION] ?: "panel"
             )
             // 调用高阶函数拿到修改后的更新对象
             val updated = transform(current)
@@ -140,6 +143,7 @@ class SettingsDataStore(private val context: Context) {
             prefs[Keys.AUTO_SYNC_ENABLED] = updated.autoSyncEnabled
             prefs[Keys.CARD_CLICK_ACTION] = updated.cardClickAction
             prefs[Keys.USE_BOILERPLATE] = updated.useBoilerplate
+            prefs[Keys.SHARE_ACTION] = updated.shareAction
         }
     }
 }

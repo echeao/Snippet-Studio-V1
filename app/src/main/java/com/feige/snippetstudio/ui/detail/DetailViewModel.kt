@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 
 import com.feige.snippetstudio.data.repo.SettingsRepository
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 
 /**
  * [DetailUiState] 片段详情页面的 UI 响应式状态模型。
@@ -120,7 +121,8 @@ class DetailViewModel(
     /** 将片段移入回收站并触发删除完成回调 [onDeleted] */
     fun trashSnippet(onDeleted: () -> Unit) {
         viewModelScope.launch {
-            repository.trash(snippetId)
+            val repoUri = settingsRepository.settingsFlow.first().repoTreeUri
+            repository.trash(snippetId, repoUri)
             onDeleted()
         }
     }

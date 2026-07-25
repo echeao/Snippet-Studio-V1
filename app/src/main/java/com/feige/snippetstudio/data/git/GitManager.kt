@@ -1,6 +1,9 @@
 package com.feige.snippetstudio.data.git
 
 import android.content.Context
+import com.feige.snippetstudio.model.DiffLine
+import com.feige.snippetstudio.model.DiffType
+import com.feige.snippetstudio.model.GitCommitInfo
 import com.feige.snippetstudio.model.Snippet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -300,6 +303,112 @@ class GitManager(private val context: Context) {
         gitRepoDir.listFiles()?.filter { 
             it.isFile && !it.name.startsWith(".") && !it.name.startsWith("README")
         } ?: emptyList()
+    }
+
+    // ===== Git 历史履历查询 API =====
+
+    /**
+     * 获取指定文件的 Git 提交历史列表。
+     *
+     * @param fileName 文件名
+     * @param folder 文件夹相对路径
+     * @return 提交历史列表（时间降序）
+     */
+    suspend fun getFileHistory(fileName: String, folder: String): Result<List<GitCommitInfo>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val gitDir = File(gitRepoDir, ".git")
+            if (!gitDir.exists()) return@runCatching emptyList()
+
+            val relativePath = if (folder.isBlank()) fileName else "$folder/$fileName"
+
+            Git.open(gitRepoDir).use { git ->
+                val logCommand = git.log().addPath(relativePath)
+                val commits = mutableListOf<GitCommitInfo>()
+
+                for (revCommit in logCommand.call()) {
+                    commits.add(
+                        GitCommitInfo(
+                            commitId = revCommit.name,
+                            shortId = revCommit.name.take(7),
+                            message = revCommit.shortMessage,
+                            author = revCommit.authorIdent.name,
+                            timestamp = revCommit.commitTime * 1000L
+                        )
+                    )
+                }
+                commits
+            }
+        }
+    }
+
+    /**
+     * 获取某次提交中指定文件的完整内容。
+     *
+     * @param commitId 提交 SHA-1
+     * @param relativePath 文件相对路径
+     * @return 文件内容字符串
+     */
+    suspend fun getFileContentAtCommit(commitId: String, relativePath: String): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            Git.open(gitRepoDir).use { git ->
+                val repository = git.repository
+                val commit = repository.parseCommit(org.eclipse.jgit.lib.ObjectId.fromString(commitId))
+                val treeWalk = org.eclipse.jgit.treewalk.TreeWalk.forPath(repository, relativePath, commit.tree)
+                    ?: throw IllegalStateException("文件不存在于此提交: $relativePath")
+                val objectId = treeWalk.getObjectId(0)
+                val loader = repository.open(objectId)
+                String(loader.bytes, Charsets.UTF_8)
+            }
+        }
+    }
+
+    /**
+     * 获取两个版本之间指定文件的简单行级 Diff。
+     *
+     * @param commitIdOld 旧版本 commit ID
+     * @param commitIdNew 新版本 commit ID
+     * @param relativePath 文件相对路径
+     * @return Diff 行列表
+     */
+    suspend fun getFileDiff(commitIdOld: String, commitIdNew: String, relativePath: String): Result<List<DiffLine>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val oldContent = getFileContentAtCommit(commitIdOld, relativePath).getOrDefault("")
+            val newContent = getFileContentAtCommit(commitIdNew, relativePath).getOrDefault("")
+
+            val oldLines = oldContent.lines()
+            val newLines = newContent.lines()
+            val diffLines = mutableListOf<DiffLine>()
+
+            // 简单 LCS-based diff
+            val maxLen = maxOf(oldLines.size, newLines.size)
+            var oldIdx = 0
+            var newIdx = 0
+
+            while (oldIdx < oldLines.size || newIdx < newLines.size) {
+                when {
+                    oldIdx >= oldLines.size -> {
+                        diffLines.add(DiffLine(DiffType.ADD, newLines[newIdx], newLineNum = newIdx + 1))
+                        newIdx++
+                    }
+                    newIdx >= newLines.size -> {
+                        diffLines.add(DiffLine(DiffType.DELETE, oldLines[oldIdx], oldLineNum = oldIdx + 1))
+                        oldIdx++
+                    }
+                    oldLines[oldIdx] == newLines[newIdx] -> {
+                        diffLines.add(DiffLine(DiffType.CONTEXT, oldLines[oldIdx], oldLineNum = oldIdx + 1, newLineNum = newIdx + 1))
+                        oldIdx++
+                        newIdx++
+                    }
+                    else -> {
+                        diffLines.add(DiffLine(DiffType.DELETE, oldLines[oldIdx], oldLineNum = oldIdx + 1))
+                        diffLines.add(DiffLine(DiffType.ADD, newLines[newIdx], newLineNum = newIdx + 1))
+                        oldIdx++
+                        newIdx++
+                    }
+                }
+            }
+            diffLines
+        }
     }
 }
 

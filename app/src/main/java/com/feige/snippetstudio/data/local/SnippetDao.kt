@@ -95,6 +95,12 @@ interface SnippetDao {
      */
     @Query("SELECT * FROM snippets WHERE trashed=0")
     suspend fun allActiveSnapshot(): List<SnippetEntity>
+
+    /**
+     * 获取回收站中所有代码片段的内存快照（用于文件同步时跳过已被用户删除的文件）。
+     */
+    @Query("SELECT * FROM snippets WHERE trashed=1")
+    suspend fun allTrashedSnapshot(): List<SnippetEntity>
 }
 
 

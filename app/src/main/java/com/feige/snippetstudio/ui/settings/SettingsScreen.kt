@@ -184,6 +184,18 @@ fun SettingsScreen(
                 )
                 HorizontalDivider(color = tc.line)
 
+                val shareActionLabel = if (settings.shareAction == "silent") stringResource(R.string.share_action_silent) else stringResource(R.string.share_action_panel)
+                SettingsItem(
+                    iconRes = R.drawable.ic_clipboard,
+                    title = stringResource(R.string.set_share_action),
+                    subTitle = shareActionLabel,
+                    onClick = {
+                        val next = if (settings.shareAction == "silent") "panel" else "silent"
+                        viewModel.updateShareAction(next)
+                    }
+                )
+                HorizontalDivider(color = tc.line)
+
                 val langLabel = when (settings.lang) {
                     "ja" -> stringResource(R.string.lang_ja)
                     "en" -> stringResource(R.string.lang_en)

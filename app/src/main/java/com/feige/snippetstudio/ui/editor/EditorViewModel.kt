@@ -6,8 +6,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.feige.snippetstudio.data.repo.SettingsRepository
 import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.model.PromptVariable
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
+import com.feige.snippetstudio.util.PromptVariableParser
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -50,6 +52,9 @@ enum class SaveState {
  * @param lineCount 总行数
  * @param charCount 总字符数
  * @param isLoading 加载状态
+ * @param promptVariables 检测到的 Prompt 变量列表
+ * @param showVariablePanel 是否显示变量填充面板
+ * @param variableValues 变量填充值映射
  */
 data class EditorUiState(
     val id: String = "",
@@ -74,7 +79,10 @@ data class EditorUiState(
     val currentColumnIndex: Int = 0,
     val lineCount: Int = 1,
     val charCount: Int = 0,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val promptVariables: List<PromptVariable> = emptyList(),
+    val showVariablePanel: Boolean = false,
+    val variableValues: Map<String, String> = emptyMap()
 )
 
 /**
@@ -90,7 +98,8 @@ class EditorViewModel(
     private val snippetId: String,
     private val initialTypeStr: String?,
     private val snippetRepository: SnippetRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val sharedText: String? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EditorUiState(isLoading = true))
@@ -98,6 +107,13 @@ class EditorViewModel(
 
     // 触发防抖自动保存的管道
     private val _autoSaveTrigger = MutableSharedFlow<Unit>(replay = 1)
+
+    /** 标记当前是否为新建片段（用于返回时判断是否需要清理空文件） */
+    private var isNewSnippet = false
+    /** 新建时的初始标题（用于判断用户是否修改过标题） */
+    private var initialTitle: String = ""
+    /** 新建时的初始内容（用于判断用户是否修改过内容） */
+    private var initialContent: String = ""
 
     init {
         // ===== 1. 订阅偏好设置流变更 =====
@@ -136,7 +152,18 @@ class EditorViewModel(
             if (snippetId == "new") {
                 val type = SnippetType.fromCode(initialTypeStr ?: "html")
                 val snippet = snippetRepository.create(type, repoTreeUriStr = currentSettings.repoTreeUri, useBoilerplate = currentSettings.useBoilerplate)
-                initFromSnippet(snippet)
+                isNewSnippet = true
+                initialTitle = snippet.title
+                initialContent = snippet.content
+                // 如果是从系统分享接收的文本，直接覆盖内容
+                if (!sharedText.isNullOrBlank()) {
+                    val sharedSnippet = snippet.copy(content = sharedText)
+                    snippetRepository.saveOrUpdate(sharedSnippet, currentSettings.repoTreeUri)
+                    initialContent = sharedText
+                    initFromSnippet(sharedSnippet)
+                } else {
+                    initFromSnippet(snippet)
+                }
             } else {
                 val snippet = snippetRepository.getById(snippetId)
                 if (snippet != null) {
@@ -225,6 +252,8 @@ class EditorViewModel(
                 saveState = SaveState.UNSAVED
             )
         }
+        // 触发 Prompt 变量解析
+        parsePromptVariables(text)
         triggerAutoSave()
     }
 
@@ -331,10 +360,69 @@ class EditorViewModel(
         }
     }
 
+    // ===== Prompt 变量填空功能 =====
+
+    /** 解析当前文本中的 Prompt 变量（当类型为 PROMPT 时自动触发） */
+    private fun parsePromptVariables(text: String) {
+        val state = _uiState.value
+        if (state.type == SnippetType.PROMPT) {
+            val variables = PromptVariableParser.parse(text)
+            _uiState.update { it.copy(promptVariables = variables) }
+        } else {
+            _uiState.update { it.copy(promptVariables = emptyList()) }
+        }
+    }
+
+    /** 切换变量填充面板显隐 */
+    fun toggleVariablePanel() {
+        _uiState.update { it.copy(showVariablePanel = !it.showVariablePanel) }
+    }
+
+    /** 更新单个变量的填充值 */
+    fun onVariableValueChange(name: String, value: String) {
+        _uiState.update {
+            it.copy(variableValues = it.variableValues + (name to value))
+        }
+    }
+
+    /** 应用变量填充：将所有 {{name}} 替换为对应值，生成新内容 */
+    fun applyVariableFill() {
+        val state = _uiState.value
+        val filledText = PromptVariableParser.fill(state.textFieldValue.text, state.variableValues)
+        val newTfv = TextFieldValue(filledText)
+        onTextFieldValueChange(newTfv)
+        _uiState.update { it.copy(showVariablePanel = false) }
+    }
+
+    /** 获取变量填充后的预览文本（不修改原文） */
+    fun getFilledPreview(): String {
+        val state = _uiState.value
+        return PromptVariableParser.fill(state.textFieldValue.text, state.variableValues)
+    }
+
     /** 手动强制立即执行保存 (忽略防抖) */
     fun forceSaveNow() {
         viewModelScope.launch {
             performSave()
+        }
+    }
+
+    /**
+     * 处理返回导航：若为新建片段且用户未修改标题或内容，则删除该空片段（视为误触/撤销）。
+     *
+     * @param onBack 实际执行返回的回调
+     */
+    fun handleBackWithCleanup(onBack: () -> Unit) {
+        val state = _uiState.value
+        if (isNewSnippet && state.title == initialTitle && state.textFieldValue.text == initialContent) {
+            // 用户未做任何有意义修改，删除这个空片段
+            viewModelScope.launch {
+                val currentSettings = settingsRepository.settingsFlow.first()
+                snippetRepository.purge(state.id, currentSettings.repoTreeUri)
+                onBack()
+            }
+        } else {
+            onBack()
         }
     }
 
@@ -370,11 +458,12 @@ class EditorViewModel(
             snippetId: String,
             initialTypeStr: String?,
             snippetRepository: SnippetRepository,
-            settingsRepository: SettingsRepository
+            settingsRepository: SettingsRepository,
+            sharedText: String? = null
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return EditorViewModel(snippetId, initialTypeStr, snippetRepository, settingsRepository) as T
+                return EditorViewModel(snippetId, initialTypeStr, snippetRepository, settingsRepository, sharedText) as T
             }
         }
     }

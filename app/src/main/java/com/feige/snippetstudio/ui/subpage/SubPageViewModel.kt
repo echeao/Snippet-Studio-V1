@@ -211,14 +211,16 @@ class SubPageViewModel(
     /** 从回收站恢复指定的代码片段 */
     fun restoreSnippet(id: String) {
         viewModelScope.launch {
-            snippetRepository.restore(id)
+            val repoUri = settingsRepository.settingsFlow.first().repoTreeUri
+            snippetRepository.restore(id, repoUri)
         }
     }
 
     /** 从回收站彻底永久删除代码片段 */
     fun purgeSnippet(id: String) {
         viewModelScope.launch {
-            snippetRepository.purge(id)
+            val repoUri = settingsRepository.settingsFlow.first().repoTreeUri
+            snippetRepository.purge(id, repoUri)
         }
     }
 

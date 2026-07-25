@@ -19,3 +19,4 @@ debug.keystore
 .idea/*
 RULES.md
 docs/多配色主题切换功能 — 详细实施方案.md
+.vscode/

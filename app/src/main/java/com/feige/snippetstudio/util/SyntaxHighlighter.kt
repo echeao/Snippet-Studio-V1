@@ -15,6 +15,8 @@ import java.util.regex.Pattern
  * 核心原理：使用正则表达式匹配各种代码元素（关键字、字符串、数字、注释、标签、变量等），
  * 并利用 Jetpack Compose 的 [AnnotatedString] 与 [SpanStyle] 给匹配到的字符区间叠加富文本色彩与字重，
  * 自动适配浅色 (Light) 和深色 (Dark) 主题模式。
+ *
+ * 支持语言：HTML, JS, CSS, JSON, Python, Markdown, Prompt, XML, YAML, Shell
  */
 object SyntaxHighlighter {
 
@@ -65,6 +67,29 @@ object SyntaxHighlighter {
         fontWeight = FontWeight.Bold
     )
 
+    /** 获取 CSS 选择器样式 */
+    private fun getSelectorStyle(isDark: Boolean) = SpanStyle(
+        color = if (isDark) Color(0xFF82AAFF) else Color(0xFF1565C0),
+        fontWeight = FontWeight.SemiBold
+    )
+
+    /** 获取装饰器/注解样式 (Python @decorator) */
+    private fun getDecoratorStyle(isDark: Boolean) = SpanStyle(
+        color = if (isDark) Color(0xFFFFCB6B) else Color(0xFFF57F17),
+        fontStyle = FontStyle.Italic
+    )
+
+    /** 获取 YAML key 样式 */
+    private fun getYamlKeyStyle(isDark: Boolean) = SpanStyle(
+        color = if (isDark) Color(0xFF80CBC4) else Color(0xFF00796B),
+        fontWeight = FontWeight.SemiBold
+    )
+
+    /** 获取 Shell 变量样式 ($var) */
+    private fun getShellVarStyle(isDark: Boolean) = SpanStyle(
+        color = if (isDark) Color(0xFFFF5370) else Color(0xFFD81B60)
+    )
+
     // ===== 语法匹配正则表达式模式 (Regex Patterns) =====
 
     private val JS_KEYWORD_PATTERN = Pattern.compile(
@@ -101,16 +126,67 @@ object SyntaxHighlighter {
     )
 
     private val PROMPT_VAR_PATTERN = Pattern.compile(
-        "\\{\\{?[a-zA-Z0-9_]+\\}?\\}|\\$[a-zA-Z0-9_]+"
+        "\\{\\{?[a-zA-Z0-9_\\u4e00-\\u9fa5]+\\}?\\}|\\$[a-zA-Z0-9_]+"
+    )
+
+    // ===== 新增语言正则模式 =====
+
+    private val JSON_KEY_PATTERN = Pattern.compile(
+        "\"[^\"\\\\]*\"(?=\\s*:)"
+    )
+    private val JSON_BOOL_PATTERN = Pattern.compile(
+        "\\b(true|false|null)\\b"
+    )
+
+    private val PYTHON_KEYWORD_PATTERN = Pattern.compile(
+        "\\b(def|class|import|from|return|if|elif|else|for|while|try|except|finally|with|as|yield|lambda|pass|break|continue|and|or|not|in|is|None|True|False|raise|global|nonlocal|assert|del|print)\\b"
+    )
+    private val PYTHON_COMMENT_PATTERN = Pattern.compile(
+        "#.*"
+    )
+    private val PYTHON_STRING_PATTERN = Pattern.compile(
+        "\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?'''|\"([^\"\\\\]|\\\\.)*\"|'([^'\\\\]|\\\\.)*'"
+    )
+    private val PYTHON_DECORATOR_PATTERN = Pattern.compile(
+        "@[a-zA-Z_][a-zA-Z0-9_.]*"
+    )
+
+    private val CSS_SELECTOR_PATTERN = Pattern.compile(
+        "(?m)^[^{}@/][^{}]*(?=\\s*\\{)"
+    )
+    private val CSS_PROP_PATTERN = Pattern.compile(
+        "[a-zA-Z-]+(?=\\s*:)"
+    )
+    private val CSS_COMMENT_PATTERN = Pattern.compile(
+        "/\\*[\\s\\S]*?\\*/"
+    )
+
+    private val YAML_KEY_PATTERN = Pattern.compile(
+        "(?m)^\\s*[a-zA-Z0-9_.-]+(?=\\s*:)"
+    )
+    private val YAML_COMMENT_PATTERN = Pattern.compile(
+        "#.*"
+    )
+
+    private val SHELL_KEYWORD_PATTERN = Pattern.compile(
+        "\\b(if|then|else|elif|fi|for|while|do|done|case|esac|function|echo|export|source|cd|ls|grep|awk|sed|cat|mkdir|rm|cp|mv|chmod|sudo|apt|npm|git|docker)\\b"
+    )
+    private val SHELL_VAR_PATTERN = Pattern.compile(
+        "\\$\\{?[a-zA-Z_][a-zA-Z0-9_]*\\}?|\\$\\([^)]*\\)"
+    )
+    private val SHELL_COMMENT_PATTERN = Pattern.compile(
+        "#.*"
+    )
+
+    private val HTML_SCRIPT_BLOCK = Pattern.compile(
+        "(?s)<script[^>]*>(.*?)</script>"
+    )
+    private val HTML_STYLE_BLOCK = Pattern.compile(
+        "(?s)<style[^>]*>(.*?)</style>"
     )
 
     /**
      * 对给定的文本按照指定片段类型进行语法高亮分析。
-     *
-     * 教学解析：
-     * 1. `buildAnnotatedString`: Compose 提供的文本构造器，允许在同一个 String 上追加不同颜色的 `SpanStyle`。
-     * 2. 覆盖次序逻辑 (Precedence Ordering): 先匹配关键字/数字，再匹配字符串，最后匹配注释。
-     *    后添加的 `addStyle` 会覆盖先添加的重叠区间样式，因此注释在最后遍历，可确保被注释掉的代码统一变为灰色斜体。
      *
      * @param text 纯代码文本
      * @param type 片段类型 (JS, HTML, Markdown, Prompt)
@@ -121,15 +197,40 @@ object SyntaxHighlighter {
         if (text.isEmpty()) return AnnotatedString("")
 
         return buildAnnotatedString {
-            // 先将原始字符串无样式追加到构造器中
             append(text)
-
-            // 根据传入的 SnippetType 语法分流分词
             when (type) {
                 SnippetType.JS -> highlightJs(text, isDark)
                 SnippetType.HTML -> highlightHtml(text, isDark)
                 SnippetType.MARKDOWN -> highlightMarkdown(text, isDark)
                 SnippetType.PROMPT -> highlightPrompt(text, isDark)
+            }
+        }
+    }
+
+    /**
+     * 根据 [SyntaxLanguage] 进行语法高亮（支持 11 种语言）。
+     * 对超大文本进行截断保护，仅高亮前 8000 字符。
+     */
+    fun highlightByLanguage(text: String, language: SyntaxLanguage, isDark: Boolean): AnnotatedString {
+        if (text.isEmpty()) return AnnotatedString("")
+
+        // 性能保护：超大文本仅高亮前 8000 字符
+        val effectiveText = if (text.length > 8000) text.substring(0, 8000) else text
+
+        return buildAnnotatedString {
+            append(text)
+            when (language) {
+                SyntaxLanguage.HTML -> highlightHtml(effectiveText, isDark)
+                SyntaxLanguage.JS -> highlightJs(effectiveText, isDark)
+                SyntaxLanguage.CSS -> highlightCss(effectiveText, isDark)
+                SyntaxLanguage.JSON -> highlightJson(effectiveText, isDark)
+                SyntaxLanguage.PYTHON -> highlightPython(effectiveText, isDark)
+                SyntaxLanguage.MARKDOWN -> highlightMarkdown(effectiveText, isDark)
+                SyntaxLanguage.PROMPT -> highlightPrompt(effectiveText, isDark)
+                SyntaxLanguage.XML -> highlightXml(effectiveText, isDark)
+                SyntaxLanguage.YAML -> highlightYaml(effectiveText, isDark)
+                SyntaxLanguage.SHELL -> highlightShell(effectiveText, isDark)
+                SyntaxLanguage.PLAIN -> { /* 无高亮 */ }
             }
         }
     }
@@ -167,30 +268,89 @@ object SyntaxHighlighter {
     }
 
 
-    /** HTML 标记语言高亮分词 */
+    /** HTML 标记语言高亮分词（支持内嵌 JS/CSS 混合高亮） */
     private fun AnnotatedString.Builder.highlightHtml(text: String, isDark: Boolean) {
+        // 1. 先对内嵌 <script> 区块应用 JS 高亮
+        val scriptMatcher = HTML_SCRIPT_BLOCK.matcher(text)
+        while (scriptMatcher.find()) {
+            val innerStart = scriptMatcher.start(1)
+            val innerEnd = scriptMatcher.end(1)
+            if (innerStart < innerEnd) {
+                val jsContent = text.substring(innerStart, innerEnd)
+                applyJsHighlightInRange(jsContent, innerStart, isDark)
+            }
+        }
+
+        // 2. 对内嵌 <style> 区块应用 CSS 高亮
+        val styleMatcher = HTML_STYLE_BLOCK.matcher(text)
+        while (styleMatcher.find()) {
+            val innerStart = styleMatcher.start(1)
+            val innerEnd = styleMatcher.end(1)
+            if (innerStart < innerEnd) {
+                val cssContent = text.substring(innerStart, innerEnd)
+                applyCssHighlightInRange(cssContent, innerStart, isDark)
+            }
+        }
+
+        // 3. HTML 标签高亮
         val tagMatcher = HTML_TAG_PATTERN.matcher(text)
         val tagStyle = getTagStyle(isDark)
         while (tagMatcher.find()) {
             addStyle(tagStyle, tagMatcher.start(), tagMatcher.end())
         }
 
+        // 4. 属性名高亮
         val attrMatcher = HTML_ATTR_NAME_PATTERN.matcher(text)
         val attrStyle = getAttrStyle(isDark)
         while (attrMatcher.find()) {
             addStyle(attrStyle, attrMatcher.start(), attrMatcher.end())
         }
 
+        // 5. 字符串高亮
         val strMatcher = JS_STRING_PATTERN.matcher(text)
         val strStyle = getStringStyle(isDark)
         while (strMatcher.find()) {
             addStyle(strStyle, strMatcher.start(), strMatcher.end())
         }
 
+        // 6. HTML 注释高亮（最高优先级）
         val cmtMatcher = HTML_COMMENT_PATTERN.matcher(text)
         val cmtStyle = getCommentStyle(isDark)
         while (cmtMatcher.find()) {
             addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
+        }
+    }
+
+    /** 在指定偏移范围内应用 JS 高亮（用于 HTML 内嵌 script） */
+    private fun AnnotatedString.Builder.applyJsHighlightInRange(jsText: String, offset: Int, isDark: Boolean) {
+        val kwMatcher = JS_KEYWORD_PATTERN.matcher(jsText)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, offset + kwMatcher.start(), offset + kwMatcher.end())
+        }
+        val strMatcher = JS_STRING_PATTERN.matcher(jsText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+        val cmtMatcher = JS_COMMENT_PATTERN.matcher(jsText)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, offset + cmtMatcher.start(), offset + cmtMatcher.end())
+        }
+    }
+
+    /** 在指定偏移范围内应用 CSS 高亮（用于 HTML 内嵌 style） */
+    private fun AnnotatedString.Builder.applyCssHighlightInRange(cssText: String, offset: Int, isDark: Boolean) {
+        val propMatcher = CSS_PROP_PATTERN.matcher(cssText)
+        val propStyle = getAttrStyle(isDark)
+        while (propMatcher.find()) {
+            addStyle(propStyle, offset + propMatcher.start(), offset + propMatcher.end())
+        }
+        val numMatcher = NUMBER_PATTERN.matcher(cssText)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, offset + numMatcher.start(), offset + numMatcher.end())
         }
     }
 
@@ -221,6 +381,174 @@ object SyntaxHighlighter {
         val varStyle = getVariableStyle(isDark)
         while (varMatcher.find()) {
             addStyle(varStyle, varMatcher.start(), varMatcher.end())
+        }
+    }
+
+    /** JSON 语法高亮：key + string + number + boolean/null */
+    private fun AnnotatedString.Builder.highlightJson(text: String, isDark: Boolean) {
+        val keyMatcher = JSON_KEY_PATTERN.matcher(text)
+        val keyStyle = getTagStyle(isDark)
+        while (keyMatcher.find()) {
+            addStyle(keyStyle, keyMatcher.start(), keyMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(text)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, strMatcher.start(), strMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(text)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, numMatcher.start(), numMatcher.end())
+        }
+
+        val boolMatcher = JSON_BOOL_PATTERN.matcher(text)
+        val boolStyle = getKeywordStyle(isDark)
+        while (boolMatcher.find()) {
+            addStyle(boolStyle, boolMatcher.start(), boolMatcher.end())
+        }
+    }
+
+    /** Python 语法高亮 */
+    private fun AnnotatedString.Builder.highlightPython(text: String, isDark: Boolean) {
+        val kwMatcher = PYTHON_KEYWORD_PATTERN.matcher(text)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, kwMatcher.start(), kwMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(text)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, numMatcher.start(), numMatcher.end())
+        }
+
+        val strMatcher = PYTHON_STRING_PATTERN.matcher(text)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, strMatcher.start(), strMatcher.end())
+        }
+
+        val decMatcher = PYTHON_DECORATOR_PATTERN.matcher(text)
+        val decStyle = getDecoratorStyle(isDark)
+        while (decMatcher.find()) {
+            addStyle(decStyle, decMatcher.start(), decMatcher.end())
+        }
+
+        val cmtMatcher = PYTHON_COMMENT_PATTERN.matcher(text)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
+        }
+    }
+
+    /** CSS 语法高亮 */
+    private fun AnnotatedString.Builder.highlightCss(text: String, isDark: Boolean) {
+        val selMatcher = CSS_SELECTOR_PATTERN.matcher(text)
+        val selStyle = getSelectorStyle(isDark)
+        while (selMatcher.find()) {
+            addStyle(selStyle, selMatcher.start(), selMatcher.end())
+        }
+
+        val propMatcher = CSS_PROP_PATTERN.matcher(text)
+        val propStyle = getAttrStyle(isDark)
+        while (propMatcher.find()) {
+            addStyle(propStyle, propMatcher.start(), propMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(text)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, numMatcher.start(), numMatcher.end())
+        }
+
+        val cmtMatcher = CSS_COMMENT_PATTERN.matcher(text)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
+        }
+    }
+
+    /** XML 语法高亮（复用 HTML 逻辑） */
+    private fun AnnotatedString.Builder.highlightXml(text: String, isDark: Boolean) {
+        val tagMatcher = HTML_TAG_PATTERN.matcher(text)
+        val tagStyle = getTagStyle(isDark)
+        while (tagMatcher.find()) {
+            addStyle(tagStyle, tagMatcher.start(), tagMatcher.end())
+        }
+
+        val attrMatcher = HTML_ATTR_NAME_PATTERN.matcher(text)
+        val attrStyle = getAttrStyle(isDark)
+        while (attrMatcher.find()) {
+            addStyle(attrStyle, attrMatcher.start(), attrMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(text)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, strMatcher.start(), strMatcher.end())
+        }
+
+        val cmtMatcher = HTML_COMMENT_PATTERN.matcher(text)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
+        }
+    }
+
+    /** YAML 语法高亮 */
+    private fun AnnotatedString.Builder.highlightYaml(text: String, isDark: Boolean) {
+        val keyMatcher = YAML_KEY_PATTERN.matcher(text)
+        val keyStyle = getYamlKeyStyle(isDark)
+        while (keyMatcher.find()) {
+            addStyle(keyStyle, keyMatcher.start(), keyMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(text)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, strMatcher.start(), strMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(text)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, numMatcher.start(), numMatcher.end())
+        }
+
+        val cmtMatcher = YAML_COMMENT_PATTERN.matcher(text)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
+        }
+    }
+
+    /** Shell/Bash 语法高亮 */
+    private fun AnnotatedString.Builder.highlightShell(text: String, isDark: Boolean) {
+        val kwMatcher = SHELL_KEYWORD_PATTERN.matcher(text)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, kwMatcher.start(), kwMatcher.end())
+        }
+
+        val varMatcher = SHELL_VAR_PATTERN.matcher(text)
+        val varStyle = getShellVarStyle(isDark)
+        while (varMatcher.find()) {
+            addStyle(varStyle, varMatcher.start(), varMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(text)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, strMatcher.start(), strMatcher.end())
+        }
+
+        val cmtMatcher = SHELL_COMMENT_PATTERN.matcher(text)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
         }
     }
 }

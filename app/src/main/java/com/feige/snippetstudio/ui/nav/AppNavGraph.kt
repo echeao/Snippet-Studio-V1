@@ -15,6 +15,8 @@ import com.feige.snippetstudio.ui.editor.EditorScreen
 import com.feige.snippetstudio.ui.editor.EditorViewModel
 import com.feige.snippetstudio.ui.files.FilesScreen
 import com.feige.snippetstudio.ui.files.FilesViewModel
+import com.feige.snippetstudio.ui.history.HistoryScreen
+import com.feige.snippetstudio.ui.history.HistoryViewModel
 import com.feige.snippetstudio.ui.home.HomeScreen
 import com.feige.snippetstudio.ui.home.HomeViewModel
 import com.feige.snippetstudio.ui.settings.SettingsScreen
@@ -105,24 +107,34 @@ fun AppNavGraph(
                     type = NavType.StringType
                     nullable = true
                     defaultValue = "html"
+                },
+                navArgument("shared") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id") ?: "new"
             val type = backStackEntry.arguments?.getString("type") ?: "html"
+            val sharedText = backStackEntry.arguments?.getString("shared")?.let {
+                try { java.net.URLDecoder.decode(it, "UTF-8") } catch (_: Exception) { null }
+            }
 
             val viewModel: EditorViewModel = viewModel(
                 factory = EditorViewModel.factory(
                     snippetId = id,
                     initialTypeStr = type,
                     snippetRepository = appContainer.snippetRepository,
-                    settingsRepository = appContainer.settingsRepository
+                    settingsRepository = appContainer.settingsRepository,
+                    sharedText = sharedText
                 )
             )
             EditorScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
-                onShowSnackbar = onShowSnackbar
+                onShowSnackbar = onShowSnackbar,
+                onNavigateToHistory = { id -> navController.navigate(Screen.History.of(id)) }
             )
         }
 
@@ -144,7 +156,8 @@ fun AppNavGraph(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
                 onNavigateToEditor = { targetId -> navController.navigate(Screen.Editor.edit(targetId)) },
-                onShowSnackbar = onShowSnackbar
+                onShowSnackbar = onShowSnackbar,
+                onNavigateToHistory = { id -> navController.navigate(Screen.History.of(id)) }
             )
         }
 
@@ -164,6 +177,27 @@ fun AppNavGraph(
                 )
             )
             SubPageScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+                onShowSnackbar = onShowSnackbar
+            )
+        }
+
+        // ===== 7. Git 历史履历页面 (History Screen) =====
+        composable(
+            route = Screen.History.route,
+            arguments = listOf(navArgument("id") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id") ?: ""
+
+            val viewModel: HistoryViewModel = viewModel(
+                factory = HistoryViewModel.factory(
+                    snippetId = id,
+                    snippetRepository = appContainer.snippetRepository,
+                    gitManager = appContainer.gitManager
+                )
+            )
+            HistoryScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() },
                 onShowSnackbar = onShowSnackbar

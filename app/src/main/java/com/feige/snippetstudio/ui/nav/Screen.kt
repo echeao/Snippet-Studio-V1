@@ -18,11 +18,13 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
 
     /** 编辑器页面：新建代码片段或修改既有片段 */
-    object Editor : Screen("editor/{id}?type={type}") {
+    object Editor : Screen("editor/{id}?type={type}&shared={shared}") {
         /** 构建新建指定类型片段的路由路径 */
         fun new(type: String) = "editor/new?type=$type"
         /** 构建编辑已有片段的路由路径 */
         fun edit(id: String) = "editor/$id"
+        /** 构建从系统分享接收文本的路由路径 */
+        fun share(sharedText: String, type: String = "prompt") = "editor/new?type=$type&shared=${java.net.URLEncoder.encode(sharedText, "UTF-8")}"
     }
 
     /** 片段详情查看页面 */
@@ -35,6 +37,12 @@ sealed class Screen(val route: String) {
     object SubPage : Screen("sub/{key}") {
         /** 构建子页面路由路径 */
         fun of(key: String) = "sub/$key"
+    }
+
+    /** Git 历史履历页面 */
+    object History : Screen("history/{id}") {
+        /** 构建查看指定片段 Git 历史的路由路径 */
+        fun of(id: String) = "history/$id"
     }
 }
 

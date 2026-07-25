@@ -51,7 +51,8 @@ fun DetailScreen(
     viewModel: DetailViewModel,
     onBack: () -> Unit,
     onNavigateToEditor: (String) -> Unit,
-    onShowSnackbar: (String) -> Unit
+    onShowSnackbar: (String) -> Unit,
+    onNavigateToHistory: ((String) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -99,6 +100,17 @@ fun DetailScreen(
                         style = SectionTitleStyle,
                         color = tc.text
                     )
+                },
+                actions = {
+                    if (onNavigateToHistory != null && snippet != null) {
+                        IconButton(onClick = { onNavigateToHistory(snippet.id) }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_git),
+                                contentDescription = stringResource(R.string.menu_git_history),
+                                tint = tc.text
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = tc.bg

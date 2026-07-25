@@ -75,6 +75,15 @@ class SettingsViewModel(
         }
     }
 
+    /** 更新系统分享剪藏接收行为 ("panel": 编辑面板, "silent": 静默保存) */
+    fun updateShareAction(action: String) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                it.copy(shareAction = action)
+            }
+        }
+    }
+
     /**
      * 将数据库中的全量代码片段导出为选定 SAF 目录下的 JSON 备份文件。
      *

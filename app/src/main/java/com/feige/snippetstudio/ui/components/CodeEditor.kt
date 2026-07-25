@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.SyntaxHighlighter
+import com.feige.snippetstudio.util.SyntaxLanguage
+import com.feige.snippetstudio.util.SyntaxLanguageDetector
 import androidx.compose.ui.unit.Dp
 
 /**
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.Dp
  * @param fontSp 字体大小 (sp)
  * @param currentLineIndex 当前光标所在的行索引 (0-based)
  * @param snippetType 代码片段类型
+ * @param syntaxLanguage 语法高亮语言（可选，传入则优先使用，否则根据 snippetType 推断）
  * @param isWordWrap 是否开启自动换行
  * @param showLineNumbers 是否显示行号栏
  * @param highlightCurrentLine 是否高亮当前行背景
@@ -53,6 +56,7 @@ fun CodeEditor(
     fontSp: Float,
     currentLineIndex: Int,
     snippetType: SnippetType = SnippetType.HTML,
+    syntaxLanguage: SyntaxLanguage? = null,
     isWordWrap: Boolean = true,
     showLineNumbers: Boolean = true,
     highlightCurrentLine: Boolean = true,
@@ -62,10 +66,18 @@ fun CodeEditor(
     val tc = LocalThemeColors.current
     val isDark = tc.isDark
 
+    // 确定实际使用的语法语言
+    val effectiveLanguage = syntaxLanguage ?: when (snippetType) {
+        SnippetType.HTML -> SyntaxLanguage.HTML
+        SnippetType.JS -> SyntaxLanguage.JS
+        SnippetType.MARKDOWN -> SyntaxLanguage.MARKDOWN
+        SnippetType.PROMPT -> SyntaxLanguage.PROMPT
+    }
+
     // 记住并构建语法高亮转换器 VisualTransformation
-    val syntaxTransformation = remember(snippetType, isDark) {
+    val syntaxTransformation = remember(effectiveLanguage, isDark) {
         VisualTransformation { text ->
-            val highlighted = SyntaxHighlighter.highlight(text.text, snippetType, isDark)
+            val highlighted = SyntaxHighlighter.highlightByLanguage(text.text, effectiveLanguage, isDark)
             TransformedText(highlighted, OffsetMapping.Identity)
         }
     }

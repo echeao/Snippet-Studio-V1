@@ -24,6 +24,172 @@ import java.util.UUID
  */
 object LocalFileManager {
     private const val TAG = "LocalFileManager"
+    private const val TRASH_DIR = ".trash"
+
+    /**
+     * 软删除时将物理文件移入隐藏回收站目录 `.trash/`。
+     * 若目标已存在同名文件则追加时间戳后缀避免覆盖。
+     */
+    fun moveSnippetToTrash(
+        context: Context,
+        snippet: Snippet,
+        repoTreeUriStr: String
+    ) {
+        try {
+            val fileName = if (snippet.fileName.isBlank()) snippet.defaultFileName else snippet.fileName
+
+            if (repoTreeUriStr.isNotBlank()) {
+                val treeUri = Uri.parse(repoTreeUriStr)
+                val docTree = DocumentFile.fromTreeUri(context, treeUri)
+                if (docTree != null && docTree.exists() && docTree.isDirectory) {
+                    val trashDir = docTree.findFile(TRASH_DIR)?.takeIf { it.isDirectory }
+                        ?: docTree.createDirectory(TRASH_DIR)
+                    val sourceDoc = docTree.findFile(fileName)
+                    if (sourceDoc != null && trashDir != null) {
+                        val targetName = resolveTrashName(trashDir, fileName)
+                        val moved = sourceDoc.renameTo(targetName)
+                        if (!moved) {
+                            copyAndDeleteDoc(context, sourceDoc, trashDir, targetName)
+                        }
+                    }
+                    return
+                }
+            }
+
+            val localDir = getDefaultRepoDir(context)
+            val trashDir = File(localDir, TRASH_DIR).apply { if (!exists()) mkdirs() }
+            val sourceDir = if (snippet.folder.isBlank()) localDir else File(localDir, snippet.folder)
+            val sourceFile = File(sourceDir, fileName)
+            if (sourceFile.exists()) {
+                val targetFile = File(trashDir, resolveTrashNameLocal(trashDir, fileName))
+                sourceFile.copyTo(targetFile, overwrite = true)
+                sourceFile.delete()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error moving snippet to trash: ${snippet.fileName}", e)
+        }
+    }
+
+    /**
+     * 从隐藏回收站目录 `.trash/` 恢复物理文件到原路径。
+     */
+    fun restoreSnippetFromTrash(
+        context: Context,
+        snippet: Snippet,
+        repoTreeUriStr: String
+    ) {
+        try {
+            val fileName = if (snippet.fileName.isBlank()) snippet.defaultFileName else snippet.fileName
+
+            if (repoTreeUriStr.isNotBlank()) {
+                val treeUri = Uri.parse(repoTreeUriStr)
+                val docTree = DocumentFile.fromTreeUri(context, treeUri)
+                if (docTree != null && docTree.exists() && docTree.isDirectory) {
+                    val trashDir = docTree.findFile(TRASH_DIR) ?: return
+                    val trashedDoc = findTrashedDoc(trashDir, fileName)
+                    if (trashedDoc != null) {
+                        val targetDir = if (snippet.folder.isBlank()) docTree
+                            else docTree.findFile(snippet.folder) ?: docTree
+                        val restored = trashedDoc.renameTo(fileName)
+                        if (!restored) {
+                            copyAndDeleteDoc(context, trashedDoc, targetDir, fileName)
+                        }
+                    }
+                    return
+                }
+            }
+
+            val localDir = getDefaultRepoDir(context)
+            val trashDir = File(localDir, TRASH_DIR)
+            if (!trashDir.exists()) return
+            val trashedFile = findTrashedFile(trashDir, fileName)
+            if (trashedFile != null) {
+                val targetDir = if (snippet.folder.isBlank()) localDir
+                    else File(localDir, snippet.folder).apply { if (!exists()) mkdirs() }
+                trashedFile.copyTo(File(targetDir, fileName), overwrite = true)
+                trashedFile.delete()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error restoring snippet from trash: ${snippet.fileName}", e)
+        }
+    }
+
+    /**
+     * 从 `.trash/` 目录中彻底物理删除文件。
+     */
+    fun purgeFromTrash(
+        context: Context,
+        snippet: Snippet,
+        repoTreeUriStr: String
+    ) {
+        try {
+            val fileName = if (snippet.fileName.isBlank()) snippet.defaultFileName else snippet.fileName
+
+            if (repoTreeUriStr.isNotBlank()) {
+                val treeUri = Uri.parse(repoTreeUriStr)
+                val docTree = DocumentFile.fromTreeUri(context, treeUri)
+                if (docTree != null && docTree.exists() && docTree.isDirectory) {
+                    val trashDir = docTree.findFile(TRASH_DIR) ?: return
+                    findTrashedDoc(trashDir, fileName)?.delete()
+                    return
+                }
+            }
+
+            val localDir = getDefaultRepoDir(context)
+            val trashDir = File(localDir, TRASH_DIR)
+            if (!trashDir.exists()) return
+            findTrashedFile(trashDir, fileName)?.delete()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error purging from trash: ${snippet.fileName}", e)
+        }
+    }
+
+    private fun resolveTrashName(trashDir: DocumentFile, fileName: String): String {
+        if (trashDir.findFile(fileName) == null) return fileName
+        val base = fileName.substringBeforeLast(".")
+        val ext = fileName.substringAfterLast(".", "")
+        return "${base}_${System.currentTimeMillis()}.$ext"
+    }
+
+    private fun resolveTrashNameLocal(trashDir: File, fileName: String): String {
+        if (!File(trashDir, fileName).exists()) return fileName
+        val base = fileName.substringBeforeLast(".")
+        val ext = fileName.substringAfterLast(".", "")
+        return "${base}_${System.currentTimeMillis()}.$ext"
+    }
+
+    private fun findTrashedDoc(trashDir: DocumentFile, originalName: String): DocumentFile? {
+        trashDir.findFile(originalName)?.let { return it }
+        val base = originalName.substringBeforeLast(".")
+        return trashDir.listFiles().firstOrNull {
+            it.isFile && it.name?.startsWith(base) == true
+        }
+    }
+
+    private fun findTrashedFile(trashDir: File, originalName: String): File? {
+        val exact = File(trashDir, originalName)
+        if (exact.exists()) return exact
+        val base = originalName.substringBeforeLast(".")
+        return trashDir.listFiles()?.firstOrNull {
+            it.isFile && it.name.startsWith(base)
+        }
+    }
+
+    private fun copyAndDeleteDoc(
+        context: Context,
+        source: DocumentFile,
+        targetDir: DocumentFile,
+        targetName: String
+    ) {
+        val mimeType = source.type ?: "application/octet-stream"
+        val newDoc = targetDir.createFile(mimeType, targetName) ?: return
+        context.contentResolver.openInputStream(source.uri)?.use { input ->
+            context.contentResolver.openOutputStream(newDoc.uri, "wt")?.use { output ->
+                input.copyTo(output)
+            }
+        }
+        source.delete()
+    }
 
     /**
      * 获取默认的内部应用私有存储目录 `snippets`。
@@ -58,6 +224,9 @@ object LocalFileManager {
         folderDao: FolderDao? = null
     ) {
         try {
+            // 预加载回收站快照，同步时跳过已被用户删除的文件，避免重启后“复活”
+            val trashedSnapshots = snippetDao.allTrashedSnapshot()
+
             if (repoTreeUriStr.isNotBlank()) {
                 val treeUri = Uri.parse(repoTreeUriStr)
                 val docTree = DocumentFile.fromTreeUri(context, treeUri)
@@ -70,6 +239,9 @@ object LocalFileManager {
                             folderDao?.upsert(FolderEntity(path = folderPath))
                         } else if (doc.isFile && doc.name != null && !doc.name!!.startsWith(".")) {
                             val name = doc.name!!
+                            val title = name.substringBeforeLast(".")
+                            // 跳过回收站中已存在的文件（用户已删除，不应重新导入）
+                            if (trashedSnapshots.any { it.fileName == name || it.title == title }) continue
                             val type = SnippetType.fromFileName(name)
                             readAndSyncDocumentFile(context, doc, name, type, snippetDao)
                         }
@@ -90,6 +262,9 @@ object LocalFileManager {
                 } else if (file.isFile && !file.name.startsWith(".")) {
                     val relativeParent = file.parentFile?.relativeToOrNull(localDir)?.path?.replace('\\', '/') ?: ""
                     val name = file.name
+                    val title = name.substringBeforeLast(".")
+                    // 跳过回收站中已存在的文件（用户已删除，不应重新导入）
+                    if (trashedSnapshots.any { it.fileName == name || it.title == title }) return@forEach
                     val type = SnippetType.fromFileName(name)
                     readAndSyncLocalFile(file, name, relativeParent, type, snippetDao)
                 }
