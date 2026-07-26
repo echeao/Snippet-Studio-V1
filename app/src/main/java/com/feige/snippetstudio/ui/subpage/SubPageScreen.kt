@@ -254,7 +254,7 @@ fun SubPageScreen(
                                     if (uiState.settings.gitConnected) {
                                         Spacer(modifier = Modifier.height(Spacing.S2))
 
-                                        // 方向分离按钮：Pull / Push
+                                        // 方向分离按钮：Pull / Push（设置紧凑内边距 contentPadding 与单行 maxLines = 1，防止极端屏宽下触发自动折行）
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.spacedBy(Spacing.S3)
@@ -266,10 +266,15 @@ fun SubPageScreen(
                                                     }
                                                 },
                                                 shape = AppShapes.small,
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                                                 modifier = Modifier.weight(1f),
                                                 enabled = !uiState.isGitOperating && !uiState.isPreviewing
                                             ) {
-                                                Text("拉取远端 (Pull ↓)")
+                                                Text(
+                                                    text = "拉取远端 (Pull ↓)",
+                                                    fontSize = 13.sp,
+                                                    maxLines = 1
+                                                )
                                             }
 
                                             OutlinedButton(
@@ -279,10 +284,15 @@ fun SubPageScreen(
                                                     }
                                                 },
                                                 shape = AppShapes.small,
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                                                 modifier = Modifier.weight(1f),
                                                 enabled = !uiState.isGitOperating && !uiState.isPreviewing
                                             ) {
-                                                Text("推送本地 (Push ↑)")
+                                                Text(
+                                                    text = "推送本地 (Push ↑)",
+                                                    fontSize = 13.sp,
+                                                    maxLines = 1
+                                                )
                                             }
                                         }
 

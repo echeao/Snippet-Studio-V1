@@ -249,6 +249,9 @@ object LocalFileManager {
 
                     // ===== 反向清理：将物理文件已被外部删除的数据库记录移入回收站 =====
                     cleanupMissingPhysicalFiles(docTree, snippetDao, folderDao)
+
+                    // ===== 去重保护：清理因历史匹配缺陷产生的重复记录 =====
+                    deduplicateDatabase(snippetDao)
                     return
                 }
                 // SAF 目录不可用时不执行清理（可能是临时不可用，不能误删）
@@ -277,6 +280,9 @@ object LocalFileManager {
 
             // ===== 反向清理：将物理文件已被外部删除的数据库记录移入回收站 =====
             cleanupMissingLocalFiles(localDir, snippetDao, folderDao)
+
+            // ===== 去重保护：清理因历史匹配缺陷产生的重复记录 =====
+            deduplicateDatabase(snippetDao)
         } catch (e: Exception) {
             Log.e(TAG, "Error syncing repository to database", e)
         }
@@ -414,6 +420,11 @@ object LocalFileManager {
 
     /**
      * 读取单个 SAF DocumentFile 内容并写入/更新 Room 数据库。
+     *
+     * 匹配策略（防止重启后产生重复记录）：
+     * 1. 优先按 fileName 精确匹配
+     * 2. 其次按 defaultFileName 推导匹配（兼容 title 含空格/截断的情况）
+     * 3. 最后按 title 的规范化形式（去空格、下划线统一）模糊匹配
      */
     private suspend fun readAndSyncDocumentFile(
         context: Context,
@@ -430,7 +441,7 @@ object LocalFileManager {
             val title = fileName.substringBeforeLast(".")
             val lm = doc.lastModified()
             val now = if (lm > 0L) lm else System.currentTimeMillis()
-            val existing = snippetDao.allActiveSnapshot().find { it.fileName == fileName || it.title == title }
+            val existing = findExistingSnippet(snippetDao, fileName, title)
 
             if (existing != null) {
                 if (existing.content != content) {
@@ -461,6 +472,11 @@ object LocalFileManager {
 
     /**
      * 读取单个应用私有物理文件内容并写入/更新 Room 数据库。
+     *
+     * 匹配策略（防止重启后产生重复记录）：
+     * 1. 优先按 fileName + folder 精确匹配
+     * 2. 其次按 defaultFileName 推导匹配
+     * 3. 最后按 title 规范化形式模糊匹配
      */
     private suspend fun readAndSyncLocalFile(
         file: File,
@@ -473,7 +489,7 @@ object LocalFileManager {
             val content = file.readText(Charsets.UTF_8)
             val title = fileName.substringBeforeLast(".")
             val now = if (file.lastModified() > 0) file.lastModified() else System.currentTimeMillis()
-            val existing = snippetDao.allActiveSnapshot().find { it.fileName == fileName || it.title == title }
+            val existing = findExistingSnippet(snippetDao, fileName, title, folder)
 
             if (existing != null) {
                 if (existing.content != content || existing.folder != folder) {
@@ -501,6 +517,86 @@ object LocalFileManager {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed reading local file $fileName", e)
+        }
+    }
+
+    /**
+     * 多策略匹配已有数据库记录，防止重启同步时产生重复条目。
+     *
+     * 匹配优先级：
+     * 1. fileName 精确匹配（+ folder 匹配，若指定）
+     * 2. 通过 DB 记录的 title 推导 defaultFileName 与物理 fileName 比对
+     * 3. 将 title 规范化后（空格/下划线统一、忽略大小写）进行模糊匹配
+     */
+    private suspend fun findExistingSnippet(
+        snippetDao: SnippetDao,
+        fileName: String,
+        derivedTitle: String,
+        folder: String? = null
+    ): SnippetEntity? {
+        val allActive = snippetDao.allActiveSnapshot()
+
+        // 策略 1: fileName 精确匹配
+        val byFileName = allActive.find { entity ->
+            entity.fileName == fileName && (folder == null || entity.folder == folder || entity.folder.isBlank())
+        }
+        if (byFileName != null) return byFileName
+
+        // 策略 2: 通过 DB 记录的 title 推导 defaultFileName 进行匹配
+        // 解决 create() 中 title.take(20) 截断 + 空格替换下划线后 fileName 与原始 title 不一致的问题
+        val byDefaultFileName = allActive.find { entity ->
+            val ext = SnippetType.fromCode(entity.type).extension // ".md", ".js" 等
+            val expectedFileName = if (entity.title.isBlank()) {
+                "snippet${ext}"
+            } else {
+                "${entity.title.replace("\\s+".toRegex(), "_")}${ext}"
+            }
+            val expectedFileNameTruncated = if (entity.title.isBlank()) {
+                "snippet${ext}"
+            } else {
+                "${entity.title.take(20).replace("\\s+".toRegex(), "_")}${ext}"
+            }
+            (expectedFileName == fileName || expectedFileNameTruncated == fileName) &&
+                (folder == null || entity.folder == folder || entity.folder.isBlank())
+        }
+        if (byDefaultFileName != null) return byDefaultFileName
+
+        // 策略 3: title 规范化匹配（将空格和下划线统一为同一字符后比较）
+        val normalizedDerived = derivedTitle.replace("_", " ").replace("\\s+".toRegex(), " ").trim().lowercase()
+        val byNormalizedTitle = allActive.find { entity ->
+            val normalizedDbTitle = entity.title.replace("_", " ").replace("\\s+".toRegex(), " ").trim().lowercase()
+            // 匹配完整 title 或 title 的前 20 字符（兼容 take(20) 截断）
+            (normalizedDbTitle == normalizedDerived ||
+             normalizedDbTitle.take(20).trim() == normalizedDerived) &&
+                (folder == null || entity.folder == folder || entity.folder.isBlank())
+        }
+        if (byNormalizedTitle != null) return byNormalizedTitle
+
+        return null
+    }
+
+    /**
+     * 同步完成后执行去重清理：检测数据库中 fileName + folder 完全相同的重复记录，
+     * 仅保留 updatedAt 最新的一条，将其余重复项移入回收站。
+     */
+    private suspend fun deduplicateDatabase(snippetDao: SnippetDao) {
+        try {
+            val allActive = snippetDao.allActiveSnapshot()
+            val grouped = allActive.groupBy { "${it.folder}/${it.fileName}" }
+            val now = System.currentTimeMillis()
+
+            for ((_, entities) in grouped) {
+                if (entities.size > 1) {
+                    // 保留 updatedAt 最大的（最新的），其余移入回收站
+                    val sorted = entities.sortedByDescending { it.updatedAt }
+                    sorted.drop(1).forEach { duplicate ->
+                        snippetDao.trash(duplicate.id, now)
+                        Log.d(TAG, "Dedup: trashed duplicate '${duplicate.fileName}' (id=${duplicate.id})")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during deduplication", e)
         }
     }
 
