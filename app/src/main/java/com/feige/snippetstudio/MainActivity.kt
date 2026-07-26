@@ -51,23 +51,29 @@ class MainActivity : ComponentActivity() {
         setContent {
             // 【数据流监听】通过 collectAsState 将 Flow 转为 Compose 响应式 State。
             // 当 DataStore 中存取设置改动时（如深色模式或语言），此处 settings 会自动重组 (Recomposition)
+            // 注意：initial 为 null，表示 DataStore 尚未从磁盘加载完成，避免以默认空值误触发同步逻辑
             val settings by appContainer.settingsRepository.settingsFlow.collectAsState(
-                initial = com.feige.snippetstudio.model.AppSettings()
+                initial = null as com.feige.snippetstudio.model.AppSettings?
             )
 
             // 获取当前 Compose 组合环境中的 Context 实例对象
             val context = LocalContext.current
 
             // 【副效应挂起】监听工作区 URI 变化，执行本地文件同步与反向清理。
-            // 当 DataStore 加载完成发射真实 URI 时会自动触发，
-            // 从而检测到用户在外部文件管理器中删除的文件并清理数据库中的幽灵记录。
-            LaunchedEffect(settings.repoTreeUri) {
-                appContainer.snippetRepository.syncWithLocalRepository(context, settings.repoTreeUri)
+            // 仅当 DataStore 加载完成（settings 非 null）后才触发，
+            // 防止以默认空 repoTreeUri 误走降级分支导致 cleanupMissingLocalFiles 清空数据库。
+            val currentSettings = settings
+            LaunchedEffect(currentSettings?.repoTreeUri) {
+                val s = currentSettings ?: return@LaunchedEffect
+                appContainer.snippetRepository.syncWithLocalRepository(context, s.repoTreeUri)
             }
 
+            // DataStore 尚未从磁盘加载完成时不渲染 UI，避免以默认值驱动界面产生闪烁或异常
+            val loadedSettings = settings ?: return@setContent
+
             // 【上下文重塑】remember 用于缓存计算结果。当 settings.lang 改变时重新生成并应用新的 Locale 上下文对象
-            val localeContext = remember(settings.lang) {
-                LocaleHelper.setLocale(this@MainActivity, settings.lang)
+            val localeContext = remember(loadedSettings.lang) {
+                LocaleHelper.setLocale(this@MainActivity, loadedSettings.lang)
             }
 
             // 【全局环境隐式传递】CompositionLocalProvider 允许将全局状态（如重载语言后的 LocalContext 与 Activity 注册句柄）
@@ -78,8 +84,8 @@ class MainActivity : ComponentActivity() {
             ) {
                 // 【主题包裹】根据设置中的 theme 属性（"light" / "dark" / "system"）与 colorTheme 风格应用系统配色方案与 Typography
                 SnippetStudioTheme(
-                    themeSetting = settings.theme,
-                    colorThemeId = settings.colorTheme
+                    themeSetting = loadedSettings.theme,
+                    colorThemeId = loadedSettings.colorTheme
                 ) {
                     // 创建并记住 Jetpack Navigation 路由控制器
                     val navController = rememberNavController()
@@ -120,7 +126,7 @@ class MainActivity : ComponentActivity() {
                         val text = pendingSharedText
                         if (!text.isNullOrBlank()) {
                             val detectedType = SnippetType.fromCode(detectShareType(text))
-                            if (settings.shareAction == "silent") {
+                            if (loadedSettings.shareAction == "silent") {
                                 // 静默模式：直接保存并提示
                                 val snippet = Snippet(
                                     id = "share_${System.currentTimeMillis()}_${java.util.UUID.randomUUID().toString().take(4)}",
@@ -132,7 +138,7 @@ class MainActivity : ComponentActivity() {
                                     updatedAt = System.currentTimeMillis(),
                                     sizeBytes = text.toByteArray().size
                                 )
-                                appContainer.snippetRepository.saveOrUpdate(snippet, settings.repoTreeUri)
+                                appContainer.snippetRepository.saveOrUpdate(snippet, loadedSettings.repoTreeUri)
                                 showSnackbar(context.getString(R.string.share_saved_silent))
                                 pendingSharedText = null
                             } else {
@@ -164,7 +170,7 @@ class MainActivity : ComponentActivity() {
                                     updatedAt = System.currentTimeMillis(),
                                     sizeBytes = sharePanelText.toByteArray().size
                                 )
-                                appContainer.snippetRepository.saveOrUpdate(snippet, settings.repoTreeUri)
+                                appContainer.snippetRepository.saveOrUpdate(snippet, loadedSettings.repoTreeUri)
                                 showSnackbar(context.getString(R.string.share_saved_silent))
                             }
                         }
