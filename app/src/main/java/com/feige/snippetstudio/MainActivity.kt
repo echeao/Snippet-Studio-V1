@@ -25,6 +25,9 @@ import com.feige.snippetstudio.ui.theme.SnippetStudioTheme
 import com.feige.snippetstudio.util.LocaleHelper
 import com.feige.snippetstudio.util.SharedFileHandler
 import com.feige.snippetstudio.util.SharedFileResult
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -78,6 +81,24 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(currentSettings?.repoTreeUri) {
                 val s = currentSettings ?: return@LaunchedEffect
                 appContainer.snippetRepository.syncWithLocalRepository(context, s.repoTreeUri)
+            }
+
+            // 【生命周期监听】应用从后台回到前台时，自动触发物理文件→数据库的增量同步，
+            // 检测并清理被用户通过外部文件管理器删除的文件记录（反向清理）。
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner, currentSettings?.repoTreeUri) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        val s = currentSettings ?: return@LifecycleEventObserver
+                        lifecycleScope.launch {
+                            appContainer.snippetRepository.syncWithLocalRepository(context, s.repoTreeUri)
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
             }
 
             // DataStore 尚未从磁盘加载完成时不渲染 UI，避免以默认值驱动界面产生闪烁或异常
