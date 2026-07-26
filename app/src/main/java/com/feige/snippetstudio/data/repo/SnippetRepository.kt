@@ -363,13 +363,24 @@ class SnippetRepository(
 
     /**
      * 将 Room 中的全量代码片段导出到 Git 沙盒工作树中。
-     * 自动触发镜像对齐清理，物理注销已不在 Active 列表中多余的沙盒幽灵文件。
+     *
+     * 全空仓防误擦熔断保护 (Safeguard for Fresh Install)：
+     * 只有当数据库中存在已知记录（活动片段数 > 0 或回收站条目不为空）时，
+     * 才允许触发 [cleanDeletedFiles] 镜像清理。
+     * 当应用属于全新安装、数据库完全为空时，熔断物理擦除，防止误删刚从远端 Clone/Pull 下来的文件！
      */
     suspend fun exportAllToGit() {
         val snippets = allForExport()
         gitManager?.exportAllSnippetsToDir(snippets)
-        val activePaths = snippets.map { if (it.folder.isBlank()) it.fileName else "${it.folder}/${it.fileName}" }.toSet()
-        gitManager?.cleanDeletedFiles(activePaths)
+
+        val totalActive = snippetDao.activeCount()
+        val totalTrashed = snippetDao.allTrashedSnapshot().size
+
+        // 全空仓熔断防护：仅在 DB 建立过索引非空时，才允许执行 cleanDeletedFiles
+        if (totalActive > 0 || totalTrashed > 0) {
+            val activePaths = snippets.map { if (it.folder.isBlank()) it.fileName else "${it.folder}/${it.fileName}" }.toSet()
+            gitManager?.cleanDeletedFiles(activePaths)
+        }
     }
 
     /**

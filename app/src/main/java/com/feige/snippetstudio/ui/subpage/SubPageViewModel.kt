@@ -189,12 +189,14 @@ class SubPageViewModel(
                 // 初始化或克隆远程仓库
                 val initRes = gitManager.initOrClone(url, branch, pat)
                 if (initRes.isSuccess) {
-                    // 刷盘导出并导入至数据库
-                    snippetRepository.exportAllToGit()
+                    // 【入库优先原则】：先将 Clone 下来的 Git 沙盒文件解析导入数据库
                     snippetRepository.syncGitFilesToDb()
 
-                    // 回写到用户物理工作区
+                    // 将导入后的内容全量写回用户物理工作区 (SAF / 内部存储)
                     snippetRepository.syncAllToPhysicalStorage(uiState.value.settings.repoTreeUri)
+
+                    // 最后把 Room 中已建立索引的内容对齐刷盘导出到 Git
+                    snippetRepository.exportAllToGit()
 
                     settingsRepository.updateSettings {
                         it.copy(
@@ -359,7 +361,7 @@ class SubPageViewModel(
         }
     }
 
-    /** 触发双向完整的 Git 同步 (本地导出 -> Commit/Push -> Pull -> 数据库入库)，支持远端删除精准清理（解决问题 F） */
+    /** 触发双向完整的 Git 同步 (本地导出 -> Commit/Push -> Pull -> 数据库入库)，支持远端删除精准清理与入库优先 */
     fun syncGit(onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             _isGitOperating.value = true
@@ -370,10 +372,10 @@ class SubPageViewModel(
                 return@launch
             }
 
-            // 1. 将现有的数据库片段导出至 Git 物理仓（内部自动清理镜像）
+            // 1. 若本地 DB 已有变更片段，导出至 Git 物理仓（带防全空熔断）
             snippetRepository.exportAllToGit()
 
-            // 2. Commit 并 Push 提交到远程
+            // 2. Commit 并 Push 本地提交到远程
             val commitRes = gitManager.commitAndPush(
                 commitMessage = "sync: Snippet Studio sync at ${System.currentTimeMillis()}",
                 url = settings.gitUrl,
@@ -396,11 +398,14 @@ class SubPageViewModel(
                 val afterSandboxFiles = gitManager.getSandboxFileContents().keys
                 val remoteDeletedPaths = beforeSandboxFiles - afterSandboxFiles
 
-                // 4. 将 Pull 到的新文件导入写入 Room 数据库
+                // 4. 【入库优先原则】：先将 Pull 到的新文件导入写入 Room 数据库
                 snippetRepository.syncGitFilesToDb()
 
                 // 5. 将拉取到的内容回写到用户物理工作区，并精准注销远端删除的文件与 DB 记录
                 snippetRepository.syncAllToPhysicalStorage(settings.repoTreeUri, remoteDeletedPaths)
+
+                // 6. 最后对齐沙盒镜像状态
+                snippetRepository.exportAllToGit()
 
                 settingsRepository.updateSettings { it.copy(lastSyncTime = System.currentTimeMillis()) }
                 _isGitOperating.value = false
