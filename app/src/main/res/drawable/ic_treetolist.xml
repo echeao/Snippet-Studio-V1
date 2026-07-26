@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    文件中心 - 树状视图切换回平铺视图图标 (VectorDrawable)
+    来源: docs/svg/ic_treetolist.svg (List Streamline Carbon)
+    职责: 当界面处于树状视图 (ViewMode.TREE) 时，TopBar 显示此图标，提示用户点击可切换回平铺列表视图
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+    <!-- 平铺列表图标矢量路径 (使用黑色填充，Compose 中配合 tint 着色) -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M5,3h9v1H5Z M5,12h9v1H5Z M5,7.5h9v1H5Z M2,7.5h1v1H2Z M2,3h1v1H2Z M2,12h1v1H2Z" />
+</vector>

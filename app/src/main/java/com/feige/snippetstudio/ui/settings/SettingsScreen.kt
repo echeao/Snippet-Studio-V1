@@ -113,7 +113,7 @@ fun SettingsScreen(
             // ===== 分组 3: 内容组织与标签 =====
             SettingsGroup(title = stringResource(R.string.set_org)) {
                 SettingsItem(
-                    iconRes = R.drawable.ic_folder_open,
+                    iconRes = R.drawable.ic_folder_details,
                     title = stringResource(R.string.set_cat),
                     onClick = { onNavigateToSubPage("cat") }
                 )
@@ -154,12 +154,13 @@ fun SettingsScreen(
                 )
                 HorizontalDivider(color = tc.line)
 
-                // 明暗模式切换 (使用 ic_moon 月亮图标)
+                // 明暗模式动态切换 (深色/夜间模式显示 ic_moon 月亮图标，浅色/日间模式显示 ic_sun 太阳图标)
+                val isDarkTheme = (settings.theme == "dark" || (settings.theme == "system" && tc.isDark))
                 AppSwitch(
-                    checked = (settings.theme == "dark" || (settings.theme == "system" && tc.isDark)),
+                    checked = isDarkTheme,
                     onCheckedChange = { viewModel.toggleDarkMode(it) },
                     label = stringResource(R.string.set_dark),
-                    iconRes = R.drawable.ic_moon
+                    iconRes = if (isDarkTheme) R.drawable.ic_moon else R.drawable.ic_sun
                 )
                 HorizontalDivider(color = tc.line)
 

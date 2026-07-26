@@ -108,7 +108,8 @@ fun FilesScreen(
                         modifier = Modifier.testTag("files_view_mode_btn")
                     ) {
                         Icon(
-                            painter = painterResource(id = if (uiState.viewMode == ViewMode.FLAT) R.drawable.ic_tree else R.drawable.ic_list),
+                            // 处于 FLAT 平铺视图时显示 ic_tree (点击可切至树状)；处于 TREE 树状视图时显示 ic_treetolist (点击可切至平铺)
+                            painter = painterResource(id = if (uiState.viewMode == ViewMode.FLAT) R.drawable.ic_tree else R.drawable.ic_treetolist),
                             contentDescription = "Toggle View Mode",
                             tint = tc.primary,
                             modifier = Modifier.size(20.dp)

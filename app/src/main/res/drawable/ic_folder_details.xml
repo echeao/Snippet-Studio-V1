@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    系统设置 - 分类管理图标 (VectorDrawable)
+    来源: docs/svg/Folder-Streamline-Carbon.svg (Folder Details Streamline Carbon)
+    职责: 用于系统设置页面“内容组织与标签”分组中的“分类管理”条目图标展示
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+    <!-- 文件夹与分类列表线条矢量路径 (使用黑色填充，Compose 中配合 tint 着色) -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M8,10h7v1H8Z M8,12h7v1H8Z M8,14h3.5v1h-3.5Z M7,13H2V3h3.585l1.71,1.705 0.29,0.295H14v4h1v-4a1,1 0 0,0 -1,-1H8l-1.705,-1.705A1,1 0 0,0 5.585,2H2a1,1 0 0,0 -1,1v10a1,1 0 0,0 1,1h5Z" />
+</vector>

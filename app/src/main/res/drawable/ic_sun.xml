@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    系统设置 - 日间/太阳模式图标 (VectorDrawable)
+    来源: docs/svg/Sun-Streamline-Carbon.svg (Sun Streamline Carbon)
+    职责: 当系统处于日间/浅色模式时，设置页面的深色模式开关使用此太阳图标动态展示
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+
+    <!-- 中心太阳圆环路径 (使用黑色填充，Compose 中配合 tint 着色) -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M16,12a4,4 0 1,1 -4,4 4.0045,4.0045 0 0,1 4,-4m0,-2a6,6 0 1,0 6,6 6,6 0 0,0 -6,-6Z" />
+
+    <!-- 太阳光芒 (按 -45 度旋转组分布) -->
+    <group android:pivotX="7.86" android:pivotY="7.856" android:rotation="-45">
+        <path android:fillColor="#FF000000" android:pathData="M6.8536,5.3745h1.9998v4.958H6.8536Z" />
+    </group>
+    <path android:fillColor="#FF000000" android:pathData="M2,15.0049h5v2H2Z" />
+    <group android:pivotX="7.86" android:pivotY="24.149" android:rotation="-45">
+        <path android:fillColor="#FF000000" android:pathData="M5.3745,23.1466h4.958v1.9998h-4.958Z" />
+    </group>
+    <path android:fillColor="#FF000000" android:pathData="M15,25.0049h2v5h-2Z" />
+    <group android:pivotX="24.152" android:pivotY="24.149" android:rotation="-45">
+        <path android:fillColor="#FF000000" android:pathData="M23.1466,21.6675h1.9998v4.958h-1.9998Z" />
+    </group>
+    <path android:fillColor="#FF000000" android:pathData="M25,15.0049h5v2h-5Z" />
+    <group android:pivotX="24.152" android:pivotY="7.856" android:rotation="-45">
+        <path android:fillColor="#FF000000" android:pathData="M21.6675,6.8536h4.958v1.9998h-4.958Z" />
+    </group>
+    <path android:fillColor="#FF000000" android:pathData="M15,2.0049h2v5h-2Z" />
+</vector>
