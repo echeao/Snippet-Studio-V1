@@ -21,12 +21,13 @@ import com.feige.snippetstudio.ui.theme.*
 /**
  * [SharePanel] 系统分享剪藏快速编辑面板 (ModalBottomSheet)。
  *
- * 当用户从其他应用通过系统 Share Sheet 分享文本到 Snippet Studio 时弹出，
+ * 当用户从其他应用通过系统 Share Sheet 分享文本或文件到 Snippet Studio 时弹出，
  * 允许用户在保存前快速编辑标题、选择片段类型，并预览分享内容摘要。
  *
  * @param show 显隐控制
  * @param sharedText 从系统分享接收到的原始文本
  * @param detectedType 自动推断的片段类型
+ * @param sharedFileName 分享来源文件名（文件分享时非 null，纯文本分享时为 null）
  * @param onDismiss 关闭/取消回调
  * @param onConfirm 确认保存回调 (title, type)
  */
@@ -36,6 +37,7 @@ fun SharePanel(
     show: Boolean,
     sharedText: String,
     detectedType: SnippetType,
+    sharedFileName: String? = null,
     onDismiss: () -> Unit,
     onConfirm: (title: String, type: SnippetType) -> Unit
 ) {
@@ -70,7 +72,13 @@ fun SharePanel(
                 value = title,
                 onValueChange = { title = it },
                 label = { Text(stringResource(R.string.share_panel_name_hint), style = CaptionStyle) },
-                placeholder = { Text(stringResource(R.string.share_panel_name_placeholder), style = CaptionStyle) },
+                placeholder = {
+                    Text(
+                        text = sharedFileName?.substringBeforeLast('.')
+                            ?: stringResource(R.string.share_panel_name_placeholder),
+                        style = CaptionStyle
+                    )
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -110,6 +118,23 @@ fun SharePanel(
                 style = CaptionStyle,
                 color = tc.text2
             )
+
+            // 文件分享时显示文件名标签
+            if (sharedFileName != null) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = tc.primarySoft
+                ) {
+                    Text(
+                        text = "${stringResource(R.string.share_panel_file_label)}: $sharedFileName",
+                        style = CaptionStyle,
+                        fontSize = 12.sp,
+                        color = tc.primary,
+                        modifier = Modifier.padding(horizontal = Spacing.S2, vertical = Spacing.S1)
+                    )
+                }
+            }
+
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -145,7 +170,8 @@ fun SharePanel(
                 Button(
                     onClick = {
                         val finalTitle = title.ifBlank {
-                            Snippet.generateDefaultTitle(selectedType)
+                            sharedFileName?.substringBeforeLast('.')
+                                ?: Snippet.generateDefaultTitle(selectedType)
                         }
                         onConfirm(finalTitle, selectedType)
                     },

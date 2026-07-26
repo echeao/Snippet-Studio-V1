@@ -113,6 +113,11 @@
     <string name="share_panel_preview_label">内容预览</string>
     <string name="share_panel_save">保存片段</string>
     <string name="share_saved_silent">已通过分享保存片段</string>
+        <string name="share_file_received">收到分享文件</string>
+        <string name="share_file_unsupported">不支持的文件类型</string>
+        <string name="share_file_too_large">文件过大（超过1MB限制）</string>
+        <string name="share_file_read_error">文件读取失败</string>
+        <string name="share_panel_file_label">文件</string>
     <string name="var_panel_title">变量填充</string>
     <string name="var_panel_empty">未检测到 {{变量}} 占位符</string>
     <string name="var_panel_input_hint">输入填充值</string>

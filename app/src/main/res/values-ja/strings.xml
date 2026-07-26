@@ -113,6 +113,11 @@
     <string name="share_panel_preview_label">内容プレビュー</string>
     <string name="share_panel_save">スニペット保存</string>
     <string name="share_saved_silent">共有からスニペットを保存しました</string>
+        <string name="share_file_received">ファイルを受信</string>
+        <string name="share_file_unsupported">サポートされていないファイル形式</string>
+        <string name="share_file_too_large">ファイルが大きすぎます（最大1MB）</string>
+        <string name="share_file_read_error">ファイルの読み取りに失敗</string>
+        <string name="share_panel_file_label">ファイル</string>
     <string name="var_panel_title">変数入力</string>
     <string name="var_panel_empty">{{変数}} プレースホルダーが検出されません</string>
     <string name="var_panel_input_hint">値を入力</string>

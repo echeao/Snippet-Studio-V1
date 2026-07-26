@@ -2,6 +2,7 @@ package com.feige.snippetstudio
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
@@ -22,7 +23,12 @@ import com.feige.snippetstudio.ui.nav.AppNavGraph
 import com.feige.snippetstudio.ui.nav.Screen
 import com.feige.snippetstudio.ui.theme.SnippetStudioTheme
 import com.feige.snippetstudio.util.LocaleHelper
+import com.feige.snippetstudio.util.SharedFileHandler
+import com.feige.snippetstudio.util.SharedFileResult
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * [MainActivity] 是应用程序的主 Activity，继承自 [ComponentActivity]。
@@ -37,6 +43,12 @@ class MainActivity : ComponentActivity() {
 
     /** 从系统分享接收到的文本内容（待导航消费后清空） */
     private var pendingSharedText: String? = null
+
+    /** 从系统分享接收到的文件解析结果（待 Compose UI 消费后清空） */
+    private var pendingSharedFile: SharedFileResult.Success? = null
+
+    /** 文件分享解析失败的错误消息资源 ID（待 UI 就绪后 Toast 提示） */
+    private var pendingFileError: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,7 +133,46 @@ class MainActivity : ComponentActivity() {
                     var showSharePanel by remember { mutableStateOf(false) }
                     var sharePanelText by remember { mutableStateOf("") }
                     var sharePanelType by remember { mutableStateOf(SnippetType.PROMPT) }
+                    var sharePanelFileName by remember { mutableStateOf<String?>(null) }
 
+                    // 消费文件分享错误提示
+                    LaunchedEffect(pendingFileError) {
+                        val errRes = pendingFileError
+                        if (errRes != null) {
+                            Toast.makeText(context, errRes, Toast.LENGTH_SHORT).show()
+                            pendingFileError = null
+                        }
+                    }
+
+                    // 消费文件分享意图
+                    LaunchedEffect(pendingSharedFile) {
+                        val fileResult = pendingSharedFile
+                        if (fileResult != null) {
+                            if (loadedSettings.shareAction == "silent") {
+                                val snippet = Snippet(
+                                    id = "share_${System.currentTimeMillis()}_${java.util.UUID.randomUUID().toString().take(4)}",
+                                    type = fileResult.detectedType,
+                                    title = fileResult.fileName.substringBeforeLast('.'),
+                                    fileName = fileResult.fileName,
+                                    content = fileResult.content,
+                                    createdAt = System.currentTimeMillis(),
+                                    updatedAt = System.currentTimeMillis(),
+                                    sizeBytes = fileResult.sizeBytes
+                                )
+                                appContainer.snippetRepository.saveOrUpdate(snippet, loadedSettings.repoTreeUri)
+                                showSnackbar(context.getString(R.string.share_saved_silent))
+                                pendingSharedFile = null
+                            } else {
+                                sharePanelText = fileResult.content
+                                sharePanelType = fileResult.detectedType
+                                sharePanelFileName = fileResult.fileName
+                                showSharePanel = true
+                                pendingSharedFile = null
+                            }
+                        }
+                    }
+
+                    // 消费文本分享意图
                     LaunchedEffect(pendingSharedText) {
                         val text = pendingSharedText
                         if (!text.isNullOrBlank()) {
@@ -145,6 +196,7 @@ class MainActivity : ComponentActivity() {
                                 // 面板模式：弹出快速编辑面板
                                 sharePanelText = text
                                 sharePanelType = detectedType
+                                sharePanelFileName = null
                                 showSharePanel = true
                                 pendingSharedText = null
                             }
@@ -156,15 +208,21 @@ class MainActivity : ComponentActivity() {
                         show = showSharePanel,
                         sharedText = sharePanelText,
                         detectedType = sharePanelType,
-                        onDismiss = { showSharePanel = false },
+                        sharedFileName = sharePanelFileName,
+                        onDismiss = {
+                            showSharePanel = false
+                            sharePanelFileName = null
+                        },
                         onConfirm = { title, type ->
                             showSharePanel = false
+                            val sourceFileName = sharePanelFileName
+                            sharePanelFileName = null
                             scope.launch {
                                 val snippet = Snippet(
                                     id = "share_${System.currentTimeMillis()}_${java.util.UUID.randomUUID().toString().take(4)}",
                                     type = type,
                                     title = title,
-                                    fileName = "",
+                                    fileName = sourceFileName ?: "",
                                     content = sharePanelText,
                                     createdAt = System.currentTimeMillis(),
                                     updatedAt = System.currentTimeMillis(),
@@ -185,10 +243,31 @@ class MainActivity : ComponentActivity() {
         handleShareIntent(intent)
     }
 
-    /** 解析 ACTION_SEND 意图，提取分享文本 */
+    /**
+     * 解析 ACTION_SEND 意图，提取分享文本或文件。
+     *
+     * 优先检查 EXTRA_TEXT（兼容 text/html 等非 text/plain 的文本分享），
+     * 文件解析在 IO 线程执行以避免主线程阻塞导致 ANR。
+     */
     private fun handleShareIntent(intent: Intent?) {
-        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            pendingSharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+        if (intent?.action != Intent.ACTION_SEND) return
+
+        // 优先检查 EXTRA_TEXT：兼容 text/plain、text/html 等文本类分享
+        val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+        if (!sharedText.isNullOrBlank()) {
+            pendingSharedText = sharedText
+            return
+        }
+
+        // 文件分享（EXTRA_STREAM）—— 在 IO 线程解析，避免 ContentResolver I/O 阻塞主线程
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                SharedFileHandler.parseSharedFile(this@MainActivity, intent)
+            }
+            when (result) {
+                is SharedFileResult.Success -> pendingSharedFile = result
+                is SharedFileResult.Error -> pendingFileError = result.messageResId
+            }
         }
     }
 

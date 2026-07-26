@@ -113,6 +113,11 @@
     <string name="share_panel_preview_label">Content preview</string>
     <string name="share_panel_save">Save snippet</string>
     <string name="share_saved_silent">Snippet saved from share</string>
+        <string name="share_file_received">File received</string>
+        <string name="share_file_unsupported">Unsupported file type</string>
+        <string name="share_file_too_large">File too large (max 1MB)</string>
+        <string name="share_file_read_error">Failed to read file</string>
+        <string name="share_panel_file_label">File</string>
     <string name="var_panel_title">Variable Fill</string>
     <string name="var_panel_empty">No {{variable}} placeholders detected</string>
     <string name="var_panel_input_hint">Enter value</string>

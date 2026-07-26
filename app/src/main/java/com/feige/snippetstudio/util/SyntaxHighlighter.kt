@@ -214,6 +214,39 @@ object SyntaxHighlighter {
         "#.*"
     )
 
+    // ===== Java / C++ / Go / Rust 语言匹配正则表达式模式 =====
+
+    private val JAVA_KEYWORD_PATTERN = Pattern.compile(
+        "\\b(public|protected|private|class|interface|enum|extends|implements|import|package|static|final|abstract|void|int|long|double|float|boolean|char|byte|short|return|if|else|for|while|do|switch|case|default|break|continue|try|catch|finally|throw|throws|new|this|super|instanceof|synchronized|volatile|transient|native)\\b"
+    )
+    private val JAVA_ANNOTATION_PATTERN = Pattern.compile(
+        "@[a-zA-Z_][a-zA-Z0-9_]*"
+    )
+
+    private val CPP_PREPROCESSOR_PATTERN = Pattern.compile(
+        "(?m)^\\s*#(include|define|undef|ifdef|ifndef|if|else|elif|endif|pragma)\\b.*"
+    )
+    private val CPP_KEYWORD_PATTERN = Pattern.compile(
+        "\\b(int|long|short|char|float|double|bool|void|unsigned|signed|const|static|struct|class|union|enum|typedef|template|typename|namespace|using|public|protected|private|virtual|override|final|inline|constexpr|auto|return|if|else|for|while|do|switch|case|default|break|continue|goto|try|catch|throw|new|delete|sizeof|this|nullptr|true|false)\\b"
+    )
+
+    private val GO_KEYWORD_PATTERN = Pattern.compile(
+        "\\b(func|package|import|type|struct|interface|var|const|return|if|else|for|range|switch|case|default|select|defer|go|break|continue|fallthrough|goto|chan|map|make|new|len|cap|append|copy|panic|recover|true|false|nil|string|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|float32|float64|bool|byte|rune)\\b"
+    )
+    private val GO_RAW_STRING_PATTERN = Pattern.compile(
+        "`[^`]*`"
+    )
+
+    private val RUST_KEYWORD_PATTERN = Pattern.compile(
+        "\\b(fn|let|mut|pub|use|mod|struct|enum|trait|impl|type|where|for|in|if|else|loop|while|match|return|break|continue|async|await|dyn|static|const|unsafe|extern|as|move|ref|self|Self|true|false|Some|None|Ok|Err|i8|i16|i32|i64|i128|isize|u8|u16|u32|u64|u128|usize|f32|f64|bool|char|str)\\b"
+    )
+    private val RUST_MACRO_PATTERN = Pattern.compile(
+        "\\b[a-zA-Z_][a-zA-Z0-9_]*!"
+    )
+    private val RUST_ATTRIBUTE_PATTERN = Pattern.compile(
+        "#!?\\[[^\\]]*\\]"
+    )
+
     /** 不区分大小写且支持未闭合标签到末尾 ($) 的内嵌 script/style 匹配正则 */
     private val HTML_SCRIPT_BLOCK = Pattern.compile(
         "(?is)<script[^>]*>(.*?)(?:</script>|$)"
@@ -276,6 +309,10 @@ object SyntaxHighlighter {
                 SyntaxLanguage.XML -> highlightXml(effectiveText, isDark)
                 SyntaxLanguage.YAML -> highlightYaml(effectiveText, isDark)
                 SyntaxLanguage.SHELL -> highlightShell(effectiveText, isDark)
+                SyntaxLanguage.JAVA -> highlightJava(effectiveText, isDark)
+                SyntaxLanguage.CPP -> highlightCpp(effectiveText, isDark)
+                SyntaxLanguage.GO -> highlightGo(effectiveText, isDark)
+                SyntaxLanguage.RUST -> highlightRust(effectiveText, isDark)
                 SyntaxLanguage.PLAIN -> { /* 无高亮 */ }
             }
         }
@@ -735,4 +772,237 @@ object SyntaxHighlighter {
             addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
         }
     }
+
+    /**
+     * Java 语言语法高亮分词算法。
+     *
+     * 处理逻辑：
+     * 1. 高亮类名/函数与注解 (如 `@Override`, `@Deprecated`)
+     * 2. 高亮 Java 核心关键字 (如 `public`, `class`, `extends`, `void`, `new`)
+     * 3. 高亮数字字面量
+     * 4. 高亮双引号与单引号字符串
+     * 5. 高亮单行与多行注释
+     *
+     * @param text 待解析的 Java 代码正文
+     * @param isDark 当前是否为深色主题
+     */
+    private fun AnnotatedString.Builder.highlightJava(text: String, isDark: Boolean) {
+        // 1. 函数/方法调用名称匹配
+        val funcMatcher = JS_FUNC_CALL_PATTERN.matcher(text)
+        val funcStyle = getFunctionStyle(isDark)
+        while (funcMatcher.find()) {
+            addStyle(funcStyle, funcMatcher.start(), funcMatcher.end())
+        }
+
+        // 2. Java 注解高亮 (@Override, @Entity 等)
+        val annoMatcher = JAVA_ANNOTATION_PATTERN.matcher(text)
+        val annoStyle = getDecoratorStyle(isDark)
+        while (annoMatcher.find()) {
+            addStyle(annoStyle, annoMatcher.start(), annoMatcher.end())
+        }
+
+        // 3. Java 关键字匹配
+        val kwMatcher = JAVA_KEYWORD_PATTERN.matcher(text)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, kwMatcher.start(), kwMatcher.end())
+        }
+
+        // 4. 数字字面量
+        val numMatcher = NUMBER_PATTERN.matcher(text)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, numMatcher.start(), numMatcher.end())
+        }
+
+        // 5. 字符串字面量
+        val strMatcher = JS_STRING_PATTERN.matcher(text)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, strMatcher.start(), strMatcher.end())
+        }
+
+        // 6. 单行/多行注释 (最高优先级)
+        val cmtMatcher = JS_COMMENT_PATTERN.matcher(text)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
+        }
+    }
+
+    /**
+     * C/C++ 语言语法高亮分词算法。
+     *
+     * 处理逻辑：
+     * 1. 高亮 `#include`, `#define` 等预处理指令
+     * 2. 高亮 C/C++ 核心关键字及常用标准类型 (`int`, `char`, `class`, `template`, `namespace`)
+     * 3. 高亮函数与方法调用名称
+     * 4. 高亮数字、字符串与注释
+     *
+     * @param text 待解析的 C/C++ 代码正文
+     * @param isDark 当前是否为深色主题
+     */
+    private fun AnnotatedString.Builder.highlightCpp(text: String, isDark: Boolean) {
+        // 1. 预处理指令匹配 (#include <iostream>, #define MAX 100)
+        val prepMatcher = CPP_PREPROCESSOR_PATTERN.matcher(text)
+        val prepStyle = getTagStyle(isDark)
+        while (prepMatcher.find()) {
+            addStyle(prepStyle, prepMatcher.start(), prepMatcher.end())
+        }
+
+        // 2. 函数调用高亮 (如 printf, std::cout)
+        val funcMatcher = JS_FUNC_CALL_PATTERN.matcher(text)
+        val funcStyle = getFunctionStyle(isDark)
+        while (funcMatcher.find()) {
+            addStyle(funcStyle, funcMatcher.start(), funcMatcher.end())
+        }
+
+        // 3. C/C++ 关键字匹配
+        val kwMatcher = CPP_KEYWORD_PATTERN.matcher(text)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, kwMatcher.start(), kwMatcher.end())
+        }
+
+        // 4. 数字字面量
+        val numMatcher = NUMBER_PATTERN.matcher(text)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, numMatcher.start(), numMatcher.end())
+        }
+
+        // 5. 字符串字面量
+        val strMatcher = JS_STRING_PATTERN.matcher(text)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, strMatcher.start(), strMatcher.end())
+        }
+
+        // 6. 单行/多行注释
+        val cmtMatcher = JS_COMMENT_PATTERN.matcher(text)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
+        }
+    }
+
+    /**
+     * Go (Golang) 语言语法高亮分词算法。
+     *
+     * 处理逻辑：
+     * 1. 高亮 Go 核心关键字 (`func`, `package`, `import`, `struct`, `interface`, `go`, `chan`)
+     * 2. 高亮函数与方法调用名称
+     * 3. 高亮数字、单/双引号字符串以及反引号多行原生字符串 (`...`)
+     * 4. 高亮注释
+     *
+     * @param text 待解析的 Go 代码正文
+     * @param isDark 当前是否为深色主题
+     */
+    private fun AnnotatedString.Builder.highlightGo(text: String, isDark: Boolean) {
+        // 1. 函数/方法调用高亮 (如 fmt.Println, make)
+        val funcMatcher = JS_FUNC_CALL_PATTERN.matcher(text)
+        val funcStyle = getFunctionStyle(isDark)
+        while (funcMatcher.find()) {
+            addStyle(funcStyle, funcMatcher.start(), funcMatcher.end())
+        }
+
+        // 2. Go 关键字匹配
+        val kwMatcher = GO_KEYWORD_PATTERN.matcher(text)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, kwMatcher.start(), kwMatcher.end())
+        }
+
+        // 3. 数字字面量
+        val numMatcher = NUMBER_PATTERN.matcher(text)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, numMatcher.start(), numMatcher.end())
+        }
+
+        // 4. 普通字符串 ("...", '...')
+        val strMatcher = JS_STRING_PATTERN.matcher(text)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, strMatcher.start(), strMatcher.end())
+        }
+
+        // 5. 反引号原生多行文本 (`...`)
+        val rawStrMatcher = GO_RAW_STRING_PATTERN.matcher(text)
+        while (rawStrMatcher.find()) {
+            addStyle(strStyle, rawStrMatcher.start(), rawStrMatcher.end())
+        }
+
+        // 6. 单行/多行注释
+        val cmtMatcher = JS_COMMENT_PATTERN.matcher(text)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
+        }
+    }
+
+    /**
+     * Rust 语言语法高亮分词算法。
+     *
+     * 处理逻辑：
+     * 1. 高亮 Rust 属性/ Derive 标记 (如 `#[derive(Debug, Clone)]`)
+     * 2. 高亮 Rust 宏调用 (如 `println!`, `vec!`, `format!`)
+     * 3. 高亮 Rust 核心关键字与内建基础数据类型 (`fn`, `let`, `mut`, `pub`, `impl`, `trait`, `i32`, `String`)
+     * 4. 高亮函数与方法调用名称
+     * 5. 高亮数字、字符串与注释
+     *
+     * @param text 待解析的 Rust 代码正文
+     * @param isDark 当前是否为深色主题
+     */
+    private fun AnnotatedString.Builder.highlightRust(text: String, isDark: Boolean) {
+        // 1. Rust 属性与衍生宏标签 (#[derive(...)])
+        val attrMatcher = RUST_ATTRIBUTE_PATTERN.matcher(text)
+        val attrStyle = getDecoratorStyle(isDark)
+        while (attrMatcher.find()) {
+            addStyle(attrStyle, attrMatcher.start(), attrMatcher.end())
+        }
+
+        // 2. Rust 宏调用高亮 (println!, vec!, panic!)
+        val macroMatcher = RUST_MACRO_PATTERN.matcher(text)
+        val macroStyle = getTagStyle(isDark)
+        while (macroMatcher.find()) {
+            addStyle(macroStyle, macroMatcher.start(), macroMatcher.end())
+        }
+
+        // 3. 函数/方法调用高亮
+        val funcMatcher = JS_FUNC_CALL_PATTERN.matcher(text)
+        val funcStyle = getFunctionStyle(isDark)
+        while (funcMatcher.find()) {
+            addStyle(funcStyle, funcMatcher.start(), funcMatcher.end())
+        }
+
+        // 4. Rust 关键字匹配
+        val kwMatcher = RUST_KEYWORD_PATTERN.matcher(text)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, kwMatcher.start(), kwMatcher.end())
+        }
+
+        // 5. 数字字面量
+        val numMatcher = NUMBER_PATTERN.matcher(text)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, numMatcher.start(), numMatcher.end())
+        }
+
+        // 6. 字符串字面量
+        val strMatcher = JS_STRING_PATTERN.matcher(text)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, strMatcher.start(), strMatcher.end())
+        }
+
+        // 7. 单行/多行注释
+        val cmtMatcher = JS_COMMENT_PATTERN.matcher(text)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, cmtMatcher.start(), cmtMatcher.end())
+        }
+    }
 }
+

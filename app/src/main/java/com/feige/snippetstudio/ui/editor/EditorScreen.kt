@@ -33,6 +33,7 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.theme.*
+import com.feige.snippetstudio.util.SyntaxLanguageDetector
 import com.feige.snippetstudio.util.SystemUiUtil
 import androidx.compose.animation.*
 import androidx.compose.ui.geometry.Offset
@@ -245,6 +246,7 @@ fun EditorScreen(
                         fontSp = uiState.fontSp,
                         currentLineIndex = uiState.currentLineIndex,
                         snippetType = uiState.type,
+                        syntaxLanguage = SyntaxLanguageDetector.detect(uiState.snippet?.fileName ?: "", uiState.type),
                         isWordWrap = uiState.isWordWrap,
                         showLineNumbers = uiState.showLineNumbers,
                         highlightCurrentLine = uiState.highlightCurrentLine,
@@ -287,6 +289,7 @@ fun EditorScreen(
                         fontSp = uiState.fontSp,
                         currentLineIndex = uiState.currentLineIndex,
                         snippetType = uiState.type,
+                        syntaxLanguage = SyntaxLanguageDetector.detect(uiState.snippet?.fileName ?: "", uiState.type),
                         isWordWrap = uiState.isWordWrap,
                         showLineNumbers = uiState.showLineNumbers,
                         highlightCurrentLine = uiState.highlightCurrentLine,

@@ -103,4 +103,9 @@
     <string name="type_js">JavaScript</string>
     <string name="type_md">Markdown</string>
     <string name="type_prompt">Prompt</string>
+    <string name="share_file_received">收到分享文件</string>
+    <string name="share_file_unsupported">不支持的文件类型</string>
+    <string name="share_file_too_large">文件过大（超过1MB限制）</string>
+    <string name="share_file_read_error">文件读取失败</string>
+    <string name="share_panel_file_label">文件</string>
 </resources>
