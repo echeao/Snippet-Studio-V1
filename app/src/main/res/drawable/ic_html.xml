@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    HTML 文件图标（由 File-Html-Streamline-Ultimate.svg 转换得到）
+    职责与用途：用于代码片段类型标识及文件列表中 HTML 文件的图标展示。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- HTML 文件外框及文本标识路径数据 -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M0.75,12.7529V2.25293c0,-0.39783 0.158035,-0.77936 0.43934,-1.06066C1.47064,0.910965 1.85218,0.75293 2.25,0.75293h10.629c0.3977,0.00035 0.779,0.158615 1.06,0.44l5.872,5.871c0.1393,0.13936 0.2497,0.30478 0.325,0.48683 0.0754,0.18205 0.1141,0.37715 0.114,0.57417v4.62797" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M20.25,8.25293h-6c-0.3978,0 -0.7794,-0.15804 -1.0607,-0.43934s-0.4393,-0.66284 -0.4393,-1.06066v-6" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M0.75,23.2529v-7.5" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M3.75,23.2529v-7.5" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M0.75,20.2529h3" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M8.25,23.2529v-7.5" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M6.75,15.7529h3" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M17.25,23.2529v-7.5l-2.25,3.75 -2.25,-3.75v7.5" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M20.25,15.7529v6c0,0.3979 0.158,0.7794 0.4393,1.0607s0.6629,0.4393 1.0607,0.4393h1.5" />
+</vector>

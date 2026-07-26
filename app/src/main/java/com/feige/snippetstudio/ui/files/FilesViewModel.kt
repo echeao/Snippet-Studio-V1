@@ -182,6 +182,15 @@ class FilesViewModel(
         _filterOption.value = option
     }
 
+    /**
+     * 设置显式指定的排序规则。
+     *
+     * @param mode 目标排序模式 [SortMode]（更新时间降序 / 名称升序 / 类型升序）
+     */
+    fun setSortMode(mode: SortMode) {
+        _sortMode.value = mode
+    }
+
     /** 循环切换排序规则 (时间降序 -> 名称升序 -> 类型升序 -> 时间降序) */
     fun cycleSortMode() {
         _sortMode.value = when (_sortMode.value) {

@@ -63,12 +63,7 @@ fun FilesScreen(
     var pendingRenameSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
     var pendingFolderSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
-
-    val sortLabel = when (uiState.sortMode) {
-        SortMode.UPDATED_DESC -> stringResource(R.string.sort_updated)
-        SortMode.NAME_ASC -> stringResource(R.string.sort_name)
-        SortMode.TYPE_ASC -> stringResource(R.string.sort_type)
-    }
+    var showSortMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -120,19 +115,100 @@ fun FilesScreen(
                         )
                     }
 
-                    // ===== 按钮 3: 循环切换排序字段 =====
-                    TextButton(
-                        onClick = { viewModel.cycleSortMode() },
-                        modifier = Modifier.testTag("files_sort_btn")
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_sort),
-                            contentDescription = "Sort",
-                            tint = tc.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(Spacing.S1))
-                        Text(text = sortLabel, style = CaptionStyle, color = tc.primary)
+                    // ===== 按钮 3: 排序方式（点击弹出下拉选择列表，图标为 Format-Line-Spacing 样式） =====
+                    Box {
+                        IconButton(
+                            onClick = { showSortMenu = true },
+                            modifier = Modifier.testTag("files_sort_btn")
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_sort),
+                                contentDescription = "Sort Options",
+                                tint = tc.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        // 下拉排序选项列表菜单
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false }
+                        ) {
+                            // 选项 1: 最近更新
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = stringResource(R.string.sort_updated),
+                                        color = if (uiState.sortMode == SortMode.UPDATED_DESC) tc.primary else tc.text,
+                                        style = BodyStyle
+                                    )
+                                },
+                                onClick = {
+                                    viewModel.setSortMode(SortMode.UPDATED_DESC)
+                                    showSortMenu = false
+                                },
+                                leadingIcon = if (uiState.sortMode == SortMode.UPDATED_DESC) {
+                                    {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_check),
+                                            contentDescription = null,
+                                            tint = tc.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                } else null
+                            )
+
+                            // 选项 2: 片段名称
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = stringResource(R.string.sort_name),
+                                        color = if (uiState.sortMode == SortMode.NAME_ASC) tc.primary else tc.text,
+                                        style = BodyStyle
+                                    )
+                                },
+                                onClick = {
+                                    viewModel.setSortMode(SortMode.NAME_ASC)
+                                    showSortMenu = false
+                                },
+                                leadingIcon = if (uiState.sortMode == SortMode.NAME_ASC) {
+                                    {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_check),
+                                            contentDescription = null,
+                                            tint = tc.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                } else null
+                            )
+
+                            // 选项 3: 片段类型
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = stringResource(R.string.sort_type),
+                                        color = if (uiState.sortMode == SortMode.TYPE_ASC) tc.primary else tc.text,
+                                        style = BodyStyle
+                                    )
+                                },
+                                onClick = {
+                                    viewModel.setSortMode(SortMode.TYPE_ASC)
+                                    showSortMenu = false
+                                },
+                                leadingIcon = if (uiState.sortMode == SortMode.TYPE_ASC) {
+                                    {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_check),
+                                            contentDescription = null,
+                                            tint = tc.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                } else null
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

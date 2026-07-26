@@ -68,12 +68,12 @@ fun TypeIcon(
     ) {
         when (type) {
             SnippetType.HTML -> {
-                Text(
-                    text = "HTML",
-                    color = fg,
-                    fontSize = (size.value * 0.28f).sp,
-                    fontWeight = FontWeight.W900,
-                    fontFamily = FontFamily.Monospace
+                // 渲染 HTML 文件的矢量 SVG 图标
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_html),
+                    contentDescription = "HTML",
+                    tint = fg,
+                    modifier = Modifier.size(size * 0.55f)
                 )
             }
             SnippetType.JS -> {
