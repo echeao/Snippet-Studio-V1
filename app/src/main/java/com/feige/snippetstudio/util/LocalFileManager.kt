@@ -686,7 +686,26 @@ object LocalFileManager {
     }
 
     /**
-     * 当彻底物理删除代码片段时，从磁盘删除对应的物理文件。
+     * 在 SAF 目录中容错查找指定物理名称的文件。
+     *
+     * 容错匹配防线：
+     * 1. 优先以精准 [fileName] 匹配。
+     * 2. 其次以去除非法字符后的规范名称匹配。
+     * 3. 最后剥离扩展名匹配 display name（解决某些 SAF Provider 自动追加 .txt 的歧义）。
+     */
+    fun findDocFileByName(targetDir: DocumentFile, fileName: String): DocumentFile? {
+        targetDir.findFile(fileName)?.let { return it }
+        val baseName = fileName.substringBeforeLast('.')
+        val sanitizedBase = baseName.replace("[^a-zA-Z0-9_\\-\\u4e00-\\u9fa5]".toRegex(), "_")
+        return targetDir.listFiles().firstOrNull { doc ->
+            if (!doc.isFile) return@firstOrNull false
+            val docName = doc.name ?: return@firstOrNull false
+            docName == fileName || docName.startsWith(baseName) || docName.startsWith(sanitizedBase)
+        }
+    }
+
+    /**
+     * 当彻底物理删除代码片段或重命名改改旧文件时，从磁盘删除对应的物理文件。
      */
     fun deleteSnippetFile(
         context: Context,
@@ -701,7 +720,7 @@ object LocalFileManager {
                 val docTree = DocumentFile.fromTreeUri(context, treeUri)
                 if (docTree != null && docTree.exists() && docTree.isDirectory) {
                     val targetDir = findSubFolder(docTree, snippet.folder) ?: docTree
-                    val targetDoc = targetDir.findFile(fileName)
+                    val targetDoc = findDocFileByName(targetDir, fileName)
                     targetDoc?.delete()
                     return
                 }

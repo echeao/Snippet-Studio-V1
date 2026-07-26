@@ -148,7 +148,8 @@ class SnippetRepository(
         } else {
             ""
         }
-        val fileName = if (title.isBlank()) "snippet${type.extension}" else "${title.take(20).replace("\\s+".toRegex(), "_")}${type.extension}"
+        val dummyForFileName = Snippet(id = "", type = type, title = title, fileName = "", content = "")
+        val fileName = dummyForFileName.defaultFileName
         val sizeBytes = content.toByteArray(Charsets.UTF_8).size
 
         val snippet = Snippet(

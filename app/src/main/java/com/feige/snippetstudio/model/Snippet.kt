@@ -91,19 +91,26 @@ data class Snippet(
         }
 
     /**
-     * 【只读计算属性】根据标题和类型自动推导默认合法文件名。
-     * 使用正则表达式 `\s+` 将标题中的空白字符替换为下划线，避免产生包含非法空格的文件名。
+     * 【只读计算属性】根据标题和类型自动推导默认合法物理文件名。
+     * 过滤所有非法特殊字符，仅保留字母、数字、中文、下划线与连字符，消除包含特殊标点导致的物理擦除失败。
      */
     val defaultFileName: String
-        get() = if (title.isBlank()) "snippet${type.extension}" else "${title.replace("\\s+".toRegex(), "_")}${type.extension}"
+        get() {
+            if (title.isBlank()) return "snippet${type.extension}"
+            val sanitized = title.replace("[^a-zA-Z0-9_\\-\\u4e00-\\u9fa5]".toRegex(), "_")
+                .replace("_+".toRegex(), "_")
+                .trim('_')
+            val safeName = if (sanitized.isBlank()) "snippet" else sanitized.take(20)
+            return "${safeName}${type.extension}"
+        }
 
     companion object {
         /**
-         * 新建代码片段时自动生成包含时间的默认标题 (例如 "JavaScript · 07-25 10:30")。
+         * 新建代码片段时自动生成纯净、无特殊字符的默认标题 (例如 "Prompt_0726_1503")。
          */
         fun generateDefaultTitle(type: SnippetType): String {
-            val sdf = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
-            return "${type.displayName} · ${sdf.format(Date())}"
+            val sdf = SimpleDateFormat("MMdd_HHmm", Locale.getDefault())
+            return "${type.displayName}_${sdf.format(Date())}"
         }
     }
 }
