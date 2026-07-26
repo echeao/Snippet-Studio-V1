@@ -255,12 +255,14 @@ class GitManager(private val context: Context) {
             }
 
             Git.open(gitRepoDir).use { git ->
-                // 将所有未暂存变更与未追踪文件添加至暂存区
+                // 将所有未暂存新增与修改文件添加至暂存区
                 git.add().addFilepattern(".").call()
+                // 将所有物理删除的动作更新暂存至暂存区 (相当于 git add -u)
+                git.add().setUpdate(true).addFilepattern(".").call()
 
-                // 检查仓库当前状态，判断是否存在未提交的变更或未追踪的文件
+                // 检查仓库当前状态，判断是否存在未提交的变更、未追踪文件或物理删除
                 val status = git.status().call()
-                if (status.hasUncommittedChanges() || status.untracked.isNotEmpty()) {
+                if (status.hasUncommittedChanges() || status.untracked.isNotEmpty() || status.missing.isNotEmpty()) {
                     // 自动计算变更统计并生成结构化的提交信息
                     val message = buildCommitMessage(status)
                     git.commit()
@@ -444,8 +446,10 @@ class GitManager(private val context: Context) {
         if (!gitDir.exists()) return@withContext emptyMap()
 
         Git.open(gitRepoDir).use { git ->
-            // 将所有未暂存与新增文件添加至暂存区
+            // 1. 将所有未暂存新增与修改文件添加至暂存区
             git.add().addFilepattern(".").call()
+            // 2. 将所有物理删除的动作更新暂存至暂存区 (相当于 git add -u)
+            git.add().setUpdate(true).addFilepattern(".").call()
 
             val status = git.status().call()
             val changes = mutableMapOf<String, String>()
@@ -454,8 +458,9 @@ class GitManager(private val context: Context) {
             status.added.forEach { changes[it] = "ADDED" }
             // 已修改文件
             status.changed.forEach { changes[it] = "MODIFIED" }
-            // 已删除文件
+            // 已删除文件（暂存区与未暂存 missing 全量捕获）
             status.removed.forEach { changes[it] = "DELETED" }
+            status.missing.forEach { changes[it] = "DELETED" }
             // 仍未追踪的文件（理论上 add . 后不应有，但保险起见）
             status.untracked.forEach { changes[it] = "ADDED" }
 
