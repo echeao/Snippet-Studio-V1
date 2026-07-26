@@ -175,6 +175,14 @@ class GitManager(private val context: Context) {
      *
      * @param snippetDao 数据访问对象
      */
+    /**
+     * 遍历 Git 沙盒工作树文件，反向同步导入或更新至 Room 数据库。
+     *
+     * 精准匹配策略（解决问题 6 / 遗漏 1）：
+     * 以相对路径 `folder/fileName` 作为映射 Key，避免同名文件在不同子文件夹下被错误覆盖。
+     *
+     * @param snippetDao 数据访问对象
+     */
     suspend fun importGitDirToDatabase(snippetDao: com.feige.snippetstudio.data.local.SnippetDao) = withContext(Dispatchers.IO) {
         val files = gitRepoDir.walkTopDown().filter {
             it.isFile && !it.name.startsWith(".") && !it.name.startsWith("README") && !it.path.contains(".git")
@@ -182,13 +190,17 @@ class GitManager(private val context: Context) {
         }.toList()
 
         val now = System.currentTimeMillis()
-        val currentEntities = snippetDao.allActiveSnapshot().associateBy { it.fileName }
+        // 修正唯一键为 folder/fileName 组合，支持多级目录下同名文件匹配
+        val currentEntities = snippetDao.allActiveSnapshot().associateBy { entity ->
+            if (entity.folder.isBlank()) entity.fileName else "${entity.folder}/${entity.fileName}"
+        }
 
         files.forEach { file ->
             val content = file.readText(Charsets.UTF_8)
             val fileName = file.name
             val folder = file.parentFile?.relativeToOrNull(gitRepoDir)?.path?.replace('\\', '/') ?: ""
-            val existing = currentEntities[fileName]
+            val relativePath = if (folder.isBlank()) fileName else "$folder/$fileName"
+            val existing = currentEntities[relativePath]
 
             if (existing != null) {
                 // 如果内容或文件夹路径发生变动则更新 Room 记录
@@ -374,12 +386,37 @@ class GitManager(private val context: Context) {
 
 
     /**
-     * 获取 Git 本地沙盒仓中的全部非隐藏有效代码片段文件。
+     * 递归获取 Git 本地沙盒仓中的全部非隐藏有效代码片段文件（含深层子目录）。
      */
     suspend fun getAllSnippetFiles(): List<File> = withContext(Dispatchers.IO) {
-        gitRepoDir.listFiles()?.filter { 
-            it.isFile && !it.name.startsWith(".") && !it.name.startsWith("README")
-        } ?: emptyList()
+        gitRepoDir.walkTopDown().filter { 
+            it.isFile && !it.name.startsWith(".") && !it.name.startsWith("README") && !it.path.contains(".git") && isSupportedFile(it)
+        }.toList()
+    }
+
+    /**
+     * 遍历 Git 沙盒物理工作树，对齐数据库当前 Active 片段列表（解决问题 5 / 问题 D 增强）。
+     *
+     * 镜像清理策略：
+     * 自动跳过 `.git` 目录、隐藏文件与 `README`。若某受支持的文件在沙盒中物理存在，
+     * 但其相对路径（如 "components/button.js"）不在 [activeRelativePaths] 集合中，
+     * 则表明该文件在应用内部或外部已被删除，直接执行 [File.delete] 物理删除。
+     * 确保随后调用 JGit 的 git status 能精准捕获到 DELETED 状态！
+     *
+     * @param activeRelativePaths 数据库当前所有活动代码片段的相对路径集合
+     */
+    suspend fun cleanDeletedFiles(activeRelativePaths: Set<String>) = withContext(Dispatchers.IO) {
+        gitRepoDir.walkTopDown()
+            .filter { 
+                it.isFile && !it.name.startsWith(".") && !it.name.startsWith("README") 
+                && !it.path.contains(".git") && isSupportedFile(it)
+            }
+            .forEach { file ->
+                val relativePath = file.relativeToOrNull(gitRepoDir)?.path?.replace('\\', '/') ?: return@forEach
+                if (relativePath !in activeRelativePaths) {
+                    file.delete()
+                }
+            }
     }
 
     /**

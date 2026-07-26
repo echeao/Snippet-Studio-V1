@@ -247,7 +247,7 @@ class SubPageViewModel(
         }
     }
 
-    /** 生成 Push 预览：对比本地 DB 与沙盒差异 */
+    /** 生成 Push 预览：对比本地 DB 与沙盒差异，透传 repoTreeUri 执行磁盘前置校准 */
     fun previewPush(onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             _isPreviewing.value = true
@@ -259,7 +259,8 @@ class SubPageViewModel(
                 return@launch
             }
 
-            val result = engine.previewPush()
+            // 透传 repoTreeUri，确保预览前先扫描外部磁盘变动
+            val result = engine.previewPush(settings.repoTreeUri)
             _isPreviewing.value = false
             if (result.isSuccess) {
                 val preview = result.getOrThrow()
@@ -309,6 +310,7 @@ class SubPageViewModel(
                         url = settings.gitUrl,
                         branch = settings.gitBranch,
                         pat = settings.gitPat,
+                        repoTreeUri = settings.repoTreeUri,
                         onProgress = { _syncProgress.value = it }
                     )
                 }
@@ -357,7 +359,7 @@ class SubPageViewModel(
         }
     }
 
-    /** 触发双向完整的 Git 同步 (本地导出 -> Commit/Push -> Pull -> 数据库入库) */
+    /** 触发双向完整的 Git 同步 (本地导出 -> Commit/Push -> Pull -> 数据库入库)，支持远端删除精准清理（解决问题 F） */
     fun syncGit(onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             _isGitOperating.value = true
@@ -368,7 +370,7 @@ class SubPageViewModel(
                 return@launch
             }
 
-            // 1. 将现有的数据库片段导出至 Git 物理仓
+            // 1. 将现有的数据库片段导出至 Git 物理仓（内部自动清理镜像）
             snippetRepository.exportAllToGit()
 
             // 2. Commit 并 Push 提交到远程
@@ -385,14 +387,20 @@ class SubPageViewModel(
                 return@launch
             }
 
-            // 3. 从远端 Pull 最新提交
+            // 3. 记录 Pull 前沙盒文件集合，用于计算远端删除项目
+            val beforeSandboxFiles = gitManager.getSandboxFileContents().keys
+
+            // 从远端 Pull 最新提交
             val pullRes = gitManager.pull(settings.gitUrl, settings.gitBranch, settings.gitPat)
             if (pullRes.isSuccess) {
+                val afterSandboxFiles = gitManager.getSandboxFileContents().keys
+                val remoteDeletedPaths = beforeSandboxFiles - afterSandboxFiles
+
                 // 4. 将 Pull 到的新文件导入写入 Room 数据库
                 snippetRepository.syncGitFilesToDb()
 
-                // 5. 将拉取到的内容回写到用户物理工作区（SAF 或内部存储）
-                snippetRepository.syncAllToPhysicalStorage(settings.repoTreeUri)
+                // 5. 将拉取到的内容回写到用户物理工作区，并精准注销远端删除的文件与 DB 记录
+                snippetRepository.syncAllToPhysicalStorage(settings.repoTreeUri, remoteDeletedPaths)
 
                 settingsRepository.updateSettings { it.copy(lastSyncTime = System.currentTimeMillis()) }
                 _isGitOperating.value = false

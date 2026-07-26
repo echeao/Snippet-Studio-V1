@@ -27,8 +27,56 @@ object LocalFileManager {
     private const val TRASH_DIR = ".trash"
 
     /**
+     * 在 SAF DocumentTree 根节点下递归查找相对路径指定的子目录。
+     *
+     * @param docTree SAF 根目录 DocumentFile
+     * @param folderPath 相对文件夹路径 (如 "components/button")
+     * @return 找到的子目录 [DocumentFile]，若不存在则返回 null
+     */
+    fun findSubFolder(docTree: DocumentFile, folderPath: String): DocumentFile? {
+        val cleanPath = folderPath.trim().trim('/')
+        if (cleanPath.isBlank()) return docTree
+        val parts = cleanPath.split("/").filter { it.isNotBlank() }
+        var currentDoc: DocumentFile? = docTree
+        for (part in parts) {
+            val parent = currentDoc ?: return null
+            val existing = parent.findFile(part)
+            if (existing != null && existing.isDirectory) {
+                currentDoc = existing
+            } else {
+                return null
+            }
+        }
+        return currentDoc
+    }
+
+    /**
+     * 在 SAF DocumentTree 根节点下递归查找或创建相对路径指定的子目录。
+     *
+     * @param docTree SAF 根目录 DocumentFile
+     * @param folderPath 相对文件夹路径 (如 "components/button")
+     * @return 创建或找到的子目录 [DocumentFile]
+     */
+    fun findOrCreateSubFolder(docTree: DocumentFile, folderPath: String): DocumentFile? {
+        val cleanPath = folderPath.trim().trim('/')
+        if (cleanPath.isBlank()) return docTree
+        val parts = cleanPath.split("/").filter { it.isNotBlank() }
+        var currentDoc: DocumentFile? = docTree
+        for (part in parts) {
+            val parent = currentDoc ?: return null
+            val existing = parent.findFile(part)
+            currentDoc = if (existing != null && existing.isDirectory) {
+                existing
+            } else {
+                parent.createDirectory(part)
+            }
+        }
+        return currentDoc
+    }
+
+    /**
      * 软删除时将物理文件移入隐藏回收站目录 `.trash/`。
-     * 若目标已存在同名文件则追加时间戳后缀避免覆盖。
+     * 支持 SAF 与本地磁盘两种模式，自动保留文件相对子目录。
      */
     fun moveSnippetToTrash(
         context: Context,
@@ -44,13 +92,12 @@ object LocalFileManager {
                 if (docTree != null && docTree.exists() && docTree.isDirectory) {
                     val trashDir = docTree.findFile(TRASH_DIR)?.takeIf { it.isDirectory }
                         ?: docTree.createDirectory(TRASH_DIR)
-                    val sourceDoc = docTree.findFile(fileName)
+                    val sourceDir = findSubFolder(docTree, snippet.folder) ?: docTree
+                    val sourceDoc = sourceDir.findFile(fileName)
                     if (sourceDoc != null && trashDir != null) {
                         val targetName = resolveTrashName(trashDir, fileName)
-                        val moved = sourceDoc.renameTo(targetName)
-                        if (!moved) {
-                            copyAndDeleteDoc(context, sourceDoc, trashDir, targetName)
-                        }
+                        // SAF 模式下使用流拷贝+删除，确保跨目录正确移动，避免在根目录留存并产生 (1) 副本
+                        copyAndDeleteDoc(context, sourceDoc, trashDir, targetName)
                     }
                     return
                 }
@@ -71,7 +118,7 @@ object LocalFileManager {
     }
 
     /**
-     * 从隐藏回收站目录 `.trash/` 恢复物理文件到原路径。
+     * 从隐藏回收站目录 `.trash/` 恢复物理文件到原路径（含原子目录）。
      */
     fun restoreSnippetFromTrash(
         context: Context,
@@ -88,12 +135,8 @@ object LocalFileManager {
                     val trashDir = docTree.findFile(TRASH_DIR) ?: return
                     val trashedDoc = findTrashedDoc(trashDir, fileName)
                     if (trashedDoc != null) {
-                        val targetDir = if (snippet.folder.isBlank()) docTree
-                            else docTree.findFile(snippet.folder) ?: docTree
-                        val restored = trashedDoc.renameTo(fileName)
-                        if (!restored) {
-                            copyAndDeleteDoc(context, trashedDoc, targetDir, fileName)
-                        }
+                        val targetDir = findOrCreateSubFolder(docTree, snippet.folder) ?: docTree
+                        copyAndDeleteDoc(context, trashedDoc, targetDir, fileName)
                     }
                     return
                 }
@@ -175,12 +218,23 @@ object LocalFileManager {
         }
     }
 
+    /**
+     * 将源 DocumentFile 拷贝至目标 SAF 目录并删除源文件。
+     *
+     * 关键预清理逻辑（防御问题 D）：
+     * 在调用 `targetDir.createFile` 之前，先显式检查并删除目标目录下已存在的同名文件，
+     * 彻底解决 SAF Provider 在文件冲突时自动追加 `(1)` 重名副本的问题。
+     */
     private fun copyAndDeleteDoc(
         context: Context,
         source: DocumentFile,
         targetDir: DocumentFile,
         targetName: String
     ) {
+        // 显式预清理目标同名残余文件，防止产生 (1) 副本
+        val existing = targetDir.findFile(targetName)
+        existing?.delete()
+
         val mimeType = source.type ?: "application/octet-stream"
         val newDoc = targetDir.createFile(mimeType, targetName) ?: return
         context.contentResolver.openInputStream(source.uri)?.use { input ->
@@ -208,9 +262,7 @@ object LocalFileManager {
     /**
      * 扫描物理文件系统（SAF DocumentTree 或默认应用私有存储），将其同步至 Room 数据库。
      *
-     * 教学解析：
-     * 不仅扫描带代码文件的目录，还递归扫描空文件夹，并将其作为 [FolderEntity] 存入 [folderDao]，
-     * 实现物理空文件夹在应用界面树状视图中的 100% 双向同步显示。
+     * 支持 SAF 递归深层子目录扫描，保留子文件夹 [FolderEntity] 层级结构与 Snippet 的 [folder] 字段。
      *
      * @param context 上下文
      * @param repoTreeUriStr SAF 授权目录 URI 字符串
@@ -231,21 +283,8 @@ object LocalFileManager {
                 val treeUri = Uri.parse(repoTreeUriStr)
                 val docTree = DocumentFile.fromTreeUri(context, treeUri)
                 if (docTree != null && docTree.exists() && docTree.isDirectory) {
-                    val files = docTree.listFiles()
-                    for (doc in files) {
-                        if (doc.isDirectory && doc.name != null && !doc.name!!.startsWith(".")) {
-                            // SAF 模式下扫描到文件夹，存入 folderDao
-                            val folderPath = doc.name!!
-                            folderDao?.upsert(FolderEntity(path = folderPath))
-                        } else if (doc.isFile && doc.name != null && !doc.name!!.startsWith(".")) {
-                            val name = doc.name!!
-                            val title = name.substringBeforeLast(".")
-                            // 跳过回收站中已存在的文件（用户已删除，不应重新导入）
-                            if (trashedSnapshots.any { it.fileName == name || it.title == title }) continue
-                            val type = SnippetType.fromFileName(name)
-                            readAndSyncDocumentFile(context, doc, name, type, snippetDao)
-                        }
-                    }
+                    // SAF 模式递归遍历子目录
+                    scanSafDirectoryRecursive(context, docTree, "", snippetDao, folderDao, trashedSnapshots)
 
                     // ===== 反向清理：将物理文件已被外部删除的数据库记录移入回收站 =====
                     cleanupMissingPhysicalFiles(docTree, snippetDao, folderDao)
@@ -254,7 +293,6 @@ object LocalFileManager {
                     deduplicateDatabase(snippetDao)
                     return
                 }
-                // SAF 目录不可用时不执行清理（可能是临时不可用，不能误删）
                 return
             }
 
@@ -271,7 +309,6 @@ object LocalFileManager {
                     val relativeParent = file.parentFile?.relativeToOrNull(localDir)?.path?.replace('\\', '/') ?: ""
                     val name = file.name
                     val title = name.substringBeforeLast(".")
-                    // 跳过回收站中已存在的文件（用户已删除，不应重新导入）
                     if (trashedSnapshots.any { it.fileName == name || it.title == title }) return@forEach
                     val type = SnippetType.fromFileName(name)
                     readAndSyncLocalFile(file, name, relativeParent, type, snippetDao)
@@ -289,11 +326,39 @@ object LocalFileManager {
     }
 
     /**
-     * SAF 模式反向清理：检查数据库中的活动记录对应的物理文件是否存在于 SAF 目录中。
+     * 递归扫描 SAF DocumentTree 授权目录，解析多层级子文件夹与物理文件。
+     */
+    private suspend fun scanSafDirectoryRecursive(
+        context: Context,
+        currentDir: DocumentFile,
+        relativeFolder: String,
+        snippetDao: SnippetDao,
+        folderDao: FolderDao?,
+        trashedSnapshots: List<SnippetEntity>
+    ) {
+        val files = currentDir.listFiles()
+        for (doc in files) {
+            val docName = doc.name ?: continue
+            if (docName.startsWith(".")) continue
+
+            if (doc.isDirectory) {
+                val folderPath = if (relativeFolder.isBlank()) docName else "$relativeFolder/$docName"
+                val parentPath = relativeFolder
+                folderDao?.upsert(FolderEntity(path = folderPath, parentPath = parentPath))
+                // 递归扫描深层 SAF 子目录
+                scanSafDirectoryRecursive(context, doc, folderPath, snippetDao, folderDao, trashedSnapshots)
+            } else if (doc.isFile) {
+                val title = docName.substringBeforeLast(".")
+                if (trashedSnapshots.any { (it.fileName == docName || it.title == title) && (it.folder == relativeFolder || relativeFolder.isBlank()) }) continue
+                val type = SnippetType.fromFileName(docName)
+                readAndSyncDocumentFile(context, doc, docName, relativeFolder, type, snippetDao)
+            }
+        }
+    }
+
+    /**
+     * SAF 模式反向清理：检查数据库中的活动记录对应的物理文件是否存在于 SAF 目录树中。
      * 若物理文件已被外部删除，则将对应数据库记录移入回收站。
-     *
-     * 注意：SAF 模式下文件以扁平方式存储在根目录，不检查子文件夹路径。
-     * 仅当 SAF 目录确认可访问时才执行清理，避免目录临时不可用时误删记录。
      */
     private suspend fun cleanupMissingPhysicalFiles(
         docTree: DocumentFile,
@@ -304,14 +369,14 @@ object LocalFileManager {
             val activeSnippets = snippetDao.allActiveSnapshot()
             val now = System.currentTimeMillis()
 
-            // SAF 模式下文件存储在根目录，按文件名检查是否存在
             activeSnippets.forEach { entity ->
                 val fileName = entity.fileName.ifBlank {
                     entity.toDomain().defaultFileName
                 }
-                if (docTree.findFile(fileName) == null) {
+                val targetDir = findSubFolder(docTree, entity.folder)
+                if (targetDir == null || targetDir.findFile(fileName) == null) {
                     snippetDao.trash(entity.id, now)
-                    Log.d(TAG, "Cleanup: trashed missing SAF file '${fileName}'")
+                    Log.d(TAG, "Cleanup: trashed missing SAF file '${entity.folder}/$fileName'")
                 }
             }
 
@@ -319,9 +384,7 @@ object LocalFileManager {
             folderDao?.let { dao ->
                 val allFolders = dao.allSnapshot()
                 allFolders.forEach { folder ->
-                    // SAF 模式只支持一级目录
-                    val topDir = folder.path.split("/").firstOrNull() ?: folder.path
-                    if (docTree.findFile(topDir) == null) {
+                    if (findSubFolder(docTree, folder.path) == null) {
                         dao.deleteByPath(folder.path)
                         Log.d(TAG, "Cleanup: removed missing SAF folder '${folder.path}'")
                     }
@@ -392,17 +455,7 @@ object LocalFileManager {
                 val treeUri = Uri.parse(repoTreeUriStr)
                 val docTree = DocumentFile.fromTreeUri(context, treeUri)
                 if (docTree != null && docTree.exists() && docTree.isDirectory) {
-                    val parts = folderPath.split("/").filter { it.isNotBlank() }
-                    var currentDoc: DocumentFile? = docTree
-                    for (part in parts) {
-                        val parent = currentDoc ?: break
-                        val existing = parent.findFile(part)
-                        currentDoc = if (existing != null && existing.isDirectory) {
-                            existing
-                        } else {
-                            parent.createDirectory(part)
-                        }
-                    }
+                    findOrCreateSubFolder(docTree, folderPath)
                     return
                 }
             }
@@ -419,17 +472,13 @@ object LocalFileManager {
     }
 
     /**
-     * 读取单个 SAF DocumentFile 内容并写入/更新 Room 数据库。
-     *
-     * 匹配策略（防止重启后产生重复记录）：
-     * 1. 优先按 fileName 精确匹配
-     * 2. 其次按 defaultFileName 推导匹配（兼容 title 含空格/截断的情况）
-     * 3. 最后按 title 的规范化形式（去空格、下划线统一）模糊匹配
+     * 读取单个 SAF DocumentFile 内容并写入/更新 Room 数据库，透传 folder 目录归属。
      */
     private suspend fun readAndSyncDocumentFile(
         context: Context,
         doc: DocumentFile,
         fileName: String,
+        folder: String,
         type: SnippetType,
         snippetDao: SnippetDao
     ) {
@@ -441,12 +490,13 @@ object LocalFileManager {
             val title = fileName.substringBeforeLast(".")
             val lm = doc.lastModified()
             val now = if (lm > 0L) lm else System.currentTimeMillis()
-            val existing = findExistingSnippet(snippetDao, fileName, title)
+            val existing = findExistingSnippet(snippetDao, fileName, title, folder)
 
             if (existing != null) {
-                if (existing.content != content) {
+                if (existing.content != content || existing.folder != folder) {
                     val updated = existing.copy(
                         content = content,
+                        folder = folder,
                         sizeBytes = content.toByteArray(Charsets.UTF_8).size,
                         updatedAt = now
                     )
@@ -458,6 +508,7 @@ object LocalFileManager {
                     type = type,
                     title = title,
                     fileName = fileName,
+                    folder = folder,
                     content = content,
                     createdAt = now,
                     updatedAt = now,
@@ -472,11 +523,6 @@ object LocalFileManager {
 
     /**
      * 读取单个应用私有物理文件内容并写入/更新 Room 数据库。
-     *
-     * 匹配策略（防止重启后产生重复记录）：
-     * 1. 优先按 fileName + folder 精确匹配
-     * 2. 其次按 defaultFileName 推导匹配
-     * 3. 最后按 title 规范化形式模糊匹配
      */
     private suspend fun readAndSyncLocalFile(
         file: File,
@@ -522,11 +568,6 @@ object LocalFileManager {
 
     /**
      * 多策略匹配已有数据库记录，防止重启同步时产生重复条目。
-     *
-     * 匹配优先级：
-     * 1. fileName 精确匹配（+ folder 匹配，若指定）
-     * 2. 通过 DB 记录的 title 推导 defaultFileName 与物理 fileName 比对
-     * 3. 将 title 规范化后（空格/下划线统一、忽略大小写）进行模糊匹配
      */
     private suspend fun findExistingSnippet(
         snippetDao: SnippetDao,
@@ -543,9 +584,8 @@ object LocalFileManager {
         if (byFileName != null) return byFileName
 
         // 策略 2: 通过 DB 记录的 title 推导 defaultFileName 进行匹配
-        // 解决 create() 中 title.take(20) 截断 + 空格替换下划线后 fileName 与原始 title 不一致的问题
         val byDefaultFileName = allActive.find { entity ->
-            val ext = SnippetType.fromCode(entity.type).extension // ".md", ".js" 等
+            val ext = SnippetType.fromCode(entity.type).extension
             val expectedFileName = if (entity.title.isBlank()) {
                 "snippet${ext}"
             } else {
@@ -565,7 +605,6 @@ object LocalFileManager {
         val normalizedDerived = derivedTitle.replace("_", " ").replace("\\s+".toRegex(), " ").trim().lowercase()
         val byNormalizedTitle = allActive.find { entity ->
             val normalizedDbTitle = entity.title.replace("_", " ").replace("\\s+".toRegex(), " ").trim().lowercase()
-            // 匹配完整 title 或 title 的前 20 字符（兼容 take(20) 截断）
             (normalizedDbTitle == normalizedDerived ||
              normalizedDbTitle.take(20).trim() == normalizedDerived) &&
                 (folder == null || entity.folder == folder || entity.folder.isBlank())
@@ -587,7 +626,6 @@ object LocalFileManager {
 
             for ((_, entities) in grouped) {
                 if (entities.size > 1) {
-                    // 保留 updatedAt 最大的（最新的），其余移入回收站
                     val sorted = entities.sortedByDescending { it.updatedAt }
                     sorted.drop(1).forEach { duplicate ->
                         snippetDao.trash(duplicate.id, now)
@@ -601,16 +639,7 @@ object LocalFileManager {
     }
 
     /**
-     * 将代码片段 [Snippet] 实时保存/写入至 SAF 目录或应用私有物理文件。
-     */
-    /**
      * 将代码片段 [Snippet] 实时保存/写入至 SAF 授权目录或应用私有物理文件。
-     *
-     * 教学解析：
-     * 1. SAF 模式 (Storage Access Framework): 使用 `DocumentFile.fromTreeUri` 构建授权目录。
-     *    调用 `contentResolver.openOutputStream(uri, "wt")` ("wt" = write truncate)，清空现有内容并写入 UTF-8 字节。
-     * 2. 降级本地 File 模式 (Fallback Internal File): 当用户未设置外部授权文件夹时，
-     *    自动降级写入 `context.getExternalFilesDir(null)/snippets` 私有沙盒，无需申请危险的 READ/WRITE_EXTERNAL_STORAGE 权限。
      */
     fun writeSnippetToFile(
         context: Context,
@@ -618,7 +647,6 @@ object LocalFileManager {
         repoTreeUriStr: String
     ) {
         try {
-            // 计算合法文件名 (若为空则取 defaultFileName)
             val fileName = if (snippet.fileName.isBlank()) snippet.defaultFileName else snippet.fileName
 
             // ===== 路径分支 1: 存在有效 SAF 目录 URI =====
@@ -626,7 +654,8 @@ object LocalFileManager {
                 val treeUri = Uri.parse(repoTreeUriStr)
                 val docTree = DocumentFile.fromTreeUri(context, treeUri)
                 if (docTree != null && docTree.exists() && docTree.isDirectory) {
-                    var targetDoc = docTree.findFile(fileName)
+                    val targetDir = findOrCreateSubFolder(docTree, snippet.folder) ?: docTree
+                    var targetDoc = targetDir.findFile(fileName)
                     // 若目标文件不存在，则在 SAF 树中依据 MIME 类型新建 DocumentFile
                     if (targetDoc == null) {
                         val mimeType = when (snippet.type) {
@@ -635,10 +664,9 @@ object LocalFileManager {
                             SnippetType.MARKDOWN -> "text/markdown"
                             SnippetType.PROMPT -> "text/plain"
                         }
-                        targetDoc = docTree.createFile(mimeType, fileName)
+                        targetDoc = targetDir.createFile(mimeType, fileName)
                     }
                     if (targetDoc != null) {
-                        // 打开 ContentResolver 写入流并以 UTF-8 格式覆写文件
                         context.contentResolver.openOutputStream(targetDoc.uri, "wt")?.use { stream ->
                             stream.write(snippet.content.toByteArray(Charsets.UTF_8))
                         }
@@ -649,7 +677,6 @@ object LocalFileManager {
 
             // ===== 路径分支 2: 降级使用内部 App 物理存储目录 =====
             val localDir = getDefaultRepoDir(context)
-            // 支持子文件夹路径 (例如 folder = "components/ui"，若不存在则先 mkdirs)
             val targetDir = if (snippet.folder.isBlank()) localDir else File(localDir, snippet.folder).apply { if (!exists()) mkdirs() }
             val file = File(targetDir, fileName)
             file.writeText(snippet.content, Charsets.UTF_8)
@@ -657,7 +684,6 @@ object LocalFileManager {
             Log.e(TAG, "Error writing snippet file to disk", e)
         }
     }
-
 
     /**
      * 当彻底物理删除代码片段时，从磁盘删除对应的物理文件。
@@ -674,7 +700,8 @@ object LocalFileManager {
                 val treeUri = Uri.parse(repoTreeUriStr)
                 val docTree = DocumentFile.fromTreeUri(context, treeUri)
                 if (docTree != null && docTree.exists() && docTree.isDirectory) {
-                    val targetDoc = docTree.findFile(fileName)
+                    val targetDir = findSubFolder(docTree, snippet.folder) ?: docTree
+                    val targetDoc = targetDir.findFile(fileName)
                     targetDoc?.delete()
                     return
                 }

@@ -145,12 +145,27 @@ class SyncEngine(
      *
      * @return 预览结果
      */
-    suspend fun previewPush(): Result<SyncPreview> = withContext(Dispatchers.IO) {
+    /**
+     * 生成 Push 预览：在导出 DB 到沙盒后，通过 git status 检测未提交的变更。
+     *
+     * 优化逻辑（解决问题 B, C）：
+     * 1. 允许穿透传入 [repoTreeUri]，在预览前静默触发一次物理磁盘至 DB 的扫描。
+     * 2. 导出时触发沙盒镜像清理 (`cleanDeletedFiles`)，确保 deleted 状态能被 JGit 精准识别。
+     *
+     * @param repoTreeUri 用户授权的 SAF 目录 URI 字符串
+     * @return 预览结果
+     */
+    suspend fun previewPush(repoTreeUri: String = ""): Result<SyncPreview> = withContext(Dispatchers.IO) {
         runCatching {
-            // 1. 先将 DB 全量导出到沙盒，确保沙盒文件与 DB 一致
+            // 0. 前置步骤：先触发物理磁盘至数据库的增量同步（若指定了 repoTreeUri）
+            if (repoTreeUri.isNotBlank()) {
+                snippetRepository.syncWithLocalRepository(repoTreeUri)
+            }
+
+            // 1. 先将 DB 全量导出到沙盒（内部自动执行 cleanDeletedFiles 沙盒镜像对齐）
             snippetRepository.exportAllToGit()
 
-            // 2. 通过 git status 检测未提交的变更（含未追踪的新文件）
+            // 2. 通过 git status 检测未提交的变更（含未追踪的新文件与已删除文件）
             val uncommittedChanges = gitManager.getUncommittedChanges()
 
             // 3. 一次性读取沙盒文件内容（用于展示变更详情）
@@ -214,13 +229,14 @@ class SyncEngine(
     }
 
     /**
-     * 执行 Pull 操作（含冲突解决）。
+     * 执行 Pull 操作（含冲突解决与远端删除透传）。
      *
      * 流程：
      * 1. 按用户选择解决冲突（写入沙盒）
-     * 2. 执行 git pull 合并远端
-     * 3. 将沙盒文件导入 DB
-     * 4. 回写到用户物理工作区
+     * 2. 捕获拉取前沙盒文件列表，执行 git pull
+     * 3. 计算远端删除的文件相对路径集合 `remoteDeletedPaths`
+     * 4. 将沙盒文件导入 DB
+     * 5. 回写物理工作区，精准擦除远端删除的文件及对应的 DB 记录（解决问题 A/E）
      *
      * @param conflicts 已解决的冲突列表
      * @param branch 目标分支
@@ -245,15 +261,12 @@ class SyncEngine(
 
                     when (conflict.resolution) {
                         ConflictResolution.KEEP_LOCAL -> {
-                            // 用本地版本覆写沙盒
                             gitManager.writeSandboxFile(relativePath, conflict.localContent)
                         }
                         ConflictResolution.KEEP_REMOTE -> {
-                            // 保持远端版本（写入沙盒以便 pull 后一致）
                             gitManager.writeSandboxFile(relativePath, conflict.remoteContent)
                         }
                         ConflictResolution.KEEP_BOTH -> {
-                            // 保留本地版本，远端版本重命名保存
                             gitManager.writeSandboxFile(relativePath, conflict.localContent)
                             val base = conflict.fileName.substringBeforeLast('.')
                             val ext = conflict.fileName.substringAfterLast('.', "")
@@ -263,24 +276,29 @@ class SyncEngine(
                             gitManager.writeSandboxFile(remotePath, conflict.remoteContent)
                         }
                         ConflictResolution.PENDING -> {
-                            // 未解决的冲突：默认保留本地
                             gitManager.writeSandboxFile(relativePath, conflict.localContent)
                         }
                     }
                 }
             }
 
-            // 2. 执行 Pull
+            // 2. 捕获拉取前沙盒文件列表，用于计算远端删除项目
+            val beforeSandboxFiles = gitManager.getSandboxFileContents().keys
+
             onProgress("正在从远端拉取...")
             gitManager.pull("", branch, pat).getOrThrow()
+
+            // 计算从沙盒中消失的文件相对路径（即远端删除了的文件）
+            val afterSandboxFiles = gitManager.getSandboxFileContents().keys
+            val remoteDeletedPaths = beforeSandboxFiles - afterSandboxFiles
 
             // 3. 导入数据库
             onProgress("正在写入数据库...")
             snippetRepository.syncGitFilesToDb()
 
-            // 4. 回写物理工作区
+            // 4. 回写物理工作区，精准清理物理文件与 DB 中的废弃记录
             onProgress("正在同步到文件夹...")
-            snippetRepository.syncAllToPhysicalStorage(repoTreeUri)
+            snippetRepository.syncAllToPhysicalStorage(repoTreeUri, remoteDeletedPaths)
 
             onProgress("拉取完成")
             Unit
@@ -290,27 +308,26 @@ class SyncEngine(
     /**
      * 执行 Push 操作。
      *
-     * 流程：
-     * 1. 将 DB 内容导出到 Git 沙盒
-     * 2. Commit 并 Push 到远端
-     *
      * @param url 远端仓库地址
      * @param branch 目标分支
      * @param pat 鉴权 Token
+     * @param repoTreeUri 用户工作区 SAF URI
      * @param onProgress 进度回调
      */
     suspend fun executePush(
         url: String,
         branch: String,
         pat: String,
+        repoTreeUri: String = "",
         onProgress: (String) -> Unit
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            // 1. 导出 DB 到沙盒
             onProgress("正在准备本地文件...")
+            if (repoTreeUri.isNotBlank()) {
+                snippetRepository.syncWithLocalRepository(repoTreeUri)
+            }
             snippetRepository.exportAllToGit()
 
-            // 2. Commit & Push
             onProgress("正在推送到远端...")
             gitManager.commitAndPush(
                 commitMessage = "sync: Snippet Studio push at ${System.currentTimeMillis()}",

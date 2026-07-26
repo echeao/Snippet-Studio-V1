@@ -50,6 +50,14 @@ class SnippetRepository(
     }
 
     /**
+     * 将外部授权的 SAF 目录或本地私有存储中的物理文件与文件夹全量扫描并同步更新至 Room 数据库（使用 Repository 内部持有的 Context）。
+     */
+    suspend fun syncWithLocalRepository(repoTreeUriStr: String) = withContext(Dispatchers.IO) {
+        val ctx = context ?: return@withContext
+        LocalFileManager.syncRepositoryToDatabase(ctx, repoTreeUriStr, snippetDao, folderDao)
+    }
+
+    /**
      * 响应式观察全量已持久化的文件夹列表。
      */
     fun observeFolders(): Flow<List<FolderEntity>> = folderDao?.observeAll() ?: flowOf(emptyList())
@@ -206,6 +214,10 @@ class SnippetRepository(
      * 将代码片段移入回收站 (软删除)。
      * 同步将物理文件移入隐藏 `.trash/` 目录，避免用户在文件管理器中看到"已删除"文件。
      */
+    /**
+     * 将代码片段移入回收站 (软删除)。
+     * 同步将物理文件移入隐藏 `.trash/` 目录，并联动从 Git 沙盒中移除该文件。
+     */
     suspend fun trash(id: String, repoTreeUriStr: String = "") {
         val snippet = getById(id)
         snippetDao.trash(id, System.currentTimeMillis())
@@ -215,12 +227,13 @@ class SnippetRepository(
                     LocalFileManager.moveSnippetToTrash(ctx, s, repoTreeUriStr)
                 }
             }
+            gitManager?.removeSnippetFile(s)
         }
     }
 
     /**
      * 从回收站还原代码片段。
-     * 同步将物理文件从 `.trash/` 恢复到原目录。
+     * 同步将物理文件从 `.trash/` 恢复到原目录，并写回 Git 沙盒。
      */
     suspend fun restore(id: String, repoTreeUriStr: String = "") {
         val snippet = getById(id)
@@ -231,6 +244,7 @@ class SnippetRepository(
                     LocalFileManager.restoreSnippetFromTrash(ctx, s, repoTreeUriStr)
                 }
             }
+            gitManager?.writeSnippetFile(s)
         }
     }
 
@@ -252,7 +266,7 @@ class SnippetRepository(
 
     /**
      * 清理回收站中停放天数超过 [days] 天的过期废弃代码片段。
-     * 同步清理 `.trash/` 目录中对应的物理文件。
+     * 同步清理 `.trash/` 目录中对应的物理文件与 Git 沙盒残留文件。
      */
     suspend fun purgeExpired(days: Int = 30, repoTreeUriStr: String = "") {
         val cutoff = System.currentTimeMillis() - (days * 24L * 3600L * 1000L)
@@ -260,11 +274,13 @@ class SnippetRepository(
             it.trashedAt != null && it.trashedAt < cutoff
         }
         expired.forEach { entity ->
+            val snippet = entity.toDomain()
             context?.let { ctx ->
                 withContext(Dispatchers.IO) {
-                    LocalFileManager.purgeFromTrash(ctx, entity.toDomain(), repoTreeUriStr)
+                    LocalFileManager.purgeFromTrash(ctx, snippet, repoTreeUriStr)
                 }
             }
+            gitManager?.removeSnippetFile(snippet)
         }
         snippetDao.purgeExpired(cutoff)
     }
@@ -346,27 +362,52 @@ class SnippetRepository(
 
     /**
      * 将 Room 中的全量代码片段导出到 Git 沙盒工作树中。
+     * 自动触发镜像对齐清理，物理注销已不在 Active 列表中多余的沙盒幽灵文件。
      */
     suspend fun exportAllToGit() {
         val snippets = allForExport()
         gitManager?.exportAllSnippetsToDir(snippets)
+        val activePaths = snippets.map { if (it.folder.isBlank()) it.fileName else "${it.folder}/${it.fileName}" }.toSet()
+        gitManager?.cleanDeletedFiles(activePaths)
     }
 
     /**
      * 将数据库中的活动代码片段与文件夹结构同步回写到用户物理工作区（SAF 或内部存储）。
-     * 用于 Git Pull 完成后，确保拉取到的新内容在用户的物理文件夹中可见。
+     *
+     * 精准销毁策略（解决问题 A, E）：
+     * 1. 根据 [remoteDeletedPaths] 清单，擦除被远端删除的 SAF / 本地物理文件。
+     * 2. 同步调用 [snippetDao.purge] 清理 DB 中对应的废弃记录，防止重启扫描时误恢复。
+     * 3. 绝不盲目强删用户手动添加的文件。
      *
      * @param repoTreeUriStr SAF 授权目录 URI 字符串
+     * @param remoteDeletedPaths 本次 Pull 中被远端删除的文件相对路径集合
      */
-    suspend fun syncAllToPhysicalStorage(repoTreeUriStr: String) = withContext(Dispatchers.IO) {
+    suspend fun syncAllToPhysicalStorage(
+        repoTreeUriStr: String,
+        remoteDeletedPaths: Set<String> = emptySet()
+    ) = withContext(Dispatchers.IO) {
         val ctx = context ?: return@withContext
 
-        // 1. 先创建文件夹结构（包含空文件夹）
+        // 1. 处理远端删除项：物理擦除 + DB 记录注销
+        if (remoteDeletedPaths.isNotEmpty()) {
+            val activeEntities = snippetDao.allActiveSnapshot()
+            remoteDeletedPaths.forEach { relPath ->
+                val match = activeEntities.find {
+                    (if (it.folder.isBlank()) it.fileName else "${it.folder}/${it.fileName}") == relPath
+                }
+                match?.let {
+                    LocalFileManager.deleteSnippetFile(ctx, it.toDomain(), repoTreeUriStr)
+                    snippetDao.purge(it.id)
+                }
+            }
+        }
+
+        // 2. 先创建文件夹结构（包含空文件夹）
         gitManager?.getFolderStructure()?.forEach { folderPath ->
             LocalFileManager.createPhysicalFolder(ctx, folderPath, repoTreeUriStr)
         }
 
-        // 2. 将所有活动片段写入物理存储
+        // 3. 将所有活动片段写入物理存储
         val snippets = snippetDao.allActiveSnapshot().map { it.toDomain() }
         snippets.forEach { snippet ->
             LocalFileManager.writeSnippetToFile(ctx, snippet, repoTreeUriStr)
