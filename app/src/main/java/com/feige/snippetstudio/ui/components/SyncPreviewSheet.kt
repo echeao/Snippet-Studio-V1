@@ -23,11 +23,9 @@ import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.model.*
 import com.feige.snippetstudio.ui.theme.LocalThemeColors
 import com.feige.snippetstudio.ui.theme.Spacing
-
-// 同步预览专用语义色
-private val SyncGreen = androidx.compose.ui.graphics.Color(0xFF4CAF50)
-private val SyncRed = androidx.compose.ui.graphics.Color(0xFFE53935)
-private val SyncBlue = androidx.compose.ui.graphics.Color(0xFF1E88E5)
+import com.feige.snippetstudio.ui.theme.SyncGreen
+import com.feige.snippetstudio.ui.theme.SyncRed
+import com.feige.snippetstudio.ui.theme.SyncBlue
 
 /**
  * [SyncPreviewSheet] 同步预览底部面板。

@@ -26,6 +26,7 @@ object SnippetTemplateManager {
             SnippetType.JS -> "templates/template_js.js"
             SnippetType.MARKDOWN -> "templates/template_markdown.md"
             SnippetType.PROMPT -> "templates/template_prompt.txt"
+            SnippetType.GENERAL -> "templates/template_prompt.txt"
         }
         return runCatching {
             context.assets.open(assetPath).use { inputStream ->

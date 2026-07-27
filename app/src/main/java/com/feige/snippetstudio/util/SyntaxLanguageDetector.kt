@@ -62,6 +62,7 @@ object SyntaxLanguageDetector {
             SnippetType.JS -> SyntaxLanguage.JS
             SnippetType.MARKDOWN -> SyntaxLanguage.MARKDOWN
             SnippetType.PROMPT -> SyntaxLanguage.PROMPT
+            SnippetType.GENERAL -> SyntaxLanguage.PLAIN
         }
     }
 

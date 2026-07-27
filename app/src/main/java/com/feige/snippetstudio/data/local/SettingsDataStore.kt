@@ -54,6 +54,7 @@ class SettingsDataStore(private val context: Context) {
         val CARD_CLICK_ACTION = stringPreferencesKey("card_click_action")
         val USE_BOILERPLATE = booleanPreferencesKey("use_boilerplate")
         val SHARE_ACTION = stringPreferencesKey("share_action")
+        val EDITOR_FONT_FAMILY = stringPreferencesKey("editor_font_family")
     }
 
     /**
@@ -83,7 +84,8 @@ class SettingsDataStore(private val context: Context) {
             autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true,
             cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail",
             useBoilerplate = prefs[Keys.USE_BOILERPLATE] ?: true,
-            shareAction = prefs[Keys.SHARE_ACTION] ?: "panel"
+            shareAction = prefs[Keys.SHARE_ACTION] ?: "panel",
+            editorFontFamily = prefs[Keys.EDITOR_FONT_FAMILY] ?: "monospace"
         )
     }
 
@@ -116,7 +118,8 @@ class SettingsDataStore(private val context: Context) {
                 autoSyncEnabled = prefs[Keys.AUTO_SYNC_ENABLED] ?: true,
                 cardClickAction = prefs[Keys.CARD_CLICK_ACTION] ?: "detail",
                 useBoilerplate = prefs[Keys.USE_BOILERPLATE] ?: true,
-                shareAction = prefs[Keys.SHARE_ACTION] ?: "panel"
+                shareAction = prefs[Keys.SHARE_ACTION] ?: "panel",
+                editorFontFamily = prefs[Keys.EDITOR_FONT_FAMILY] ?: "monospace"
             )
             // 调用高阶函数拿到修改后的更新对象
             val updated = transform(current)
@@ -144,6 +147,7 @@ class SettingsDataStore(private val context: Context) {
             prefs[Keys.CARD_CLICK_ACTION] = updated.cardClickAction
             prefs[Keys.USE_BOILERPLATE] = updated.useBoilerplate
             prefs[Keys.SHARE_ACTION] = updated.shareAction
+            prefs[Keys.EDITOR_FONT_FAMILY] = updated.editorFontFamily
         }
     }
 }

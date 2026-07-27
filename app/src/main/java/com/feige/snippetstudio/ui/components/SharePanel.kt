@@ -30,6 +30,7 @@ import com.feige.snippetstudio.ui.theme.*
  * @param sharedFileName 分享来源文件名（文件分享时非 null，纯文本分享时为 null）
  * @param onDismiss 关闭/取消回调
  * @param onConfirm 确认保存回调 (title, type)
+ * @param onPreview 仅预览回调（不保存）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +40,8 @@ fun SharePanel(
     detectedType: SnippetType,
     sharedFileName: String? = null,
     onDismiss: () -> Unit,
-    onConfirm: (title: String, type: SnippetType) -> Unit
+    onConfirm: (title: String, type: SnippetType) -> Unit,
+    onPreview: ((content: String, type: SnippetType) -> Unit)? = null
 ) {
     if (!show) return
 
@@ -165,6 +167,17 @@ fun SharePanel(
                         style = ListTitleStyle,
                         color = tc.text2
                     )
+                }
+                if (onPreview != null) {
+                    TextButton(
+                        onClick = { onPreview(sharedText, selectedType) }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.share_panel_preview),
+                            style = ListTitleStyle,
+                            color = tc.primary
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.width(Spacing.S3))
                 Button(

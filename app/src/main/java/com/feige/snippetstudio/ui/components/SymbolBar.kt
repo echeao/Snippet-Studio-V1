@@ -39,6 +39,7 @@ enum class SymbolLanguage(val displayName: String) {
                 SnippetType.JS -> JS
                 SnippetType.MARKDOWN -> MARKDOWN
                 SnippetType.PROMPT -> PROMPT
+                SnippetType.GENERAL -> PROMPT
             }
         }
     }

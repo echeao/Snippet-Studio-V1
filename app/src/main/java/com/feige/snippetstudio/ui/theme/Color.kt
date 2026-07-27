@@ -72,6 +72,11 @@ val C_BackupBg = Color(0xFFEDF3EE)
 val C_Look = Color(0xFF5C5E5B)       // 外观指示中性灰
 val C_LookBg = Color(0xFFF0F0EE)
 
+// ===== Git 同步对比色 (Sync / Diff Colors) =====
+val SyncGreen = Color(0xFF4CAF50)    // 变更新增/同步成功
+val SyncRed = Color(0xFFE53935)      // 变更删除/同步冲突
+val SyncBlue = Color(0xFF1E88E5)     // 变更修改/同步标识
+
 val StarOn = Color(0xFFD4A237)       // 收藏金黄星标色
 
 // ===== 语法高亮词法单元色彩 (Syntax Highlighting Tokens) =====

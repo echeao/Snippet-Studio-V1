@@ -84,7 +84,9 @@ data class EditorUiState(
     val showVariablePanel: Boolean = false,
     val variableValues: Map<String, String> = emptyMap(),
     /** 工作区未配置警告：文件仅存储在应用私有目录，手机文件管理器不可见 */
-    val noWorkspaceConfigured: Boolean = false
+    val noWorkspaceConfigured: Boolean = false,
+    /** 编辑器字体族 */
+    val editorFontFamily: String = "monospace"
 )
 
 /**
@@ -130,7 +132,8 @@ class EditorViewModel(
                         showLineNumbers = settings.showLineNumbers,
                         highlightCurrentLine = settings.highlightCurrentLine,
                         tabSize = settings.tabSize,
-                        autoPairBrackets = settings.autoPairBrackets
+                        autoPairBrackets = settings.autoPairBrackets,
+                        editorFontFamily = settings.editorFontFamily
                     )
                 }
             }
@@ -357,6 +360,13 @@ class EditorViewModel(
             it.copy(tags = tags, saveState = SaveState.UNSAVED)
         }
         triggerAutoSave()
+    }
+
+    /** 设置编辑器字体族 */
+    fun setEditorFontFamily(fontFamily: String) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings { it.copy(editorFontFamily = fontFamily) }
+        }
     }
 
     /** 快捷缩放编辑器字体大小 */

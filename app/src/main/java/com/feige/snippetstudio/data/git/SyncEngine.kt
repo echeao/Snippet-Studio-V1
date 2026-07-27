@@ -165,8 +165,8 @@ class SyncEngine(
             // 1. 先将 DB 全量导出到沙盒（内部自动执行 cleanDeletedFiles 沙盒镜像对齐）
             snippetRepository.exportAllToGit()
 
-            // 2. 通过 git status 检测未提交的变更（含未追踪的新文件与已删除文件）
-            val uncommittedChanges = gitManager.getUncommittedChanges()
+            // 2. 通过 stageAndGetUncommittedChanges 检测未提交的变更（自动将物理改动暂存至 git add）
+            val uncommittedChanges = gitManager.stageAndGetUncommittedChanges()
 
             // 3. 一次性读取沙盒文件内容（用于展示变更详情）
             val sandboxFiles = if (uncommittedChanges.isNotEmpty()) {

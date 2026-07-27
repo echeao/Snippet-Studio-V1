@@ -50,7 +50,14 @@ data class SubPageUiState(
     /** Git Log 提交历史列表 */
     val gitLogCommits: List<com.feige.snippetstudio.model.GitCommitInfo> = emptyList(),
     val isGitLogLoading: Boolean = false,
-    val gitLogError: String? = null
+    val gitLogError: String? = null,
+    /** 本地未提交变更 (path → type) */
+    val localChanges: Map<String, String> = emptyMap(),
+    /** 选中查看 Diff 的文件路径 */
+    val selectedDiffPath: String? = null,
+    /** 当前文件 Diff 行列表 */
+    val currentDiff: List<com.feige.snippetstudio.model.DiffLine> = emptyList(),
+    val isDiffLoading: Boolean = false
 )
 
 /**
@@ -79,6 +86,10 @@ class SubPageViewModel(
     private val _gitLogCommits = MutableStateFlow<List<com.feige.snippetstudio.model.GitCommitInfo>>(emptyList())
     private val _isGitLogLoading = MutableStateFlow(false)
     private val _gitLogError = MutableStateFlow<String?>(null)
+    private val _localChanges = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val _selectedDiffPath = MutableStateFlow<String?>(null)
+    private val _currentDiff = MutableStateFlow<List<com.feige.snippetstudio.model.DiffLine>>(emptyList())
+    private val _isDiffLoading = MutableStateFlow(false)
 
     /** SyncEngine 细粒度同步引擎（延迟初始化） */
     private val syncEngine: SyncEngine? by lazy {
@@ -106,7 +117,11 @@ class SubPageViewModel(
         _syncProgress,
         _gitLogCommits,
         _isGitLogLoading,
-        _gitLogError
+        _gitLogError,
+        _localChanges,
+        _selectedDiffPath,
+        _currentDiff,
+        _isDiffLoading
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         val settings = flows[0] as AppSettings
@@ -125,6 +140,13 @@ class SubPageViewModel(
         val logCommits = flows[10] as List<com.feige.snippetstudio.model.GitCommitInfo>
         val logLoading = flows[11] as Boolean
         val logError = flows[12] as String?
+        @Suppress("UNCHECKED_CAST")
+        val localChanges = flows[13] as Map<String, String>
+        @Suppress("UNCHECKED_CAST")
+        val diffPath = flows[14] as String?
+        @Suppress("UNCHECKED_CAST")
+        val diff = flows[15] as List<com.feige.snippetstudio.model.DiffLine>
+        val diffLoading = flows[16] as Boolean
 
         val counts = active.groupBy { it.type.displayName }.mapValues { it.value.size }
         val allTags = (settings.customTags + active.flatMap { it.tags }).distinct()
@@ -145,7 +167,11 @@ class SubPageViewModel(
             syncProgress = progress,
             gitLogCommits = logCommits,
             isGitLogLoading = logLoading,
-            gitLogError = logError
+            gitLogError = logError,
+            localChanges = localChanges,
+            selectedDiffPath = diffPath,
+            currentDiff = diff,
+            isDiffLoading = diffLoading
         )
     }.stateIn(
         scope = viewModelScope,
@@ -336,6 +362,41 @@ class SubPageViewModel(
     fun cancelSync() {
         _syncPreview.value = null
         _syncProgress.value = null
+    }
+
+    /** 加载本地未提交的变更文件列表（包含暂存未提交） */
+    fun loadLocalChanges() {
+        viewModelScope.launch {
+            if (gitManager == null) return@launch
+            val changes = gitManager.stageAndGetUncommittedChanges()
+            _localChanges.value = changes
+        }
+    }
+
+    /** 加载指定文件的 Diff */
+    fun loadFileDiff(relativePath: String) {
+        viewModelScope.launch {
+            _selectedDiffPath.value = relativePath
+            _isDiffLoading.value = true
+            _currentDiff.value = emptyList()
+            if (gitManager == null) {
+                _isDiffLoading.value = false
+                return@launch
+            }
+            val result = gitManager.getWorkingTreeDiff(relativePath)
+            result.onSuccess { diff ->
+                _currentDiff.value = diff
+            }.onFailure {
+                _currentDiff.value = emptyList()
+            }
+            _isDiffLoading.value = false
+        }
+    }
+
+    /** 关闭 Diff 视图 */
+    fun closeDiff() {
+        _selectedDiffPath.value = null
+        _currentDiff.value = emptyList()
     }
 
     /** 加载 Git 仓库全量提交历史 (Git Log) */

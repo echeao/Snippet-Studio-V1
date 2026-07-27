@@ -65,6 +65,9 @@ fun RunPreview(
                         WebView(ctx).apply {
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
+                            settings.setSupportZoom(true)
+                            settings.builtInZoomControls = true
+                            settings.displayZoomControls = false
                             webViewClient = WebViewClient()
                         }
                     },
@@ -101,6 +104,9 @@ fun RunPreview(
                         factory = { ctx ->
                             WebView(ctx).apply {
                                 settings.javaScriptEnabled = true
+                                settings.setSupportZoom(true)
+                                settings.builtInZoomControls = true
+                                settings.displayZoomControls = false
                                 val bridge = WebConsoleBridge { msg, level ->
                                     post { consoleLogs.add(ConsoleLog(msg, level)) }
                                 }
@@ -204,6 +210,9 @@ fun RunPreview(
                     factory = { ctx ->
                         WebView(ctx).apply {
                             settings.javaScriptEnabled = false
+                            settings.setSupportZoom(true)
+                            settings.builtInZoomControls = true
+                            settings.displayZoomControls = false
                             webViewClient = WebViewClient()
                         }
                     },
@@ -217,7 +226,7 @@ fun RunPreview(
                 )
             }
 
-            SnippetType.PROMPT -> {
+            SnippetType.PROMPT, SnippetType.GENERAL -> {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()

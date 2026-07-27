@@ -663,6 +663,7 @@ object LocalFileManager {
                             SnippetType.JS -> "text/javascript"
                             SnippetType.MARKDOWN -> "text/markdown"
                             SnippetType.PROMPT -> "text/plain"
+                            SnippetType.GENERAL -> "text/plain"
                         }
                         targetDoc = targetDir.createFile(mimeType, fileName)
                     }

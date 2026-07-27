@@ -35,6 +35,7 @@ fun TypeIcon(
         SnippetType.JS -> iconColors.js
         SnippetType.MARKDOWN -> iconColors.md
         SnippetType.PROMPT -> iconColors.prompt
+        SnippetType.GENERAL -> iconColors.prompt
     }
     val bg = if (tc.isDark) fg.copy(alpha = 0.2f) else {
         when (type) {
@@ -42,6 +43,7 @@ fun TypeIcon(
             SnippetType.JS -> C_JsBg
             SnippetType.MARKDOWN -> C_MdBg
             SnippetType.PROMPT -> C_PromptBg
+            SnippetType.GENERAL -> C_PromptBg
         }
     }
 
@@ -99,6 +101,15 @@ fun TypeIcon(
                     contentDescription = "Prompt",
                     tint = fg,
                     modifier = Modifier.size(size * 0.55f)
+                )
+            }
+            SnippetType.GENERAL -> {
+                Text(
+                    text = "T",
+                    color = fg,
+                    fontSize = (size.value * 0.35f).sp,
+                    fontWeight = FontWeight.W900,
+                    fontFamily = FontFamily.Monospace
                 )
             }
         }

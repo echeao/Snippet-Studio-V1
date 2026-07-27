@@ -7,6 +7,7 @@ import com.feige.snippetstudio.data.repo.SettingsRepository
 import com.feige.snippetstudio.data.repo.SnippetRepository
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.components.FilterOption
+import com.feige.snippetstudio.util.FuzzySearchUtil
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -119,9 +120,9 @@ class FilesViewModel(
         // ===== 2. 按搜索词模糊匹配 (标题 / 正文 / 标签) =====
         if (params.query.isNotBlank()) {
             list = list.filter {
-                it.title.contains(params.query, ignoreCase = true) ||
-                        it.content.contains(params.query, ignoreCase = true) ||
-                        it.tags.any { tag -> tag.contains(params.query, ignoreCase = true) }
+                FuzzySearchUtil.match(it.title, params.query) ||
+                        FuzzySearchUtil.match(it.content, params.query) ||
+                        it.tags.any { tag -> FuzzySearchUtil.match(tag, params.query) }
             }
         }
 

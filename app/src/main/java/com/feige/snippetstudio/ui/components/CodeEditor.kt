@@ -28,6 +28,8 @@ import com.feige.snippetstudio.util.SyntaxHighlighter
 import com.feige.snippetstudio.util.SyntaxLanguage
 import com.feige.snippetstudio.util.SyntaxLanguageDetector
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTransformGestures
 
 /**
  * [CodeEditor] 是专为 Snippet Studio 设计的现代 Jetpack Compose 代码编辑器核心 UI 组件。
@@ -48,6 +50,8 @@ import androidx.compose.ui.unit.Dp
  * @param showLineNumbers 是否显示行号栏
  * @param highlightCurrentLine 是否高亮当前行背景
  * @param topContentPadding 顶部留白内边距（防遮挡）
+ * @param onFontSizeChange 双指缩放调整字体大小回调（deltaSp > 0 放大，< 0 缩小）
+ * @param fontFamily 编辑器字体族（默认等宽字体）
  */
 @Composable
 fun CodeEditor(
@@ -61,17 +65,20 @@ fun CodeEditor(
     showLineNumbers: Boolean = true,
     highlightCurrentLine: Boolean = true,
     topContentPadding: Dp = 0.dp,
+    onFontSizeChange: ((Float) -> Unit)? = null,
+    fontFamily: FontFamily = FontFamily.Monospace,
     modifier: Modifier = Modifier
 ) {
     val tc = LocalThemeColors.current
     val isDark = tc.isDark
 
-    // 确定实际使用的语法语言
+    // 确定实际使用的语法语言（对 SnippetType 进行穷举匹配）
     val effectiveLanguage = syntaxLanguage ?: when (snippetType) {
         SnippetType.HTML -> SyntaxLanguage.HTML
         SnippetType.JS -> SyntaxLanguage.JS
         SnippetType.MARKDOWN -> SyntaxLanguage.MARKDOWN
         SnippetType.PROMPT -> SyntaxLanguage.PROMPT
+        SnippetType.GENERAL -> SyntaxLanguage.PLAIN
     }
 
     // 记住并构建语法高亮转换器 VisualTransformation
@@ -96,6 +103,18 @@ fun CodeEditor(
         modifier = modifier
             .fillMaxSize()
             .background(tc.surface)
+            .pointerInput(onFontSizeChange) {
+                // 当传入了字号调节闭包时，开启双指缩放检测
+                if (onFontSizeChange != null) {
+                    detectTransformGestures { _, _, zoom, _ ->
+                        // 设定 3% 死区避开单指操作误触
+                        if (kotlin.math.abs(zoom - 1f) > 0.03f) {
+                            val delta = (zoom - 1f) * 15f
+                            onFontSizeChange.invoke(delta.coerceIn(-3f, 3f))
+                        }
+                    }
+                }
+            }
     ) {
         // ===== 1. 左侧行号装订轨 (Line Number Gutter) =====
         if (showLineNumbers) {

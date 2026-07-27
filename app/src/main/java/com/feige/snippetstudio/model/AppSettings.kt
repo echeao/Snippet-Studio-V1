@@ -28,8 +28,9 @@ package com.feige.snippetstudio.model
  * @param autoSyncEnabled 是否在代码片段增删改时自动触发异步 Git 物理提交
  * @param cardClickAction 首页/列表页点击代码卡片时的默认响应动作 ("detail": 查看详情, "editor": 直接打开全屏编辑器)
  * @param useBoilerplate 新建代码片段时是否自动注入对应类型的内置样板代码 (默认 true)
- * @param customTags 用户在全局设置中预设或自定义积累的便签标签列表
+ * @param customTags 用户在全局设置中预设或积累的便签标签列表
  * @param shareAction 系统分享剪藏接收后的行为模式 ("panel": 弹出快速编辑面板, "silent": 静默直接保存)
+ * @param editorFontFamily 编辑器字体族 ("monospace", "sans-serif", "serif")
  */
 data class AppSettings(
     val lang: String = "zh",
@@ -54,7 +55,8 @@ data class AppSettings(
     val cardClickAction: String = "detail",
     val useBoilerplate: Boolean = true,
     val customTags: List<String> = emptyList(),
-    val shareAction: String = "panel"
+    val shareAction: String = "panel",
+    val editorFontFamily: String = "monospace"
 )
 
 

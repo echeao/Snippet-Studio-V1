@@ -1,6 +1,7 @@
 package com.feige.snippetstudio.ui.nav
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -17,6 +18,7 @@ import com.feige.snippetstudio.ui.files.FilesScreen
 import com.feige.snippetstudio.ui.files.FilesViewModel
 import com.feige.snippetstudio.ui.history.HistoryScreen
 import com.feige.snippetstudio.ui.history.HistoryViewModel
+import com.feige.snippetstudio.ui.preview.TempFilePreviewScreen
 import com.feige.snippetstudio.ui.home.HomeScreen
 import com.feige.snippetstudio.ui.home.HomeViewModel
 import com.feige.snippetstudio.ui.settings.SettingsScreen
@@ -184,7 +186,29 @@ fun AppNavGraph(
             )
         }
 
-        // ===== 7. Git 历史履历页面 (History Screen) =====
+        // ===== 7. 分享文件临时预览页面 (FilePreview Screen) =====
+        composable(
+            route = Screen.FilePreview.route,
+            arguments = listOf(
+                navArgument("fileName") { type = NavType.StringType; nullable = true; defaultValue = "" },
+                navArgument("type") { type = NavType.StringType; defaultValue = "general" }
+            )
+        ) { backStackEntry ->
+            val content = remember { TempPreviewCache.content.also { TempPreviewCache.content = "" } }
+            val fileName = backStackEntry.arguments?.getString("fileName")?.let {
+                if (it.isBlank()) null else try { java.net.URLDecoder.decode(it, "UTF-8") } catch (_: Exception) { null }
+            }
+            val type = backStackEntry.arguments?.getString("type") ?: "general"
+            TempFilePreviewScreen(
+                content = content,
+                fileName = fileName,
+                typeCode = type,
+                onBack = { navController.popBackStack() },
+                onShowSnackbar = onShowSnackbar
+            )
+        }
+
+        // ===== 8. Git 历史履历页面 (History Screen) =====
         composable(
             route = Screen.History.route,
             arguments = listOf(navArgument("id") { type = NavType.StringType })

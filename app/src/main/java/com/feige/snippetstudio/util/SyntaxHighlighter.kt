@@ -277,6 +277,7 @@ object SyntaxHighlighter {
                 SnippetType.HTML -> highlightHtml(text, isDark)
                 SnippetType.MARKDOWN -> highlightMarkdown(text, isDark)
                 SnippetType.PROMPT -> highlightPrompt(text, isDark)
+                SnippetType.GENERAL -> highlightPrompt(text, isDark)
             }
         }
     }

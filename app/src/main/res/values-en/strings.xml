@@ -111,6 +111,7 @@
     <string name="share_panel_name_placeholder">Leave blank for auto</string>
     <string name="share_panel_type_label">Snippet type</string>
     <string name="share_panel_preview_label">Content preview</string>
+    <string name="share_panel_preview">Preview</string>
     <string name="share_panel_save">Save snippet</string>
     <string name="share_saved_silent">Snippet saved from share</string>
         <string name="share_file_received">File received</string>

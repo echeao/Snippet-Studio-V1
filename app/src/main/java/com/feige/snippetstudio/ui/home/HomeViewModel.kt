@@ -9,6 +9,7 @@ import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.util.ClipboardDetector
 import com.feige.snippetstudio.util.DetectedClip
+import com.feige.snippetstudio.util.FuzzySearchUtil
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -78,9 +79,9 @@ class HomeViewModel(
             snippets
         } else {
             snippets.filter {
-                it.title.contains(query, ignoreCase = true) ||
-                        it.content.contains(query, ignoreCase = true) ||
-                        it.tags.any { tag -> tag.contains(query, ignoreCase = true) }
+                FuzzySearchUtil.match(it.title, query) ||
+                        FuzzySearchUtil.match(it.content, query) ||
+                        it.tags.any { tag -> FuzzySearchUtil.match(tag, query) }
             }
         }
 

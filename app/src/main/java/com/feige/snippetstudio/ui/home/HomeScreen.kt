@@ -1,10 +1,14 @@
 package com.feige.snippetstudio.ui.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -66,6 +70,8 @@ fun HomeScreen(
     var pendingTrashId by remember { mutableStateOf<String?>(null) }
     var pendingRenameSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
     var pendingFolderSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
+    var showSearchBar by remember { mutableStateOf(true) }
+    val listState = rememberLazyListState()
 
     // ===== 监听 Lifecycle 声明周期：返回前台 ON_RESUME 时自动检索系统剪贴板 =====
     DisposableEffect(lifecycleOwner) {
@@ -77,6 +83,24 @@ fun HomeScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // ===== 列表滚动时隐藏/显示搜索栏 =====
+    var previousScrollIndex by remember { mutableStateOf(0) }
+    var previousScrollOffset by remember { mutableStateOf(0) }
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+        }.collect { (index, offset) ->
+            val scrollingDown = index > previousScrollIndex || (index == previousScrollIndex && offset > previousScrollOffset)
+            if (scrollingDown && showSearchBar && index > 0) {
+                showSearchBar = false
+            } else if (!scrollingDown && !showSearchBar) {
+                showSearchBar = true
+            }
+            previousScrollIndex = index
+            previousScrollOffset = offset
         }
     }
 
@@ -142,14 +166,21 @@ fun HomeScreen(
             )
 
             // ===== 2. 搜索框 =====
-            SearchBar(
-                value = uiState.searchQuery,
-                onValueChange = { viewModel.onSearchQueryChange(it) },
-                placeholder = stringResource(R.string.home_search),
-                modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
-            )
+            AnimatedVisibility(
+                visible = showSearchBar,
+                enter = slideInVertically { -it },
+                exit = slideOutVertically { -it }
+            ) {
+                SearchBar(
+                    value = uiState.searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChange(it) },
+                    placeholder = stringResource(R.string.home_search),
+                    modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
+                )
+            }
 
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
@@ -201,6 +232,14 @@ fun HomeScreen(
                                 modifier = Modifier.weight(1f)
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(Spacing.S3))
+
+                        QuickNewCard(
+                            type = SnippetType.GENERAL,
+                            onClick = { onNavigateToNewEditor(SnippetType.GENERAL.code) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
 

@@ -111,6 +111,7 @@
     <string name="share_panel_name_placeholder">空欄で自動生成</string>
     <string name="share_panel_type_label">スニペット種類</string>
     <string name="share_panel_preview_label">内容プレビュー</string>
+    <string name="share_panel_preview">プレビュー</string>
     <string name="share_panel_save">スニペット保存</string>
     <string name="share_saved_silent">共有からスニペットを保存しました</string>
         <string name="share_file_received">ファイルを受信</string>

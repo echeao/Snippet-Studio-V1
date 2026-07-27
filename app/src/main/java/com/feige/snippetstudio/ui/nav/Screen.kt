@@ -44,5 +44,18 @@ sealed class Screen(val route: String) {
         /** 构建查看指定片段 Git 历史的路由路径 */
         fun of(id: String) = "history/$id"
     }
+
+    /** 分享文件临时预览页面（不保存） */
+    object FilePreview : Screen("preview_temp?fileName={fileName}&type={type}") {
+        fun of(content: String, fileName: String?, type: String): String {
+            TempPreviewCache.content = content
+            return "preview_temp?fileName=${fileName?.let { java.net.URLEncoder.encode(it, "UTF-8") } ?: ""}&type=$type"
+        }
+    }
+}
+
+/** 临时预览内容缓存（避免通过 Navigation argument 传递大文件触发 Binder 限制） */
+object TempPreviewCache {
+    var content: String = ""
 }
 

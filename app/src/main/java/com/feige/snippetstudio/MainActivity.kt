@@ -252,6 +252,12 @@ class MainActivity : ComponentActivity() {
                                 appContainer.snippetRepository.saveOrUpdate(snippet, loadedSettings.repoTreeUri)
                                 showSnackbar(context.getString(R.string.share_saved_silent))
                             }
+                        },
+                        onPreview = { content, type ->
+                            showSharePanel = false
+                            val fn = sharePanelFileName
+                            sharePanelFileName = null
+                            navController.navigate(Screen.FilePreview.of(content, fn, type.code))
                         }
                     )
                 }

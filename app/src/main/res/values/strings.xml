@@ -111,6 +111,7 @@
     <string name="share_panel_name_placeholder">留空则自动生成</string>
     <string name="share_panel_type_label">片段类型</string>
     <string name="share_panel_preview_label">内容预览</string>
+    <string name="share_panel_preview">仅预览</string>
     <string name="share_panel_save">保存片段</string>
     <string name="share_saved_silent">已通过分享保存片段</string>
         <string name="share_file_received">收到分享文件</string>

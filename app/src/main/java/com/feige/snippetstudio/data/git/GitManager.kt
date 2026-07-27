@@ -434,14 +434,15 @@ class GitManager(private val context: Context) {
     }
 
     /**
-     * 检测 Git 沙盒工作树中尚未提交的变更（含未追踪的新文件）。
+     * 将物理工作区中的未暂存变更自动执行暂存 (`git add .`)，并读取返回当前全量已暂存的变更文件列表。
      *
-     * 执行 `git add .` 后读取 status，返回所有已暂存的变更文件路径集合。
-     * 用于 Push 预览阶段判断是否有内容需要推送。
+     * **注意 (副作用说明)**：
+     * 本方法会强制将未暂存的修改文件、新增文件与物理删除动作全部添加提交至 Git 暂存区 (Staging Area)，
+     * 以便于后续在 Git 变更对比面板和 Push 预览阶段精准捕获需要提交的所有差异文件。
      *
      * @return 有变更的文件相对路径 → 变更类型 ("ADDED" / "MODIFIED" / "DELETED")
      */
-    suspend fun getUncommittedChanges(): Map<String, String> = withContext(Dispatchers.IO) {
+    suspend fun stageAndGetUncommittedChanges(): Map<String, String> = withContext(Dispatchers.IO) {
         val gitDir = File(gitRepoDir, ".git")
         if (!gitDir.exists()) return@withContext emptyMap()
 
@@ -668,40 +669,94 @@ class GitManager(private val context: Context) {
             val oldContent = getFileContentAtCommit(commitIdOld, relativePath).getOrDefault("")
             val newContent = getFileContentAtCommit(commitIdNew, relativePath).getOrDefault("")
 
-            val oldLines = oldContent.lines()
-            val newLines = newContent.lines()
-            val diffLines = mutableListOf<DiffLine>()
+            computeLcsDiff(oldContent.lines(), newContent.lines())
+        }
+    }
 
-            // 简单 LCS-based diff
-            val maxLen = maxOf(oldLines.size, newLines.size)
-            var oldIdx = 0
-            var newIdx = 0
+    /**
+     * 获取工作区文件与 HEAD 版本之间的行级 Diff。
+     *
+     * @param relativePath 相对于 Git 仓库根目录的文件路径
+     * @return Diff 行列表
+     */
+    suspend fun getWorkingTreeDiff(relativePath: String): Result<List<DiffLine>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val gitDir = File(gitRepoDir, ".git")
+            if (!gitDir.exists()) throw IllegalStateException("本地仓库未初始化")
 
-            while (oldIdx < oldLines.size || newIdx < newLines.size) {
-                when {
-                    oldIdx >= oldLines.size -> {
-                        diffLines.add(DiffLine(DiffType.ADD, newLines[newIdx], newLineNum = newIdx + 1))
-                        newIdx++
-                    }
-                    newIdx >= newLines.size -> {
-                        diffLines.add(DiffLine(DiffType.DELETE, oldLines[oldIdx], oldLineNum = oldIdx + 1))
-                        oldIdx++
-                    }
-                    oldLines[oldIdx] == newLines[newIdx] -> {
-                        diffLines.add(DiffLine(DiffType.CONTEXT, oldLines[oldIdx], oldLineNum = oldIdx + 1, newLineNum = newIdx + 1))
-                        oldIdx++
-                        newIdx++
-                    }
-                    else -> {
-                        diffLines.add(DiffLine(DiffType.DELETE, oldLines[oldIdx], oldLineNum = oldIdx + 1))
-                        diffLines.add(DiffLine(DiffType.ADD, newLines[newIdx], newLineNum = newIdx + 1))
-                        oldIdx++
-                        newIdx++
-                    }
+            val workingFile = File(gitRepoDir, relativePath)
+            if (!workingFile.exists()) throw IllegalStateException("文件不存在于工作区: $relativePath")
+            val newContent = workingFile.readText(Charsets.UTF_8)
+
+            Git.open(gitRepoDir).use { git ->
+                val repository = git.repository
+                val headRef = repository.resolve("HEAD")
+                val oldContent = if (headRef != null) {
+                    try {
+                        val treeWalk = org.eclipse.jgit.treewalk.TreeWalk.forPath(repository, relativePath, repository.parseCommit(headRef).tree)
+                        if (treeWalk != null) {
+                            val objectId = treeWalk.getObjectId(0)
+                            val loader = repository.open(objectId)
+                            String(loader.bytes, Charsets.UTF_8)
+                        } else ""
+                    } catch (_: Exception) { "" }
+                } else ""
+
+                computeLcsDiff(oldContent.lines(), newContent.lines())
+            }
+        }
+    }
+
+    /**
+     * 使用最长公共子序列 (LCS) 动态规划算法精确计算两组文本行之间的差异 (DiffLine)。
+     *
+     * 解决因行号偏移导致的全局伪 Diff 问题（精确识别单行/多行插入与删除）。
+     *
+     * @param oldLines 原始旧文件按行拆分的文本列表
+     * @param newLines 新文件按行拆分的文本列表
+     * @return 精确计算后的行级 DiffLine 集合
+     */
+    private fun computeLcsDiff(oldLines: List<String>, newLines: List<String>): List<DiffLine> {
+        val m = oldLines.size
+        val n = newLines.size
+
+        // 二维 DP 数组存储最长公共子序列长度
+        val dp = Array(m + 1) { IntArray(n + 1) }
+
+        for (i in 1..m) {
+            for (j in 1..n) {
+                if (oldLines[i - 1] == newLines[j - 1]) {
+                    dp[i][j] = dp[i - 1][j - 1] + 1
+                } else {
+                    dp[i][j] = maxOf(dp[i - 1][j], dp[i][j - 1])
                 }
             }
-            diffLines
         }
+
+        // 从后往前回溯寻找匹配路径
+        var i = m
+        var j = n
+        val result = mutableListOf<DiffLine>()
+
+        while (i > 0 || j > 0) {
+            when {
+                i > 0 && j > 0 && oldLines[i - 1] == newLines[j - 1] -> {
+                    result.add(0, DiffLine(DiffType.CONTEXT, oldLines[i - 1], oldLineNum = i, newLineNum = j))
+                    i--
+                    j--
+                }
+                j > 0 && (i == 0 || dp[i][j - 1] >= dp[i - 1][j]) -> {
+                    result.add(0, DiffLine(DiffType.ADD, newLines[j - 1], newLineNum = j))
+                    j--
+                }
+                i > 0 && (j == 0 || dp[i][j - 1] < dp[i - 1][j]) -> {
+                    result.add(0, DiffLine(DiffType.DELETE, oldLines[i - 1], oldLineNum = i))
+                    i--
+                }
+            }
+        }
+
+        return result
     }
 }
 

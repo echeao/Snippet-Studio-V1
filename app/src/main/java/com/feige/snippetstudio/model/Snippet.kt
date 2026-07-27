@@ -15,7 +15,8 @@ enum class SnippetType(val code: String, val displayName: String, val extension:
     HTML("html", "HTML", ".html"),
     JS("js", "JavaScript", ".js"),
     MARKDOWN("markdown", "Markdown", ".md"),
-    PROMPT("prompt", "Prompt", ".txt");
+    PROMPT("prompt", "Prompt", ".txt"),
+    GENERAL("general", "通用文本", ".txt");
 
     companion object {
         /**
@@ -26,7 +27,7 @@ enum class SnippetType(val code: String, val displayName: String, val extension:
          * 性能更好且避免了每次调用都分配新 Array 对象的开销。
          */
         fun fromCode(code: String): SnippetType {
-            return entries.firstOrNull { it.code.lowercase() == code.lowercase() } ?: HTML
+            return entries.firstOrNull { it.code.lowercase() == code.lowercase() } ?: GENERAL
         }
 
         /**
@@ -37,9 +38,10 @@ enum class SnippetType(val code: String, val displayName: String, val extension:
             val ext = if (fileName.contains('.')) ".${fileName.substringAfterLast('.').lowercase()}" else ""
             return when (ext) {
                 ".html", ".htm" -> HTML
-                ".js", ".jsx", ".ts", ".tsx" -> JS
+                ".js", ".jsx", ".ts", ".tsx", ".mjs" -> JS
                 ".md", ".markdown" -> MARKDOWN
-                else -> PROMPT
+                ".txt", ".prompt" -> PROMPT
+                else -> GENERAL
             }
         }
     }

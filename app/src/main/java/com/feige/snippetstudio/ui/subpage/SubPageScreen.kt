@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.theme.*
+import com.feige.snippetstudio.ui.theme.SyncGreen
+import com.feige.snippetstudio.ui.theme.SyncRed
+import com.feige.snippetstudio.ui.theme.SyncBlue
 
 /**
  * [SubPageScreen] 系统设置二级通用功能子页面视图。
@@ -311,25 +315,119 @@ fun SubPageScreen(
                                     }
                                 }
 
-                                // 同步预览面板
-                                if (uiState.syncPreview != null) {
-                                    SyncPreviewSheet(
-                                        preview = uiState.syncPreview!!,
-                                        syncProgress = uiState.syncProgress,
-                                        onResolveConflict = { index, resolution ->
-                                            viewModel.resolveConflict(index, resolution)
-                                        },
-                                        onConfirm = {
-                                            viewModel.confirmSync { success, msg ->
-                                                onShowSnackbar(msg ?: (if (success) "同步完成" else "同步失败"))
-                                            }
-                                        },
-                                        onCancel = { viewModel.cancelSync() }
-                                    )
-                                }
-
                                 // Git Log 入口按钮
                                 if (uiState.settings.gitConnected) {
+                                    Spacer(modifier = Modifier.height(Spacing.S3))
+                                    // 加载本地变更按钮
+                                    OutlinedButton(
+                                        onClick = { viewModel.loadLocalChanges() },
+                                        shape = AppShapes.small,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = !uiState.isGitOperating
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_code),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(Spacing.S2))
+                                        Text("查看本地变更 (${uiState.localChanges.size})")
+                                    }
+
+                                    // 本地变更文件列表
+                                    if (uiState.localChanges.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(Spacing.S2))
+                                        uiState.localChanges.forEach { (path, changeType) ->
+                                            val isSelected = uiState.selectedDiffPath == path
+                                            val (icon, chgColor) = when (changeType) {
+                                                "ADDED" -> "+" to SyncGreen
+                                                "MODIFIED" -> "~" to SyncBlue
+                                                "DELETED" -> "-" to SyncRed
+                                                else -> "?" to textSecondary
+                                            }
+                                            Column(modifier = Modifier.fillMaxWidth()) {
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable {
+                                                            if (isSelected) {
+                                                                viewModel.closeDiff()
+                                                            } else {
+                                                                viewModel.loadFileDiff(path)
+                                                            }
+                                                        },
+                                                    color = if (isSelected) PrimarySoft.copy(alpha = 0.3f) else cardBg,
+                                                    shape = RoundedCornerShape(R_SM)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(horizontal = Spacing.S3, vertical = Spacing.S2),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(20.dp)
+                                                                .background(chgColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp)),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Text(icon, color = chgColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                        }
+                                                        Spacer(modifier = Modifier.width(Spacing.S2))
+                                                        Text(
+                                                            text = path,
+                                                            style = CaptionStyle,
+                                                            color = textPrimary,
+                                                            modifier = Modifier.weight(1f),
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis
+                                                        )
+                                                        Text(
+                                                            text = when (changeType) {
+                                                                "ADDED" -> "新增"
+                                                                "MODIFIED" -> "修改"
+                                                                "DELETED" -> "删除"
+                                                                else -> ""
+                                                            },
+                                                            fontSize = 11.sp,
+                                                            color = chgColor
+                                                        )
+                                                    }
+                                                }
+
+                                                // Diff 展开区域
+                                                if (isSelected) {
+                                                    if (uiState.isDiffLoading) {
+                                                        Box(
+                                                            modifier = Modifier.fillMaxWidth().padding(Spacing.S3),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            CircularProgressIndicator(
+                                                                color = Primary,
+                                                                modifier = Modifier.size(20.dp)
+                                                            )
+                                                        }
+                                                    } else if (uiState.currentDiff.isNotEmpty()) {
+                                                        DiffViewer(
+                                                            diffLines = uiState.currentDiff,
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .heightIn(max = 300.dp)
+                                                                .padding(start = Spacing.S3, top = Spacing.S1, bottom = Spacing.S1)
+                                                        )
+                                                    } else {
+                                                        Text(
+                                                            text = "无差异内容",
+                                                            style = CaptionStyle,
+                                                            color = textSecondary,
+                                                            modifier = Modifier.padding(start = Spacing.S3, top = Spacing.S1, bottom = Spacing.S1)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     Spacer(modifier = Modifier.height(Spacing.S3))
                                     OutlinedButton(
                                         onClick = {
@@ -348,6 +446,23 @@ fun SubPageScreen(
                                         Spacer(modifier = Modifier.width(Spacing.S2))
                                         Text("查看提交记录 (Git Log)")
                                     }
+                                }
+
+                                // 同步预览面板
+                                if (uiState.syncPreview != null) {
+                                    SyncPreviewSheet(
+                                        preview = uiState.syncPreview!!,
+                                        syncProgress = uiState.syncProgress,
+                                        onResolveConflict = { index, resolution ->
+                                            viewModel.resolveConflict(index, resolution)
+                                        },
+                                        onConfirm = {
+                                            viewModel.confirmSync { success, msg ->
+                                                onShowSnackbar(msg ?: (if (success) "同步完成" else "同步失败"))
+                                            }
+                                        },
+                                        onCancel = { viewModel.cancelSync() }
+                                    )
                                 }
                             }
                         }

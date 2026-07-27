@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,6 +67,14 @@ fun EditorScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val tc = LocalThemeColors.current
+
+    val editorFont = remember(uiState.editorFontFamily) {
+        when (uiState.editorFontFamily) {
+            "sans-serif" -> FontFamily.SansSerif
+            "serif" -> FontFamily.Serif
+            else -> FontFamily.Monospace
+        }
+    }
 
     var showDiscardDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
@@ -250,6 +259,8 @@ fun EditorScreen(
                         isWordWrap = uiState.isWordWrap,
                         showLineNumbers = uiState.showLineNumbers,
                         highlightCurrentLine = uiState.highlightCurrentLine,
+                        onFontSizeChange = { viewModel.adjustFontSize(it) },
+                        fontFamily = editorFont,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -274,6 +285,7 @@ fun EditorScreen(
                 .fillMaxSize()
                 .background(tc.bg)
                 .nestedScroll(nestedScrollConnection)
+                .imePadding()
                 .clickable(
                     indication = null,
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -294,6 +306,8 @@ fun EditorScreen(
                         showLineNumbers = uiState.showLineNumbers,
                         highlightCurrentLine = uiState.highlightCurrentLine,
                         topContentPadding = safeTopPadding,
+                        onFontSizeChange = { viewModel.adjustFontSize(it) },
+                        fontFamily = editorFont,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -302,7 +316,8 @@ fun EditorScreen(
                         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                         modifier = Modifier
-                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                            // 动态吸收软键盘 IME 高度与底部系统安全区，防止键盘弹出后遮挡快捷符号栏
+                            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)))
                             .padding(bottom = 2.dp)
                     ) {
                         SymbolBar(
@@ -428,14 +443,6 @@ fun EditorScreen(
                                     modifier = Modifier.testTag("menu_editor_settings")
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("切换语言类型", style = CaptionStyle) },
-                                    leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_code), contentDescription = null, modifier = Modifier.size(20.dp)) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        showTypeDialog = true
-                                    }
-                                )
-                                DropdownMenuItem(
                                     text = { Text("编辑片段标签", style = CaptionStyle) },
                                     leadingIcon = { Icon(painter = painterResource(id = R.drawable.ic_tag), contentDescription = null, modifier = Modifier.size(20.dp)) },
                                     onClick = {
@@ -498,6 +505,7 @@ fun EditorScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
                         .height(36.dp)
                         .border(1.dp, tc.line),
                     color = tc.surface2
@@ -539,6 +547,7 @@ fun EditorScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .imePadding()
             )
         }
     }
@@ -744,6 +753,25 @@ private fun EditorSettingsContent(
             valueRange = 11f..22f,
             steps = 11
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ===== 字体族选择 =====
+        Text("编辑器字体", style = CaptionStyle, color = tc.text, fontWeight = FontWeight.Medium)
+        Spacer(modifier = Modifier.height(4.dp))
+        val fontOptions = listOf("monospace" to "等宽", "sans-serif" to "无衬线", "serif" to "衬线")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            fontOptions.forEach { (code, label) ->
+                FilterChip(
+                    selected = (uiState.editorFontFamily == code),
+                    onClick = { viewModel.setEditorFontFamily(code) },
+                    label = { Text(label, style = CaptionStyle) }
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

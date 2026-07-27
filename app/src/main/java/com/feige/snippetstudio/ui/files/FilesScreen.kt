@@ -1,9 +1,13 @@
 package com.feige.snippetstudio.ui.files
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -64,6 +68,34 @@ fun FilesScreen(
     var pendingFolderSnippet by remember { mutableStateOf<com.feige.snippetstudio.model.Snippet?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showSearchBar by remember { mutableStateOf(true) }
+    val flatComfortListState = rememberLazyListState()
+    val flatCompactListState = rememberLazyListState()
+    val treeListState = rememberLazyListState()
+    val activeListState = when {
+        uiState.viewMode == ViewMode.TREE -> treeListState
+        uiState.densityMode == DensityMode.COMFORT -> flatComfortListState
+        else -> flatCompactListState
+    }
+    var previousScrollIndex by remember { mutableStateOf(0) }
+    var previousScrollOffset by remember { mutableStateOf(0) }
+    LaunchedEffect(activeListState) {
+        // 视图模式/密度模式发生切换时，重置记录的滚动偏移量，防止新视图下判定方向异常
+        previousScrollIndex = 0
+        previousScrollOffset = 0
+        snapshotFlow {
+            activeListState.firstVisibleItemIndex to activeListState.firstVisibleItemScrollOffset
+        }.collect { (index, offset) ->
+            val scrollingDown = index > previousScrollIndex || (index == previousScrollIndex && offset > previousScrollOffset)
+            if (scrollingDown && showSearchBar && index > 0) {
+                showSearchBar = false
+            } else if (!scrollingDown && !showSearchBar) {
+                showSearchBar = true
+            }
+            previousScrollIndex = index
+            previousScrollOffset = offset
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -225,12 +257,18 @@ fun FilesScreen(
                 .padding(innerPadding)
         ) {
             // ===== 1. 搜索框 =====
-            SearchBar(
-                value = uiState.searchQuery,
-                onValueChange = { viewModel.onSearchQueryChange(it) },
-                placeholder = stringResource(R.string.files_search),
-                modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
-            )
+            AnimatedVisibility(
+                visible = showSearchBar,
+                enter = slideInVertically { -it },
+                exit = slideOutVertically { -it }
+            ) {
+                SearchBar(
+                    value = uiState.searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChange(it) },
+                    placeholder = stringResource(R.string.files_search),
+                    modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
+                )
+            }
 
             Spacer(modifier = Modifier.height(Spacing.S1))
 
@@ -259,6 +297,7 @@ fun FilesScreen(
                     // ===== 视图 A: FLAT 平铺视图 =====
                     if (uiState.densityMode == DensityMode.COMFORT) {
                         LazyColumn(
+                            state = flatComfortListState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp)
                         ) {
@@ -294,6 +333,7 @@ fun FilesScreen(
                     } else {
                         // Snippet Studio 原生高密度列表：使用整块圆角容器 + 极细缩进分割线包裹
                         LazyColumn(
+                            state = flatCompactListState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 80.dp)
                         ) {
@@ -335,6 +375,7 @@ fun FilesScreen(
                 } else {
                     // ===== 视图 B: TREE 目录树状视图 =====
                     LazyColumn(
+                        state = treeListState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 80.dp)
                     ) {
