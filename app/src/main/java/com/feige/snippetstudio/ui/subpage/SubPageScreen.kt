@@ -190,6 +190,9 @@ fun SubPageScreen(
                 "git" -> {
                     // 记忆当前 Git 页面的纵向滚动状态，确保在展开“本地变更”或“代码差异对比”时页面可顺畅滑屏
                     val gitScrollState = rememberScrollState()
+                    var isEditingGitConfig by remember { mutableStateOf(false) }
+                    val isGitConnected = uiState.settings.gitConnected
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -209,110 +212,217 @@ fun SubPageScreen(
                                 modifier = Modifier.padding(Spacing.S4),
                                 verticalArrangement = Arrangement.spacedBy(Spacing.S2)
                             ) {
-                                OutlinedTextField(
-                                    value = uiState.gitUrlInput,
-                                    onValueChange = { viewModel.onGitUrlChange(it) },
-                                    label = { Text(stringResource(R.string.sub_git_url)) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    enabled = !uiState.isGitOperating
-                                )
-                                OutlinedTextField(
-                                    value = uiState.gitBranchInput,
-                                    onValueChange = { viewModel.onGitBranchChange(it) },
-                                    label = { Text(stringResource(R.string.sub_git_branch)) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    enabled = !uiState.isGitOperating
-                                )
-                                OutlinedTextField(
-                                    value = uiState.gitPatInput,
-                                    onValueChange = { viewModel.onGitPatChange(it) },
-                                    label = { Text(stringResource(R.string.sub_git_pat)) },
-                                    visualTransformation = PasswordVisualTransformation(),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    enabled = !uiState.isGitOperating
-                                )
-
-                                if (uiState.isGitOperating && uiState.syncPreview == null) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = Spacing.S2),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(color = Primary)
-                                    }
-                                } else {
-                                    Button(
-                                        onClick = {
-                                            viewModel.testGitConnection { success, errorMsg ->
-                                                if (success) {
-                                                    onShowSnackbar("Git 远程验证通过，本地仓库已初始化！")
-                                                } else {
-                                                    onShowSnackbar(errorMsg ?: "操作失败")
-                                                }
-                                            }
-                                        },
-                                        shape = AppShapes.small,
-                                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                                if (isGitConnected && !isEditingGitConfig) {
+                                    // ===== A. 已连接态（只读卡片：包含脱敏凭据与解锁编辑按钮） =====
+                                    Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        enabled = !uiState.isGitOperating
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("校验连接并初始化/克隆")
-                                    }
-
-                                    if (uiState.settings.gitConnected) {
-                                        // 方向分离按钮：Pull / Push（设置紧凑内边距 contentPadding 与单行 maxLines = 1，防止极端屏宽下触发自动折行）
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(Spacing.S3)
-                                        ) {
-                                            OutlinedButton(
-                                                onClick = {
-                                                    viewModel.previewPull { success, msg ->
-                                                        if (!success) onShowSnackbar(msg ?: "预览失败")
-                                                    }
-                                                },
-                                                shape = AppShapes.small,
-                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                                                modifier = Modifier.weight(1f),
-                                                enabled = !uiState.isGitOperating && !uiState.isPreviewing
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(SyncGreen, CircleShape)
+                                            )
+                                            Spacer(modifier = Modifier.width(Spacing.S2))
+                                            Text(
+                                                text = "已连接远程仓库",
+                                                style = ListTitleStyle,
+                                                color = textPrimary
+                                            )
+                                            Spacer(modifier = Modifier.width(Spacing.S2))
+                                            Surface(
+                                                color = PrimarySoft,
+                                                shape = RoundedCornerShape(R_SM)
                                             ) {
                                                 Text(
-                                                    text = "拉取远端 (Pull ↓)",
-                                                    fontSize = 13.sp,
-                                                    maxLines = 1
-                                                )
-                                            }
-
-                                            OutlinedButton(
-                                                onClick = {
-                                                    viewModel.previewPush { success, msg ->
-                                                        if (!success) onShowSnackbar(msg ?: "预览失败")
-                                                    }
-                                                },
-                                                shape = AppShapes.small,
-                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                                                modifier = Modifier.weight(1f),
-                                                enabled = !uiState.isGitOperating && !uiState.isPreviewing
-                                            ) {
-                                                Text(
-                                                    text = "推送本地 (Push ↑)",
-                                                    fontSize = 13.sp,
-                                                    maxLines = 1
+                                                    text = uiState.settings.gitBranch,
+                                                    style = BadgeStyle,
+                                                    color = Primary,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
                                         }
 
-                                        if (uiState.isPreviewing) {
-                                            Box(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                CircularProgressIndicator(
-                                                    color = Primary,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
+                                        TextButton(
+                                            onClick = { isEditingGitConfig = true },
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.ic_edit),
+                                                contentDescription = "Edit Config",
+                                                tint = Primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "修改配置",
+                                                style = CaptionStyle,
+                                                color = Primary
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    // 脱敏 URL 与凭据预览
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(tc.bg.copy(alpha = 0.5f), RoundedCornerShape(R_SM))
+                                            .border(1.dp, borderColor.copy(alpha = 0.5f), RoundedCornerShape(R_SM))
+                                            .padding(Spacing.S3)
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.sub_git_url),
+                                            style = CaptionStyle,
+                                            color = textSecondary
+                                        )
+                                        Text(
+                                            text = uiState.settings.gitUrl,
+                                            style = BodyStyle,
+                                            color = textPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(Spacing.S1))
+                                        Text(
+                                            text = "Access Token / 凭证",
+                                            style = CaptionStyle,
+                                            color = textSecondary
+                                        )
+                                        Text(
+                                            text = if (uiState.settings.gitPat.isNotEmpty()) "••••••••••••••••" else "(无)",
+                                            style = BodyStyle,
+                                            color = textSecondary
+                                        )
+                                    }
+                                } else {
+                                    // ===== B. 编辑态（展开输入框） =====
+                                    if (isGitConnected) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "修改 Git 仓库配置",
+                                                style = ListTitleStyle,
+                                                color = textPrimary
+                                            )
+                                            TextButton(onClick = { isEditingGitConfig = false }) {
+                                                Text("取消", color = textSecondary)
                                             }
+                                        }
+                                    }
+
+                                    OutlinedTextField(
+                                        value = uiState.gitUrlInput,
+                                        onValueChange = { viewModel.onGitUrlChange(it) },
+                                        label = { Text(stringResource(R.string.sub_git_url)) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = !uiState.isGitOperating
+                                    )
+                                    OutlinedTextField(
+                                        value = uiState.gitBranchInput,
+                                        onValueChange = { viewModel.onGitBranchChange(it) },
+                                        label = { Text(stringResource(R.string.sub_git_branch)) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = !uiState.isGitOperating
+                                    )
+                                    OutlinedTextField(
+                                        value = uiState.gitPatInput,
+                                        onValueChange = { viewModel.onGitPatChange(it) },
+                                        label = { Text(stringResource(R.string.sub_git_pat)) },
+                                        visualTransformation = PasswordVisualTransformation(),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = !uiState.isGitOperating
+                                    )
+
+                                    if (uiState.isGitOperating && uiState.syncPreview == null) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = Spacing.S2),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(color = Primary)
+                                        }
+                                    } else {
+                                        Button(
+                                            onClick = {
+                                                viewModel.testGitConnection { success, errorMsg ->
+                                                    if (success) {
+                                                        isEditingGitConfig = false
+                                                        onShowSnackbar("Git 远程验证通过，配置已更新！")
+                                                    } else {
+                                                        onShowSnackbar(errorMsg ?: "操作失败")
+                                                    }
+                                                }
+                                            },
+                                            shape = AppShapes.small,
+                                            colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                                            modifier = Modifier.fillMaxWidth(),
+                                            enabled = !uiState.isGitOperating
+                                        ) {
+                                            Text(if (isGitConnected) "保存并重新验证" else "校验连接并初始化/克隆")
+                                        }
+                                    }
+                                }
+
+                                if (isGitConnected) {
+                                    // 方向分离按钮：Pull / Push（设置紧凑内边距 contentPadding 与单行 maxLines = 1，防止极端屏宽下触发自动折行）
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(Spacing.S3)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                viewModel.previewPull { success, msg ->
+                                                    if (!success) onShowSnackbar(msg ?: "预览失败")
+                                                }
+                                            },
+                                            shape = AppShapes.small,
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                                            modifier = Modifier.weight(1f),
+                                            enabled = !uiState.isGitOperating && !uiState.isPreviewing
+                                        ) {
+                                            Text(
+                                                text = "拉取远端 (Pull ↓)",
+                                                fontSize = 13.sp,
+                                                maxLines = 1
+                                            )
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = {
+                                                viewModel.previewPush { success, msg ->
+                                                    if (!success) onShowSnackbar(msg ?: "预览失败")
+                                                }
+                                            },
+                                            shape = AppShapes.small,
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                                            modifier = Modifier.weight(1f),
+                                            enabled = !uiState.isGitOperating && !uiState.isPreviewing
+                                        ) {
+                                            Text(
+                                                text = "推送本地 (Push ↑)",
+                                                fontSize = 13.sp,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+
+                                    if (uiState.isPreviewing) {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                color = Primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
                                         }
                                     }
                                 }
