@@ -1,8 +1,11 @@
 package com.feige.snippetstudio.ui.home
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -86,19 +89,31 @@ fun HomeScreen(
         }
     }
 
-    // ===== 列表滚动时隐藏/显示搜索栏 =====
-    var previousScrollIndex by remember { mutableStateOf(0) }
-    var previousScrollOffset by remember { mutableStateOf(0) }
+    // ===== 列表滚动时隐藏/显示搜索栏 (带死区 delta 阈值防抖) =====
+    var previousScrollIndex by remember { mutableIntStateOf(0) }
+    var previousScrollOffset by remember { mutableIntStateOf(0) }
     LaunchedEffect(listState) {
         snapshotFlow {
             listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
         }.collect { (index, offset) ->
-            val scrollingDown = index > previousScrollIndex || (index == previousScrollIndex && offset > previousScrollOffset)
-            if (scrollingDown && showSearchBar && index > 0) {
+            val delta = if (index != previousScrollIndex) {
+                (index - previousScrollIndex) * 500 + (offset - previousScrollOffset)
+            } else {
+                offset - previousScrollOffset
+            }
+
+            // 滚动死区防抖：下滑超过 15px 时收起搜索栏，上滑超过 15px 时展开搜索栏
+            if (delta > 15 && showSearchBar && (index > 0 || offset > 10)) {
                 showSearchBar = false
-            } else if (!scrollingDown && !showSearchBar) {
+            } else if (delta < -15 && !showSearchBar) {
                 showSearchBar = true
             }
+
+            // 滚动回到顶部时自动重置为显示状态
+            if (index == 0 && offset == 0) {
+                showSearchBar = true
+            }
+
             previousScrollIndex = index
             previousScrollOffset = offset
         }
@@ -165,11 +180,11 @@ fun HomeScreen(
                 }
             )
 
-            // ===== 2. 搜索框 =====
+            // ===== 2. 搜索框（使用 expandVertically/shrinkVertically 垂直折叠动画，零越界遮挡）=====
             AnimatedVisibility(
                 visible = showSearchBar,
-                enter = slideInVertically { -it },
-                exit = slideOutVertically { -it }
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
             ) {
                 SearchBar(
                     value = uiState.searchQuery,
@@ -179,10 +194,11 @@ fun HomeScreen(
                 )
             }
 
+            // ===== 3. 最近代码片段与快捷入口列表 =====
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 80.dp)
+                contentPadding = PaddingValues(bottom = 0.dp)
             ) {
                 // ===== 3. 2x2 快捷新建类型入口卡片区 =====
                 item {

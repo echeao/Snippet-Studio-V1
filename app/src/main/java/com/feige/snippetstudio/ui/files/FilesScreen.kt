@@ -1,8 +1,11 @@
 package com.feige.snippetstudio.ui.files
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,14 +36,14 @@ import androidx.compose.ui.draw.shadow
  * 功能结构：
  * 1. **TopBar 顶部控制栏**：
  *    - 支持显式新建空文件夹 [FolderCreateDialog]。
- *    - 切换【大卡片预览 COMFORT】与【极简高密度 COMPACT】切换显示密度。
+ *    - 切换【大卡片预览 COMFORT】与【极嵌高密度 COMPACT】切换显示密度。
  *    - 切换【平铺列表 ViewMode.FLAT】与【树状文件夹 ViewMode.TREE】的视觉视图。
  *    - 循环切换排序模式 (SortMode: 修改时间降序 / 片段名称升序 / 类型升序)。
- * 2. **SearchBar 搜索输入框**：支持实时搜索正文与标签。
+ * 2. **SearchBar 搜索输入框**：支持实时搜索正叠与标签。
  * 3. **FilterChipsRow 筛选 Chip 滚动条**：按【全部 / 收藏 / HTML / JS / Markdown / Prompt】进行分类筛选。
  * 4. **多视图模式渲染**：
  *    - **COMFORT 预览大卡片**：显示前 4 行代码微型预览、字符与行数统计、完整标签。
- *    - **COMPACT 高密度列表**：参照效果参考图，使用独立圆角整块卡片装载高密度列表与分割线。
+ *    - **COMPACT 高密度列表**：参照效果参考图，使用独立圆角整块卡片装合高密度列表与分割线。
  * 5. **交互弹框集合**：涵盖重命名 [RenameDialog]、移动文件夹 [FolderMoveDialog]、新建文件夹 [FolderCreateDialog] 与删除弹窗 [ConfirmDialog]。
  *
  * @param viewModel 文件仓库 ViewModel
@@ -77,8 +80,9 @@ fun FilesScreen(
         uiState.densityMode == DensityMode.COMFORT -> flatComfortListState
         else -> flatCompactListState
     }
-    var previousScrollIndex by remember { mutableStateOf(0) }
-    var previousScrollOffset by remember { mutableStateOf(0) }
+    var previousScrollIndex by remember { mutableIntStateOf(0) }
+    var previousScrollOffset by remember { mutableIntStateOf(0) }
+
     LaunchedEffect(activeListState) {
         // 视图模式/密度模式发生切换时，重置记录的滚动偏移量，防止新视图下判定方向异常
         previousScrollIndex = 0
@@ -86,12 +90,24 @@ fun FilesScreen(
         snapshotFlow {
             activeListState.firstVisibleItemIndex to activeListState.firstVisibleItemScrollOffset
         }.collect { (index, offset) ->
-            val scrollingDown = index > previousScrollIndex || (index == previousScrollIndex && offset > previousScrollOffset)
-            if (scrollingDown && showSearchBar && index > 0) {
+            val delta = if (index != previousScrollIndex) {
+                (index - previousScrollIndex) * 500 + (offset - previousScrollOffset)
+            } else {
+                offset - previousScrollOffset
+            }
+
+            // 滚动死区防抖：下滑超过 15px 时收起搜索栏，上滑超过 15px 时展开搜索栏
+            if (delta > 15 && showSearchBar && (index > 0 || offset > 10)) {
                 showSearchBar = false
-            } else if (!scrollingDown && !showSearchBar) {
+            } else if (delta < -15 && !showSearchBar) {
                 showSearchBar = true
             }
+
+            // 滚动回到最顶部时重置为显示状态
+            if (index == 0 && offset == 0) {
+                showSearchBar = true
+            }
+
             previousScrollIndex = index
             previousScrollOffset = offset
         }
@@ -256,11 +272,11 @@ fun FilesScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // ===== 1. 搜索框 =====
+            // ===== 1. 搜索框（使用 expandVertically/shrinkVertically 垂直折叠动画）=====
             AnimatedVisibility(
                 visible = showSearchBar,
-                enter = slideInVertically { -it },
-                exit = slideOutVertically { -it }
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
             ) {
                 SearchBar(
                     value = uiState.searchQuery,
@@ -299,7 +315,7 @@ fun FilesScreen(
                         LazyColumn(
                             state = flatComfortListState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 80.dp)
+                            contentPadding = PaddingValues(bottom = 0.dp)
                         ) {
                             items(
                                 items = uiState.snippets,
@@ -335,7 +351,7 @@ fun FilesScreen(
                         LazyColumn(
                             state = flatCompactListState,
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 80.dp)
+                            contentPadding = PaddingValues(bottom = 0.dp)
                         ) {
                             item {
                                 Surface(
@@ -377,7 +393,7 @@ fun FilesScreen(
                     LazyColumn(
                         state = treeListState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 80.dp)
+                        contentPadding = PaddingValues(bottom = 0.dp)
                     ) {
                         uiState.groupedFolders.forEach { (folderName, folderSnippets) ->
                             item(key = "folder_$folderName") {
@@ -468,7 +484,7 @@ fun FilesScreen(
                                                         onMoveFolder = { pendingFolderSnippet = snippet },
                                                         onToggleStar = { viewModel.toggleStar(snippet.id, snippet.starred) },
                                                         onMore = { pendingTrashId = snippet.id },
-                                                        showDivider = (index < folderSnippets.lastIndex),
+                                                        showDivider = (index < uiState.snippets.lastIndex),
                                                         showFullDateTime = false
                                                     )
                                                 }

@@ -170,14 +170,16 @@ fun AppScaffold(
             }
         },
         floatingActionButton = {
-            // ===== 全局悬浮新建 FAB 按钮（仅在首页和文件中心显示） =====
+            // ===== 全局悬浮新建 FAB 按钮（磨砂玻璃半透明 Glassmorphism 质感设计） =====
             if (showFab) {
                 FloatingActionButton(
                     onClick = { showNewSheet = true },
-                    containerColor = tc.primary,
+                    containerColor = tc.primary.copy(alpha = 0.82f),
                     contentColor = Color.White,
                     shape = RoundedCornerShape(R_MD),
-                    modifier = Modifier.testTag("fab_new")
+                    modifier = Modifier
+                        .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(R_MD))
+                        .testTag("fab_new")
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_plus),
