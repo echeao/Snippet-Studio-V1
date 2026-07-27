@@ -93,10 +93,67 @@ fun CodeEditor(
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
 
+    // 维护编辑器内部的即时 TextFieldValue 状态，防止 ViewModel 异步 StateFlow 重绘延迟导致输入法 (IME) 选区归零
+    var internalTfv by remember { mutableStateOf(textFieldValue) }
+
+    // 监听 Compose 实际测量排版产生的 TextLayoutResult，用于精准捕捉光标在视觉屏上的真实 Y 轴像素坐标
+    var textLayoutResult by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+
+    // 当外部传入的 textFieldValue 发生文本变更（如加载新文件、强制重命名或恢复）时，同步更新内部状态
+    LaunchedEffect(textFieldValue.text) {
+        if (internalTfv.text != textFieldValue.text) {
+            internalTfv = textFieldValue
+        }
+    }
+
+    // 统一变动处理器：当前帧内优先同步更新本地 internalTfv 保持光标位置连续，再通知外部 ViewModel
+    val handleValueChange: (TextFieldValue) -> Unit = { newTfv ->
+        internalTfv = newTfv
+        onValueChange(newTfv)
+    }
+
     // 统计代码总行数（通过计算换行符 '\n' 数量加 1，最小值为 1 行）
-    val linesCount = remember(textFieldValue.text) {
-        val count = textFieldValue.text.count { it == '\n' } + 1
+    val linesCount = remember(internalTfv.text) {
+        val count = internalTfv.text.count { it == '\n' } + 1
         maxOf(1, count)
+    }
+
+    val density = androidx.compose.ui.platform.LocalDensity.current
+
+    // 计算当前光标在视觉屏幕上的真实 Y 轴 Top 偏移量（dp），解决软自动换行折行时高亮背景横条与光标错位的问题
+    val currentLineTopDp = remember(textLayoutResult, internalTfv.selection, currentLineIndex, fontSp) {
+        val layout = textLayoutResult
+        if (layout != null && internalTfv.text.isNotEmpty()) {
+            val caret = internalTfv.selection.start.coerceIn(0, layout.layoutInput.text.length)
+            val visualLine = layout.getLineForOffset(caret)
+            val topPx = layout.getLineTop(visualLine)
+            with(density) { topPx.toDp() }
+        } else {
+            (currentLineIndex * fontSp * 1.6f).dp
+        }
+    }
+
+    // 计算当前光标所在视觉行的真实高度（dp）
+    val currentLineHeightDp = remember(textLayoutResult, internalTfv.selection, fontSp) {
+        val layout = textLayoutResult
+        if (layout != null && internalTfv.text.isNotEmpty()) {
+            val caret = internalTfv.selection.start.coerceIn(0, layout.layoutInput.text.length)
+            val visualLine = layout.getLineForOffset(caret)
+            val bottomPx = layout.getLineBottom(visualLine)
+            val topPx = layout.getLineTop(visualLine)
+            with(density) { (bottomPx - topPx).toDp() }
+        } else {
+            (fontSp * 1.6f).dp
+        }
+    }
+
+    // 监听当前光标所在行坐标，当输入回车换行或移动光标时自动平滑滚动视口，确保当前编辑行处于视口内部
+    LaunchedEffect(currentLineTopDp) {
+        val targetScrollPx = with(density) { currentLineTopDp.toPx() }.toInt()
+        val maxScroll = verticalScrollState.maxValue
+        if (targetScrollPx > verticalScrollState.value + 300 || targetScrollPx < verticalScrollState.value) {
+            verticalScrollState.animateScrollTo(targetScrollPx.coerceIn(0, maxScroll))
+        }
     }
 
     Row(
@@ -158,13 +215,13 @@ fun CodeEditor(
                 .verticalScroll(verticalScrollState) // 与左侧行号轨共用垂直滚动
                 .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3, start = Spacing.S3, end = Spacing.S3)
         ) {
-            // 当前焦点行高亮背景绘制层
+            // 当前焦点行高亮背景绘制层（使用 TextLayoutResult 计算的真实物理坐标，解决 WordWrap 自动换行下的对齐错位）
             if (highlightCurrentLine && currentLineIndex in 0 until linesCount) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .offset(y = (currentLineIndex * (fontSp * 1.6f)).dp)
-                        .height((fontSp * 1.6f).dp)
+                        .offset(y = currentLineTopDp)
+                        .height(currentLineHeightDp)
                         .background(tc.primarySoft.copy(alpha = if (isDark) 0.15f else 0.5f))
                 )
             }
@@ -173,8 +230,9 @@ fun CodeEditor(
             if (isWordWrap) {
                 // 模式 A: 开启自动换行 (Word Wrap)
                 BasicTextField(
-                    value = textFieldValue,
-                    onValueChange = onValueChange,
+                    value = internalTfv,
+                    onValueChange = handleValueChange,
+                    onTextLayout = { textLayoutResult = it },
                     visualTransformation = syntaxTransformation,
                     textStyle = TextStyle(
                         fontFamily = FontFamily.Monospace, // 强制使用代码标准等宽字体
@@ -184,7 +242,8 @@ fun CodeEditor(
                     ),
                     cursorBrush = SolidColor(tc.primary),
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 300.dp)
                         .testTag("code_editor_input")
                 )
             } else {
@@ -195,8 +254,9 @@ fun CodeEditor(
                         .horizontalScroll(horizontalScrollState)
                 ) {
                     BasicTextField(
-                        value = textFieldValue,
-                        onValueChange = onValueChange,
+                        value = internalTfv,
+                        onValueChange = handleValueChange,
+                        onTextLayout = { textLayoutResult = it },
                         visualTransformation = syntaxTransformation,
                         textStyle = TextStyle(
                             fontFamily = FontFamily.Monospace,

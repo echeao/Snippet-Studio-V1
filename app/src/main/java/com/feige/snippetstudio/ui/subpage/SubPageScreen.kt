@@ -6,6 +6,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -186,9 +188,12 @@ fun SubPageScreen(
 
                 // ===== 子页面 2: Git 远程通信与版本管理 =====
                 "git" -> {
+                    // 记忆当前 Git 页面的纵向滚动状态，确保在展开“本地变更”或“代码差异对比”时页面可顺畅滑屏
+                    val gitScrollState = rememberScrollState()
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .verticalScroll(gitScrollState)
                             .padding(Spacing.S4),
                         verticalArrangement = Arrangement.spacedBy(Spacing.S4)
                     ) {

@@ -285,7 +285,6 @@ fun EditorScreen(
                 .fillMaxSize()
                 .background(tc.bg)
                 .nestedScroll(nestedScrollConnection)
-                .imePadding()
                 .clickable(
                     indication = null,
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -502,10 +501,11 @@ fun EditorScreen(
             },
             bottomBar = {
                 // 底部专业代码编辑器状态栏 (行列号 / 编码格式 / 换行符 / 语言)
+                // 联合动态吸收软键盘 (IME) 与底部导航栏安全区，键盘弹出时自动平滑抬升至键盘顶部，零遮挡且绝不留多余空白
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                        .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)))
                         .height(36.dp)
                         .border(1.dp, tc.line),
                     color = tc.surface2
@@ -543,11 +543,12 @@ fun EditorScreen(
             },
             containerColor = tc.bg
         ) { innerPadding ->
+            // Scaffold 自身的 innerPadding 已计算并处理了软键盘 (IME) 与底栏边距，
+            // 此处仅保留 innerPadding，移除重复叠加的 imePadding()，消除键盘上方多余的空白区域。
             editorContent(
                 Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .imePadding()
             )
         }
     }
