@@ -97,8 +97,10 @@ class SubPageViewModel(
     }
 
     init {
-        // 若当前子页面为 Git Log，自动加载提交历史
-        if (key == "gitlog") {
+        // 进入 Git 同步管理页面时，自动后台刷新扫描本地未提交变更
+        if (key == "git") {
+            loadLocalChanges()
+        } else if (key == "gitlog") {
             loadGitLog()
         }
     }
@@ -232,6 +234,7 @@ class SubPageViewModel(
                             gitConnected = true
                         )
                     }
+                    loadLocalChanges()
                     _isGitOperating.value = false
                     onResult(true, null)
                 } else {
@@ -348,6 +351,7 @@ class SubPageViewModel(
                 settingsRepository.updateSettings { it.copy(lastSyncTime = System.currentTimeMillis()) }
                 _syncPreview.value = null
                 _syncProgress.value = null
+                loadLocalChanges()
                 _isGitOperating.value = false
                 onResult(true, if (preview.direction == SyncDirection.INCOMING) "拉取完成" else "推送完成")
             } else {

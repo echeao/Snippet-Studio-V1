@@ -207,7 +207,7 @@ fun SubPageScreen(
                         ) {
                             Column(
                                 modifier = Modifier.padding(Spacing.S4),
-                                verticalArrangement = Arrangement.spacedBy(Spacing.S3)
+                                verticalArrangement = Arrangement.spacedBy(Spacing.S2)
                             ) {
                                 OutlinedTextField(
                                     value = uiState.gitUrlInput,
@@ -232,11 +232,11 @@ fun SubPageScreen(
                                     enabled = !uiState.isGitOperating
                                 )
 
-                                Spacer(modifier = Modifier.height(Spacing.S2))
-
                                 if (uiState.isGitOperating && uiState.syncPreview == null) {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = Spacing.S2),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         CircularProgressIndicator(color = Primary)
@@ -261,8 +261,6 @@ fun SubPageScreen(
                                     }
 
                                     if (uiState.settings.gitConnected) {
-                                        Spacer(modifier = Modifier.height(Spacing.S2))
-
                                         // 方向分离按钮：Pull / Push（设置紧凑内边距 contentPadding 与单行 maxLines = 1，防止极端屏宽下触发自动折行）
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
@@ -306,7 +304,6 @@ fun SubPageScreen(
                                         }
 
                                         if (uiState.isPreviewing) {
-                                            Spacer(modifier = Modifier.height(Spacing.S2))
                                             Box(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 contentAlignment = Alignment.Center
@@ -320,9 +317,8 @@ fun SubPageScreen(
                                     }
                                 }
 
-                                // Git Log 入口按钮
+                                // Git Log 入口与本地变更按钮
                                 if (uiState.settings.gitConnected) {
-                                    Spacer(modifier = Modifier.height(Spacing.S3))
                                     // 加载本地变更按钮
                                     OutlinedButton(
                                         onClick = { viewModel.loadLocalChanges() },
@@ -341,7 +337,6 @@ fun SubPageScreen(
 
                                     // 本地变更文件列表
                                     if (uiState.localChanges.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(Spacing.S2))
                                         uiState.localChanges.forEach { (path, changeType) ->
                                             val isSelected = uiState.selectedDiffPath == path
                                             val (icon, chgColor) = when (changeType) {
@@ -433,7 +428,6 @@ fun SubPageScreen(
                                         }
                                     }
 
-                                    Spacer(modifier = Modifier.height(Spacing.S3))
                                     OutlinedButton(
                                         onClick = {
                                             viewModel.loadGitLog()
