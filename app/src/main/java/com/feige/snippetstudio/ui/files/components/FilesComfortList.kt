@@ -42,6 +42,7 @@ fun FilesComfortList(
     snippets: List<Snippet>,
     listState: LazyListState,
     cardClickAction: String,
+    searchQuery: String = "",
     onNavigateToDetail: (String) -> Unit,
     onNavigateToEditor: (String) -> Unit,
     onRename: (Snippet) -> Unit,
@@ -84,6 +85,7 @@ fun FilesComfortList(
                 onToggleStar = { onToggleStar(snippet) },
                 onMore = { onTrash(snippet) },
                 showFullDateTime = true,
+                searchQuery = searchQuery,
                 modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
             )
         }

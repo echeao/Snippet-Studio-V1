@@ -22,6 +22,7 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.SyntaxHighlighter
+import com.feige.snippetstudio.util.SearchHighlighter
 import com.feige.snippetstudio.util.TimeUtil
 
 /**
@@ -41,6 +42,7 @@ fun SnippetPreviewCard(
     onMore: () -> Unit,
     modifier: Modifier = Modifier,
     showFullDateTime: Boolean = false,
+    searchQuery: String = "",
     onCopySnippet: (() -> Unit)? = null,
     onRename: (() -> Unit)? = null,
     onMoveFolder: (() -> Unit)? = null
@@ -49,8 +51,8 @@ fun SnippetPreviewCard(
     val tc = LocalThemeColors.current
     var showMenu by remember { mutableStateOf(false) }
 
-    val codeBgColor = if (tc.isDark) Color(0xFF1B1D22) else Color(0xFFF4F6F9)
-    val codeTextColor = if (tc.isDark) Color(0xFFC5C8D4) else Color(0xFF333745)
+    val codeBgColor = tc.codeBg
+    val codeTextColor = tc.codeText
 
     val previewCode = remember(snippet.content) {
         snippet.content.lines().take(4).joinToString("\n")
@@ -101,8 +103,18 @@ fun SnippetPreviewCard(
                 Spacer(modifier = Modifier.width(Spacing.S3))
 
                 Column(modifier = Modifier.weight(1f)) {
+                    // 标题渲染：若搜索关键词非空则高亮匹配部分
+                    val titleText = if (searchQuery.isNotBlank()) {
+                        SearchHighlighter.highlight(
+                            text = snippet.displayTitle,
+                            query = searchQuery,
+                            highlightColor = tc.primary
+                        )
+                    } else {
+                        AnnotatedString(snippet.displayTitle)
+                    }
                     Text(
-                        text = snippet.displayTitle,
+                        text = titleText,
                         style = ListTitleStyle,
                         color = tc.text,
                         maxLines = 1,

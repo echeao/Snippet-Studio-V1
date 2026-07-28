@@ -134,4 +134,27 @@
     <string name="history_content_at_version">このバージョンの内容</string>
     <string name="history_diff_title">現在との差分</string>
     <string name="menu_git_history">Git 履歴を表示</string>
+
+    <!-- ===== Phase 1.1 i18n: ハードコードされた Snackbar メッセージの抽出 ===== -->
+    <string name="toast_renamed">スニペットの名前を変更しました</string>
+    <string name="toast_moved_folder">フォルダに移動しました</string>
+    <string name="toast_tags_updated">タグを更新しました</string>
+    <string name="toast_folder_created">フォルダ %1$s を作成しました</string>
+    <string name="toast_folder_renamed">フォルダ名を %1$s に変更しました</string>
+    <string name="toast_restored_version">選択したバージョンに復元しました</string>
+    <string name="toast_restore_failed">復元に失敗しました</string>
+    <string name="toast_export_failed">バックアップのエクスポートに失敗、再試行してください</string>
+    <string name="toast_import_ok">%1$d 個のスニペットをインポートしました！</string>
+    <string name="toast_import_failed">インポート失敗、ファイル形式が無効です</string>
+    <string name="toast_zip_ok">ZIP アーカイブをキャッシュディレクトリに生成しました</string>
+    <string name="toast_zip_failed">ZIP パッケージに失敗しました</string>
+    <string name="toast_latest_version">Snippet Studio v1.2.0 は最新です</string>
+    <string name="toast_reset_done">設定をデフォルトに戻しました</string>
+    <string name="toast_tag_added">グローバルプリセットタグを追加しました</string>
+    <string name="toast_tag_deleted">タグを削除: %1$s</string>
+    <string name="toast_snippet_restored">スニペットを復元しました</string>
+    <string name="toast_snippet_purged">完全に削除しました</string>
+    <string name="toast_git_verified">Git リモート検証成功、設定を更新しました！</string>
+    <string name="toast_saved_short">保存しました</string>
+    <string name="toast_undo">元に戻す</string>
 </resources>

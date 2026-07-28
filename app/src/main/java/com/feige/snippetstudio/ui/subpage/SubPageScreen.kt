@@ -22,6 +22,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.components.ConfirmDialog
 import com.feige.snippetstudio.ui.subpage.components.*
+import com.feige.snippetstudio.ui.subpage.vm.GitSubState
+import com.feige.snippetstudio.ui.subpage.vm.TrashSubState
+import com.feige.snippetstudio.ui.subpage.vm.TagSubState
 import com.feige.snippetstudio.ui.theme.*
 
 /**
@@ -63,11 +66,11 @@ fun SubPageScreen(
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 )
                 val pathName = uri.lastPathSegment ?: uri.toString()
-                viewModel.updateRepoPath(context, pathName, uri.toString())
+                viewModel.settingsVm.updateRepoPath(context, pathName, uri.toString())
                 onShowSnackbar(context.getString(R.string.toast_saved))
             } catch (e: Exception) {
                 val pathName = uri.lastPathSegment ?: uri.toString()
-                viewModel.updateRepoPath(context, pathName, uri.toString())
+                viewModel.settingsVm.updateRepoPath(context, pathName, uri.toString())
                 onShowSnackbar("Updated path: ${uri.lastPathSegment}")
             }
         }
@@ -165,9 +168,10 @@ fun SubPageScreen(
 
                 // 子页面 2: Git 远程配置与同步
                 "git" -> {
+                    val gitState by viewModel.gitVm.gitState.collectAsStateWithLifecycle()
                     GitSubPage(
-                        uiState = uiState,
-                        viewModel = viewModel,
+                        gitState = gitState,
+                        gitViewModel = viewModel.gitVm,
                         onNavigateToGitLog = { onNavigateToSubPage("gitlog") },
                         onShowSnackbar = onShowSnackbar
                     )
@@ -175,7 +179,8 @@ fun SubPageScreen(
 
                 // 子页面 2.5: Git Log 提交历史
                 "gitlog" -> {
-                    GitLogSubPage(uiState = uiState)
+                    val gitState by viewModel.gitVm.gitState.collectAsStateWithLifecycle()
+                    GitLogSubPage(gitState = gitState)
                 }
 
                 // 子页面 3: 语言分类数量统计
@@ -185,23 +190,25 @@ fun SubPageScreen(
 
                 // 子页面 4: 全局预设标签管理
                 "tags" -> {
+                    val tagState by viewModel.tagVm.tagState.collectAsStateWithLifecycle()
                     TagManagementSubPage(
-                        globalTags = uiState.tags,
-                        onAddTag = { viewModel.addGlobalTag(it) },
-                        onDeleteTag = { viewModel.removeGlobalTag(it) },
+                        globalTags = tagState.tags,
+                        onAddTag = { viewModel.tagVm.addGlobalTag(it) },
+                        onDeleteTag = { viewModel.tagVm.removeGlobalTag(it) },
                         onShowSnackbar = onShowSnackbar
                     )
                 }
 
                 // 子页面 5: 回收站软删除列表
                 "trash" -> {
+                    val trashState by viewModel.trashVm.trashState.collectAsStateWithLifecycle()
                     TrashSubPage(
-                        trashItems = uiState.trashedSnippets,
+                        trashItems = trashState.trashedSnippets,
                         onRestore = { item ->
-                            viewModel.restoreSnippet(item.id)
+                            viewModel.trashVm.restoreSnippet(item.id)
                             onShowSnackbar(context.getString(R.string.toast_restored))
                         },
-                        onPurge = { id -> viewModel.purgeSnippet(id) },
+                        onPurge = { id -> viewModel.trashVm.purgeSnippet(id) },
                         onShowSnackbar = onShowSnackbar
                     )
                 }
@@ -225,7 +232,7 @@ fun SubPageScreen(
                                     .fillMaxWidth()
                                     .border(1.dp, if (isSelected) tc.primary else tc.line, RoundedCornerShape(R_MD))
                                     .clickable {
-                                        viewModel.setLanguage(context, code)
+                                        viewModel.settingsVm.setLanguage(context, code)
                                         onShowSnackbar(context.getString(R.string.toast_saved))
                                     },
                                 shape = RoundedCornerShape(R_MD),
@@ -274,7 +281,7 @@ fun SubPageScreen(
                                         RoundedCornerShape(R_MD)
                                     )
                                     .clickable {
-                                        viewModel.setColorTheme(style.id)
+                                        viewModel.settingsVm.setColorTheme(style.id)
                                         onShowSnackbar(context.getString(R.string.toast_saved))
                                     },
                                 shape = RoundedCornerShape(R_MD),
@@ -329,7 +336,7 @@ fun SubPageScreen(
             desc = stringResource(R.string.confirm_purge_desc),
             onConfirm = {
                 pendingPurgeId?.let { id ->
-                    viewModel.purgeSnippet(id)
+                    viewModel.trashVm.purgeSnippet(id)
                     onShowSnackbar("Deleted forever")
                 }
             },

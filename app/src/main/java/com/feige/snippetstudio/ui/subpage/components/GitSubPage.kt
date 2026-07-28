@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -23,8 +24,8 @@ import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.components.DiffViewer
 import com.feige.snippetstudio.ui.components.SyncPreviewSheet
-import com.feige.snippetstudio.ui.subpage.SubPageUiState
-import com.feige.snippetstudio.ui.subpage.SubPageViewModel
+import com.feige.snippetstudio.ui.subpage.vm.GitSubState
+import com.feige.snippetstudio.ui.subpage.vm.GitSubViewModel
 import com.feige.snippetstudio.ui.theme.*
 
 /**
@@ -37,24 +38,25 @@ import com.feige.snippetstudio.ui.theme.*
  * 4. 展示本地工作区未提交的文件变更矩阵，并集成 [DiffViewer] 开展逐行差异对比。
  * 5. 提供快捷跳转至 [GitLogSubPage] 提交历史轨迹的路由入口。
  *
- * @param uiState 子页面 UI 状态
- * @param viewModel 子页面 ViewModel 实例
+ * @param gitState Git 子页面专属 UI 状态
+ * @param gitViewModel Git 业务逻辑子 ViewModel
  * @param onNavigateToGitLog 跳转 Git Log 页面闭包
  * @param onShowSnackbar 提示闭包
  * @param modifier 外部 Modifier
  */
 @Composable
 fun GitSubPage(
-    uiState: SubPageUiState,
-    viewModel: SubPageViewModel,
+    gitState: GitSubState,
+    gitViewModel: GitSubViewModel,
     onNavigateToGitLog: () -> Unit,
     onShowSnackbar: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tc = LocalThemeColors.current
+    val context = LocalContext.current
     val gitScrollState = rememberScrollState()
     var isEditingGitConfig by remember { mutableStateOf(false) }
-    val isGitConnected = uiState.settings.gitConnected
+    val isGitConnected = gitState.settings.gitConnected
 
     Column(
         modifier = modifier
@@ -100,7 +102,7 @@ fun GitSubPage(
                                 shape = RoundedCornerShape(R_SM)
                             ) {
                                 Text(
-                                    text = uiState.settings.gitBranch,
+                                    text = gitState.settings.gitBranch,
                                     style = BadgeStyle,
                                     color = tc.primary,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -135,7 +137,7 @@ fun GitSubPage(
                     ) {
                         Text(text = stringResource(R.string.sub_git_url), style = CaptionStyle, color = tc.text2)
                         Text(
-                            text = uiState.settings.gitUrl,
+                            text = gitState.settings.gitUrl,
                             style = BodyStyle,
                             color = tc.text,
                             maxLines = 1,
@@ -144,7 +146,7 @@ fun GitSubPage(
                         Spacer(modifier = Modifier.height(Spacing.S1))
                         Text(text = "Access Token / 凭证", style = CaptionStyle, color = tc.text2)
                         Text(
-                            text = if (uiState.settings.gitPat.isNotEmpty()) "••••••••••••••••" else "(无)",
+                            text = if (gitState.settings.gitPat.isNotEmpty()) "••••••••••••••••" else "(无)",
                             style = BodyStyle,
                             color = tc.text2
                         )
@@ -165,29 +167,29 @@ fun GitSubPage(
                     }
 
                     OutlinedTextField(
-                        value = uiState.gitUrlInput,
-                        onValueChange = { viewModel.onGitUrlChange(it) },
+                        value = gitState.gitUrlInput,
+                        onValueChange = { gitViewModel.onGitUrlChange(it) },
                         label = { Text(stringResource(R.string.sub_git_url)) },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isGitOperating
+                        enabled = !gitState.isGitOperating
                     )
                     OutlinedTextField(
-                        value = uiState.gitBranchInput,
-                        onValueChange = { viewModel.onGitBranchChange(it) },
+                        value = gitState.gitBranchInput,
+                        onValueChange = { gitViewModel.onGitBranchChange(it) },
                         label = { Text(stringResource(R.string.sub_git_branch)) },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isGitOperating
+                        enabled = !gitState.isGitOperating
                     )
                     OutlinedTextField(
-                        value = uiState.gitPatInput,
-                        onValueChange = { viewModel.onGitPatChange(it) },
+                        value = gitState.gitPatInput,
+                        onValueChange = { gitViewModel.onGitPatChange(it) },
                         label = { Text(stringResource(R.string.sub_git_pat)) },
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isGitOperating
+                        enabled = !gitState.isGitOperating
                     )
 
-                    if (uiState.isGitOperating && uiState.syncPreview == null) {
+                    if (gitState.isGitOperating && gitState.syncPreview == null) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -199,10 +201,10 @@ fun GitSubPage(
                     } else {
                         Button(
                             onClick = {
-                                viewModel.testGitConnection { success, errorMsg ->
+                                gitViewModel.testGitConnection { success, errorMsg ->
                                     if (success) {
                                         isEditingGitConfig = false
-                                        onShowSnackbar("Git 远程验证通过，配置已更新！")
+                                        onShowSnackbar(context.getString(R.string.toast_git_verified))
                                     } else {
                                         onShowSnackbar(errorMsg ?: "操作失败")
                                     }
@@ -211,7 +213,7 @@ fun GitSubPage(
                             shape = AppShapes.small,
                             colors = ButtonDefaults.buttonColors(containerColor = tc.primary),
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !uiState.isGitOperating
+                            enabled = !gitState.isGitOperating
                         ) {
                             Text(if (isGitConnected) "保存并重新验证" else "校验连接并初始化/克隆")
                         }
@@ -226,34 +228,34 @@ fun GitSubPage(
                     ) {
                         OutlinedButton(
                             onClick = {
-                                viewModel.previewPull { success, msg ->
+                                gitViewModel.previewPull { success, msg ->
                                     if (!success) onShowSnackbar(msg ?: "预览失败")
                                 }
                             },
                             shape = AppShapes.small,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                             modifier = Modifier.weight(1f),
-                            enabled = !uiState.isGitOperating && !uiState.isPreviewing
+                            enabled = !gitState.isGitOperating && !gitState.isPreviewing
                         ) {
                             Text(text = "拉取远端 (Pull ↓)", fontSize = 13.sp, maxLines = 1)
                         }
 
                         OutlinedButton(
                             onClick = {
-                                viewModel.previewPush { success, msg ->
+                                gitViewModel.previewPush { success, msg ->
                                     if (!success) onShowSnackbar(msg ?: "预览失败")
                                 }
                             },
                             shape = AppShapes.small,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                             modifier = Modifier.weight(1f),
-                            enabled = !uiState.isGitOperating && !uiState.isPreviewing
+                            enabled = !gitState.isGitOperating && !gitState.isPreviewing
                         ) {
                             Text(text = "推送本地 (Push ↑)", fontSize = 13.sp, maxLines = 1)
                         }
                     }
 
-                    if (uiState.isPreviewing) {
+                    if (gitState.isPreviewing) {
                         Box(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center
@@ -264,12 +266,12 @@ fun GitSubPage(
                 }
 
                 // 查看本地变更与 Git Log
-                if (uiState.settings.gitConnected) {
+                if (gitState.settings.gitConnected) {
                     OutlinedButton(
-                        onClick = { viewModel.loadLocalChanges() },
+                        onClick = { gitViewModel.loadLocalChanges() },
                         shape = AppShapes.small,
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isGitOperating
+                        enabled = !gitState.isGitOperating
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_code),
@@ -277,13 +279,13 @@ fun GitSubPage(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(Spacing.S2))
-                        Text("查看本地变更 (${uiState.localChanges.size})")
+                        Text("查看本地变更 (${gitState.localChanges.size})")
                     }
 
                     // 本地变更列表与 Diff 对比
-                    if (uiState.localChanges.isNotEmpty()) {
-                        uiState.localChanges.forEach { (path, changeType) ->
-                            val isSelected = uiState.selectedDiffPath == path
+                    if (gitState.localChanges.isNotEmpty()) {
+                        gitState.localChanges.forEach { (path, changeType) ->
+                            val isSelected = gitState.selectedDiffPath == path
                             val (icon, chgColor) = when (changeType) {
                                 "ADDED" -> "+" to SyncGreen
                                 "MODIFIED" -> "~" to SyncBlue
@@ -295,7 +297,7 @@ fun GitSubPage(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            if (isSelected) viewModel.closeDiff() else viewModel.loadFileDiff(path)
+                                            if (isSelected) gitViewModel.closeDiff() else gitViewModel.loadFileDiff(path)
                                         },
                                     color = if (isSelected) tc.primarySoft.copy(alpha = 0.3f) else tc.surface,
                                     shape = RoundedCornerShape(R_SM)
@@ -337,16 +339,16 @@ fun GitSubPage(
                                 }
 
                                 if (isSelected) {
-                                    if (uiState.isDiffLoading) {
+                                    if (gitState.isDiffLoading) {
                                         Box(
                                             modifier = Modifier.fillMaxWidth().padding(Spacing.S3),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             CircularProgressIndicator(color = tc.primary, modifier = Modifier.size(20.dp))
                                         }
-                                    } else if (uiState.currentDiff.isNotEmpty()) {
+                                    } else if (gitState.currentDiff.isNotEmpty()) {
                                         DiffViewer(
-                                            diffLines = uiState.currentDiff,
+                                            diffLines = gitState.currentDiff,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .heightIn(max = 300.dp)
@@ -367,12 +369,12 @@ fun GitSubPage(
 
                     OutlinedButton(
                         onClick = {
-                            viewModel.loadGitLog()
+                            gitViewModel.loadGitLog()
                             onNavigateToGitLog()
                         },
                         shape = AppShapes.small,
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isGitOperating
+                        enabled = !gitState.isGitOperating
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_git),
@@ -385,24 +387,24 @@ fun GitSubPage(
                 }
 
                 // 同步预览底栏 Sheet
-                if (uiState.syncPreview != null) {
+                if (gitState.syncPreview != null) {
                     SyncPreviewSheet(
-                        preview = uiState.syncPreview!!,
-                        syncProgress = uiState.syncProgress,
-                        onResolveConflict = { index, resolution -> viewModel.resolveConflict(index, resolution) },
+                        preview = gitState.syncPreview!!,
+                        syncProgress = gitState.syncProgress,
+                        onResolveConflict = { index, resolution -> gitViewModel.resolveConflict(index, resolution) },
                         onConfirm = {
-                            viewModel.confirmSync { success, msg ->
+                            gitViewModel.confirmSync { success, msg ->
                                 onShowSnackbar(msg ?: (if (success) "同步完成" else "同步失败"))
                             }
                         },
-                        onCancel = { viewModel.cancelSync() }
+                        onCancel = { gitViewModel.cancelSync() }
                     )
                 }
             }
         }
 
         Text(
-            text = if (uiState.settings.gitConnected)
+            text = if (gitState.settings.gitConnected)
                 "Git 状态: 已连接。修改代码片段时将自动同步至本地 Git 仓并可推送远端。"
             else
                 "请输入有效的远程仓库 URL 和 Personal Access Token (PAT)，点击“校验连接”即可完成准备。",

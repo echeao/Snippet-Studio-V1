@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Color
  * @property text2 二级次要文本色
  * @property text3 三级说明/占位符文本色
  * @property line 通用描边与分割线颜色
+ * @property codeBg 代码预览区背景色（随明暗模式自动切换）
+ * @property codeText 代码预览区文字色（随明暗模式自动切换）
  * @property isDark 当前主题是否运行在深色模式
  */
 data class ThemeColors(
@@ -35,6 +37,8 @@ data class ThemeColors(
     val text2: Color,
     val text3: Color,
     val line: Color,
+    val codeBg: Color,
+    val codeText: Color,
     val isDark: Boolean,
 )
 
@@ -55,6 +59,8 @@ val LocalThemeColors = staticCompositionLocalOf {
         text2 = Color(0xFF484944),
         text3 = Color(0xFF797871),
         line = Color(0xFFE5E2D9),
+        codeBg = Color(0xFFF4F6F2),
+        codeText = Color(0xFF333B35),
         isDark = false,
     )
 }

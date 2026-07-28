@@ -248,7 +248,7 @@ fun EditorTopAppBar(
                         onClick = {
                             menuExpanded = false
                             onForceSave()
-                            onShowSnackbar("已保存")
+                            onShowSnackbar(context.getString(R.string.toast_saved_short))
                         }
                     )
 

@@ -18,6 +18,8 @@ import androidx.navigation.compose.rememberNavController
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.AppScaffold
+import com.feige.snippetstudio.ui.common.LocalSnackbarManager
+import com.feige.snippetstudio.ui.common.SnackbarManager
 import com.feige.snippetstudio.ui.components.SharePanel
 import com.feige.snippetstudio.ui.nav.AppNavGraph
 import com.feige.snippetstudio.ui.nav.Screen
@@ -127,27 +129,31 @@ class MainActivity : ComponentActivity() {
                     // 获取结合 Compose 重组生命周期的协程作用域 (CoroutineScope)
                     val scope = rememberCoroutineScope()
 
-                    // 【全局高阶函数闭包】传递给任意子页面的消息弹窗触发闭包，使用 scope.launch 发起非阻塞异步调用
+                    // 【全局 Snackbar 管理器】支持简单消息与带 Action 按钮的撤销操作
+                    val snackbarManager = remember { SnackbarManager(scope, snackbarHostState) }
+
+                    // 【全局高阶函数闭包】传递给任意子页面的消息弹窗触发闭包（向后兼容）
                     val showSnackbar: (String) -> Unit = { message ->
-                        scope.launch {
-                            snackbarHostState.showSnackbar(message)
-                        }
+                        snackbarManager.showSnackbar(message)
                     }
 
-                    // 【应用主脚手架 Layout】包含 BottomBar 底部导航栏与 2x2 ModalBottomSheet 动态新建模态框
-                    AppScaffold(
-                        navController = navController,
-                        snackbarHostState = snackbarHostState
-                    ) { innerPadding ->
-                        // 【全局路由图 Host】接管页面导航与 ViewModelFactory 实例映射，并传入系统 SafeDrawing 边距
-                        AppNavGraph(
+                    // 通过 CompositionLocal 向 UI 树提供 SnackbarManager
+                    CompositionLocalProvider(LocalSnackbarManager provides snackbarManager) {
+                        // 【应用主脚手架 Layout】包含 BottomBar 底部导航栏与 2x2 ModalBottomSheet 动态新建模态框
+                        AppScaffold(
                             navController = navController,
-                            appContainer = appContainer,
-                            onShowSnackbar = showSnackbar,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(innerPadding)
-                        )
+                            snackbarHostState = snackbarHostState
+                        ) { innerPadding ->
+                            // 【全局路由图 Host】接管页面导航与 ViewModelFactory 实例映射，并传入系统 SafeDrawing 边距
+                            AppNavGraph(
+                                navController = navController,
+                                appContainer = appContainer,
+                                onShowSnackbar = showSnackbar,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(innerPadding)
+                            )
+                        }
                     }
 
                     // 消费系统分享意图：根据 shareAction 设置决定静默保存或弹出编辑面板

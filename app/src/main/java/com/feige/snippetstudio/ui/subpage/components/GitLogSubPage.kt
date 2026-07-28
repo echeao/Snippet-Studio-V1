@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.feige.snippetstudio.ui.subpage.SubPageUiState
+import com.feige.snippetstudio.ui.subpage.vm.GitSubState
 import com.feige.snippetstudio.ui.theme.*
 
 /**
@@ -27,12 +27,12 @@ import com.feige.snippetstudio.ui.theme.*
  * 1. 展现 Git 提交日志列表与时间线节点标尺。
  * 2. 呈现提交信息 (Commit Message)、Hash 简写短码、作者签名及提交时间戳。
  *
- * @param uiState 子页面 UI 状态
+ * @param gitState Git 子页面专属 UI 状态
  * @param modifier 外部 Modifier
  */
 @Composable
 fun GitLogSubPage(
-    uiState: SubPageUiState,
+    gitState: GitSubState,
     modifier: Modifier = Modifier
 ) {
     val tc = LocalThemeColors.current
@@ -43,21 +43,21 @@ fun GitLogSubPage(
             .padding(Spacing.S4),
         verticalArrangement = Arrangement.spacedBy(Spacing.S3)
     ) {
-        if (uiState.isGitLogLoading) {
+        if (gitState.isGitLogLoading) {
             Box(
                 modifier = Modifier.fillMaxWidth().padding(Spacing.S5),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = tc.primary)
             }
-        } else if (uiState.gitLogError != null) {
+        } else if (gitState.gitLogError != null) {
             Text(
-                text = uiState.gitLogError!!,
+                text = gitState.gitLogError!!,
                 style = BodyStyle,
                 color = Color(0xFFE53935),
                 modifier = Modifier.padding(Spacing.S3)
             )
-        } else if (uiState.gitLogCommits.isEmpty()) {
+        } else if (gitState.gitLogCommits.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxWidth().padding(Spacing.S5),
                 contentAlignment = Alignment.Center
@@ -66,7 +66,7 @@ fun GitLogSubPage(
             }
         } else {
             Text(
-                text = "共 ${uiState.gitLogCommits.size} 条提交记录",
+                text = "共 ${gitState.gitLogCommits.size} 条提交记录",
                 style = CaptionStyle,
                 color = tc.text2,
                 modifier = Modifier.padding(horizontal = Spacing.S2)
@@ -76,7 +76,7 @@ fun GitLogSubPage(
                 verticalArrangement = Arrangement.spacedBy(Spacing.S2),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(uiState.gitLogCommits, key = { it.commitId }) { commit ->
+                items(gitState.gitLogCommits, key = { it.commitId }) { commit ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(R_SM),

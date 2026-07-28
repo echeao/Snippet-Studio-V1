@@ -366,7 +366,7 @@ fun EditorScreen(
         onDismiss = { showTagDialog = false },
         onSave = { updatedTags ->
             viewModel.updateTags(updatedTags)
-            onShowSnackbar("标签已更新")
+            onShowSnackbar(context.getString(R.string.toast_tags_updated))
         }
     )
 

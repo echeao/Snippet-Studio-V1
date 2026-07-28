@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
+import com.feige.snippetstudio.ui.common.LocalSnackbarManager
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.files.components.*
 import com.feige.snippetstudio.ui.theme.*
@@ -186,6 +187,7 @@ fun FilesScreen(
                             snippets = uiState.snippets,
                             listState = flatComfortListState,
                             cardClickAction = uiState.cardClickAction,
+                            searchQuery = uiState.searchQuery,
                             onNavigateToDetail = onNavigateToDetail,
                             onNavigateToEditor = onNavigateToEditor,
                             onRename = { pendingRenameSnippet = it },
@@ -233,7 +235,7 @@ fun FilesScreen(
             onDismiss = { showCreateFolderDialog = false },
             onConfirm = { folderName ->
                 viewModel.createFolder(folderName)
-                onShowSnackbar("已创建文件夹 $folderName")
+                onShowSnackbar(context.getString(R.string.toast_folder_created, folderName))
             }
         )
 
@@ -244,7 +246,7 @@ fun FilesScreen(
             onConfirm = { newFolderName ->
                 pendingRenameFolderName?.let { oldFolder ->
                     viewModel.renameFolder(oldFolder, newFolderName)
-                    onShowSnackbar("已将文件夹重命名为 $newFolderName")
+                    onShowSnackbar(context.getString(R.string.toast_folder_renamed, newFolderName))
                 }
             }
         )
@@ -257,7 +259,7 @@ fun FilesScreen(
             onConfirm = { newTitle, newFileName ->
                 pendingRenameSnippet?.let { snippet ->
                     viewModel.renameSnippet(snippet.id, newTitle, newFileName)
-                    onShowSnackbar("片段已重命名")
+                    onShowSnackbar(context.getString(R.string.toast_renamed))
                 }
             }
         )
@@ -270,11 +272,12 @@ fun FilesScreen(
             onConfirm = { targetFolder ->
                 pendingFolderSnippet?.let { snippet ->
                     viewModel.updateFolder(snippet.id, targetFolder)
-                    onShowSnackbar("已移动至文件夹")
+                    onShowSnackbar(context.getString(R.string.toast_moved_folder))
                 }
             }
         )
 
+        val snackbarManager = LocalSnackbarManager.current
         ConfirmDialog(
             show = (pendingTrashId != null),
             title = stringResource(R.string.confirm_trash_title),
@@ -282,7 +285,11 @@ fun FilesScreen(
             onConfirm = {
                 pendingTrashId?.let { id ->
                     viewModel.trashSnippet(id)
-                    onShowSnackbar(context.getString(R.string.toast_trashed))
+                    snackbarManager.showSnackbar(
+                        message = context.getString(R.string.toast_trashed),
+                        actionLabel = context.getString(R.string.toast_undo),
+                        onAction = { viewModel.restoreSnippet(id) }
+                    )
                 }
             },
             onDismiss = { pendingTrashId = null },

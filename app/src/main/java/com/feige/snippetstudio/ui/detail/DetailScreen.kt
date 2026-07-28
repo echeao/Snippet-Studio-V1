@@ -190,7 +190,7 @@ fun DetailScreen(
             onDismiss = { showRenameDialog = false },
             onConfirm = { newTitle, newFileName ->
                 viewModel.renameSnippet(newTitle, newFileName)
-                onShowSnackbar("片段已重命名")
+                onShowSnackbar(context.getString(R.string.toast_renamed))
             }
         )
 
@@ -202,7 +202,7 @@ fun DetailScreen(
             onDismiss = { showFolderDialog = false },
             onConfirm = { targetFolder ->
                 viewModel.updateFolder(targetFolder)
-                onShowSnackbar("已移动至文件夹")
+                onShowSnackbar(context.getString(R.string.toast_moved_folder))
             }
         )
 
@@ -214,7 +214,7 @@ fun DetailScreen(
             onDismiss = { showTagDialog = false },
             onSave = { updatedTags ->
                 viewModel.updateTags(updatedTags)
-                onShowSnackbar("标签已更新")
+                onShowSnackbar(context.getString(R.string.toast_tags_updated))
             }
         )
 

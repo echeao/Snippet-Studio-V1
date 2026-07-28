@@ -134,4 +134,27 @@
     <string name="history_content_at_version">此版本内容</string>
     <string name="history_diff_title">与当前版本对比</string>
     <string name="menu_git_history">查看 Git 历史</string>
+
+    <!-- ===== Phase 1.1 国际化修补：提取硬编码中文 Snackbar 文案 ===== -->
+    <string name="toast_renamed">片段已重命名</string>
+    <string name="toast_moved_folder">已移动至文件夹</string>
+    <string name="toast_tags_updated">标签已更新</string>
+    <string name="toast_folder_created">已创建文件夹 %1$s</string>
+    <string name="toast_folder_renamed">已将文件夹重命名为 %1$s</string>
+    <string name="toast_restored_version">已恢复到选定版本</string>
+    <string name="toast_restore_failed">恢复失败</string>
+    <string name="toast_export_failed">备份导出失败，请重试</string>
+    <string name="toast_import_ok">成功恢复导入 %1$d 个代码片段！</string>
+    <string name="toast_import_failed">导入失败，文件格式无效</string>
+    <string name="toast_zip_ok">ZIP 压缩包已成功打包生成于缓存目录</string>
+    <string name="toast_zip_failed">打包 ZIP 失败</string>
+    <string name="toast_latest_version">Snippet Studio v1.2.0 已是最新版本</string>
+    <string name="toast_reset_done">偏好设置已成功恢复为默认状态</string>
+    <string name="toast_tag_added">已添加全局预设标签</string>
+    <string name="toast_tag_deleted">已删除标签: %1$s</string>
+    <string name="toast_snippet_restored">已还原片段</string>
+    <string name="toast_snippet_purged">已彻底删除</string>
+    <string name="toast_git_verified">Git 远程验证通过，配置已更新！</string>
+    <string name="toast_saved_short">已保存</string>
+    <string name="toast_undo">撤销</string>
 </resources>

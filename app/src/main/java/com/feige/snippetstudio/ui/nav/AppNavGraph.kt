@@ -1,5 +1,7 @@
 package com.feige.snippetstudio.ui.nav
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -26,6 +28,29 @@ import com.feige.snippetstudio.ui.settings.SettingsViewModel
 import com.feige.snippetstudio.ui.subpage.SubPageScreen
 import com.feige.snippetstudio.ui.subpage.SubPageViewModel
 
+// ===== 全局页面转场动画常量与辅助函数 =====
+
+/** 转场动画时长（进入） */
+private const val ENTER_DURATION = 280
+/** 转场动画时长（退出） */
+private const val EXIT_DURATION = 200
+
+/** 默认进入转场：淡入 + 从右侧微幅滑入 */
+private fun defaultEnterTransition(): EnterTransition =
+    fadeIn(tween(ENTER_DURATION)) + slideInHorizontally(tween(ENTER_DURATION)) { it / 6 }
+
+/** 默认退出转场：淡出 + 向左侧微幅滑出 */
+private fun defaultExitTransition(): ExitTransition =
+    fadeOut(tween(EXIT_DURATION)) + slideOutHorizontally(tween(EXIT_DURATION)) { -it / 6 }
+
+/** 默认 Pop 进入转场：淡入 + 从左侧微幅滑入 */
+private fun defaultPopEnterTransition(): EnterTransition =
+    fadeIn(tween(ENTER_DURATION)) + slideInHorizontally(tween(ENTER_DURATION)) { -it / 6 }
+
+/** 默认 Pop 退出转场：淡出 + 向右侧微幅滑出 */
+private fun defaultPopExitTransition(): ExitTransition =
+    fadeOut(tween(EXIT_DURATION)) + slideOutHorizontally(tween(EXIT_DURATION)) { it / 6 }
+
 /**
  * [AppNavGraph] 应用程序的中心导航路由图 (Navigation Host Graph)。
  *
@@ -48,7 +73,11 @@ fun AppNavGraph(
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = { defaultEnterTransition() },
+        exitTransition = { defaultExitTransition() },
+        popEnterTransition = { defaultPopEnterTransition() },
+        popExitTransition = { defaultPopExitTransition() }
     ) {
         // ===== 1. 首页 (Home Screen) =====
         composable(Screen.Home.route) {

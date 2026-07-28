@@ -52,6 +52,16 @@ fun TagEditDialog(
         allAvailableTags.filter { !currentTags.contains(it) }
     }
 
+    /**
+     * 输入自动补全过滤：
+     * 当用户输入非空时，仅展示包含输入内容的候选标签（忽略大小写）；
+     * 输入为空时展示全部候选。
+     */
+    val filteredCandidates = remember(tagInput, candidateTags) {
+        if (tagInput.isBlank()) candidateTags
+        else candidateTags.filter { it.contains(tagInput.trim(), ignoreCase = true) }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -129,10 +139,10 @@ fun TagEditDialog(
                     }
                 }
 
-                if (candidateTags.isNotEmpty()) {
+                if (filteredCandidates.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "快捷点选现有/预设标签",
+                        text = if (tagInput.isBlank()) "快捷点选现有/预设标签" else "匹配候选标签",
                         style = CaptionStyle,
                         color = tc.text2
                     )
@@ -141,7 +151,7 @@ fun TagEditDialog(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        candidateTags.forEach { tag ->
+                        filteredCandidates.forEach { tag ->
                             Surface(
                                 color = tc.surface2,
                                 shape = RoundedCornerShape(R_SM),

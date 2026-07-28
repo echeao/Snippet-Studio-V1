@@ -8,7 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.theme.*
@@ -36,13 +38,14 @@ fun TagManagementSubPage(
     modifier: Modifier = Modifier
 ) {
     val tc = LocalThemeColors.current
+    val context = LocalContext.current
     var newTagInput by remember { mutableStateOf("") }
 
     val handleAdd = {
         if (newTagInput.trim().isNotEmpty()) {
             onAddTag(newTagInput.trim())
             newTagInput = ""
-            onShowSnackbar("已添加全局预设标签")
+            onShowSnackbar(context.getString(R.string.toast_tag_added))
         }
     }
 
@@ -125,7 +128,7 @@ fun TagManagementSubPage(
                             IconButton(
                                 onClick = {
                                     onDeleteTag(tag)
-                                    onShowSnackbar("已删除标签: $tag")
+                                    onShowSnackbar(context.getString(R.string.toast_tag_deleted, tag))
                                 },
                                 modifier = Modifier.size(16.dp)
                             ) {

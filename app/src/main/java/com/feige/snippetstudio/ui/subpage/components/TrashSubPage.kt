@@ -10,8 +10,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.components.ConfirmDialog
 import com.feige.snippetstudio.ui.components.TypeIcon
@@ -40,6 +43,7 @@ fun TrashSubPage(
     modifier: Modifier = Modifier
 ) {
     val tc = LocalThemeColors.current
+    val context = LocalContext.current
     var pendingPurgeId by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -110,7 +114,7 @@ fun TrashSubPage(
                             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S1)) {
                                 TextButton(onClick = {
                                     onRestore(item)
-                                    onShowSnackbar("已还原片段")
+                                    onShowSnackbar(context.getString(R.string.toast_snippet_restored))
                                 }) {
                                     Text("还原", color = tc.primary)
                                 }
@@ -134,7 +138,7 @@ fun TrashSubPage(
         onConfirm = {
             pendingPurgeId?.let { id ->
                 onPurge(id)
-                onShowSnackbar("已彻底删除")
+                onShowSnackbar(context.getString(R.string.toast_snippet_purged))
             }
             pendingPurgeId = null
         },

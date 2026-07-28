@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
+import com.feige.snippetstudio.ui.common.LocalSnackbarManager
 import com.feige.snippetstudio.ui.components.*
 import com.feige.snippetstudio.ui.home.components.*
 import com.feige.snippetstudio.ui.theme.*
@@ -121,6 +122,20 @@ fun HomeScreen(
                     )
                 }
 
+                // ===== A-2.5. 收藏片段横向滑动快捷区（仅当有收藏时显示） =====
+                if (uiState.starredSnippets.isNotEmpty()) {
+                    item {
+                        StarredSection(
+                            starredSnippets = uiState.starredSnippets,
+                            onSnippetClick = { id ->
+                                if (uiState.cardClickAction == "editor") onNavigateToEditor(id)
+                                else onNavigateToDetail(id)
+                            },
+                            modifier = Modifier.padding(vertical = Spacing.S2)
+                        )
+                    }
+                }
+
                 // ===== A-3. 最近修改代码片段列表 Header =====
                 item {
                     RecentHeader(
@@ -199,7 +214,7 @@ fun HomeScreen(
             onConfirm = { newTitle, newFileName ->
                 pendingRenameSnippet?.let { snippet ->
                     viewModel.renameSnippet(snippet.id, newTitle, newFileName)
-                    onShowSnackbar("片段已重命名")
+                    onShowSnackbar(context.getString(R.string.toast_renamed))
                 }
             }
         )
@@ -213,12 +228,13 @@ fun HomeScreen(
             onConfirm = { targetFolder ->
                 pendingFolderSnippet?.let { snippet ->
                     viewModel.updateFolder(snippet.id, targetFolder)
-                    onShowSnackbar("已移动至文件夹")
+                    onShowSnackbar(context.getString(R.string.toast_moved_folder))
                 }
             }
         )
 
-        // ===== 弹框 3: 移入回收站二次确认对话框 =====
+        // ===== 弹框 3: 移入回收站二次确认对话框（带撤销 Action） =====
+        val snackbarManager = LocalSnackbarManager.current
         ConfirmDialog(
             show = (pendingTrashId != null),
             title = stringResource(R.string.confirm_trash_title),
@@ -226,7 +242,11 @@ fun HomeScreen(
             onConfirm = {
                 pendingTrashId?.let { id ->
                     viewModel.trashSnippet(id)
-                    onShowSnackbar(context.getString(R.string.toast_trashed))
+                    snackbarManager.showSnackbar(
+                        message = context.getString(R.string.toast_trashed),
+                        actionLabel = context.getString(R.string.toast_undo),
+                        onAction = { viewModel.restoreSnippet(id) }
+                    )
                 }
             },
             onDismiss = { pendingTrashId = null },

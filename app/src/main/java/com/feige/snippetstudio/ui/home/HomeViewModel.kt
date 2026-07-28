@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
  * [HomeUiState] 首页的完整响应式 UI 状态数据类。
  *
  * @param recentSnippets 过滤或最新修改的前 5 个代码片段列表
+ * @param starredSnippets 已收藏（星标）的代码片段列表（最多 8 条，用于首页横向滑动区）
  * @param totalActiveCount 数据库中所有活动代码片段的总数量
  * @param starredCount 已设为星标收藏的代码片段数量
  * @param searchQuery 当前在搜索栏中输入的过滤关键字
@@ -30,6 +31,7 @@ import kotlinx.coroutines.withContext
  */
 data class HomeUiState(
     val recentSnippets: List<Snippet> = emptyList(),
+    val starredSnippets: List<Snippet> = emptyList(),
     val totalActiveCount: Int = 0,
     val starredCount: Int = 0,
     val searchQuery: String = "",
@@ -91,12 +93,14 @@ class HomeViewModel(
             // ===== 步骤 2: 提取当前所有已创建的独立文件夹列表 =====
             val folders = snippets.map { it.folder }.filter { it.isNotBlank() }.distinct()
 
-            // ===== 步骤 3: 计算星标收藏代码片段总数 =====
+            // ===== 步骤 3: 计算星标收藏代码片段总数与收藏列表 =====
             val starredCount = snippets.count { it.starred }
+            val starredList = snippets.filter { it.starred }.take(8)
 
             // ===== 步骤 4: 封装并产出全新的不可变 HomeUiState 状态 =====
             HomeUiState(
                 recentSnippets = filtered.take(5), // 首页只截取展示最新 5 条记录
+                starredSnippets = starredList,
                 totalActiveCount = snippets.size,
                 starredCount = starredCount,
                 searchQuery = query,
@@ -208,6 +212,18 @@ class HomeViewModel(
         viewModelScope.launch {
             val repoUri = settingsRepository?.settingsFlow?.first()?.repoTreeUri ?: ""
             repository.trash(id, repoUri)
+        }
+    }
+
+    /**
+     * 从回收站恢复（撤销删除）指定代码片段。
+     *
+     * @param id 恢复的目标代码片段 ID
+     */
+    fun restoreSnippet(id: String) {
+        viewModelScope.launch {
+            val repoUri = settingsRepository?.settingsFlow?.first()?.repoTreeUri ?: ""
+            repository.restore(id, repoUri)
         }
     }
 

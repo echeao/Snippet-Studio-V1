@@ -134,4 +134,27 @@
     <string name="history_content_at_version">Content at this version</string>
     <string name="history_diff_title">Diff with current</string>
     <string name="menu_git_history">View Git History</string>
+
+    <!-- ===== Phase 1.1 i18n: Extracted hardcoded Snackbar messages ===== -->
+    <string name="toast_renamed">Snippet renamed</string>
+    <string name="toast_moved_folder">Moved to folder</string>
+    <string name="toast_tags_updated">Tags updated</string>
+    <string name="toast_folder_created">Folder %1$s created</string>
+    <string name="toast_folder_renamed">Folder renamed to %1$s</string>
+    <string name="toast_restored_version">Restored to selected version</string>
+    <string name="toast_restore_failed">Restore failed</string>
+    <string name="toast_export_failed">Backup export failed, please retry</string>
+    <string name="toast_import_ok">Successfully imported %1$d snippets!</string>
+    <string name="toast_import_failed">Import failed, invalid file format</string>
+    <string name="toast_zip_ok">ZIP archive generated in cache directory</string>
+    <string name="toast_zip_failed">ZIP packaging failed</string>
+    <string name="toast_latest_version">Snippet Studio v1.2.0 is up to date</string>
+    <string name="toast_reset_done">Preferences restored to defaults</string>
+    <string name="toast_tag_added">Global preset tag added</string>
+    <string name="toast_tag_deleted">Tag deleted: %1$s</string>
+    <string name="toast_snippet_restored">Snippet restored</string>
+    <string name="toast_snippet_purged">Permanently deleted</string>
+    <string name="toast_git_verified">Git remote verified, config updated!</string>
+    <string name="toast_saved_short">Saved</string>
+    <string name="toast_undo">Undo</string>
 </resources>

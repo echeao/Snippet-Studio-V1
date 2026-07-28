@@ -68,6 +68,8 @@ fun SnippetStudioTheme(
             text2 = palette.text2Dark,
             text3 = palette.text3Dark,
             line = palette.lineDark,
+            codeBg = palette.codeBgDark,
+            codeText = palette.codeTextDark,
             isDark = true,
         )
     } else {
@@ -83,6 +85,8 @@ fun SnippetStudioTheme(
             text2 = palette.text2Light,
             text3 = palette.text3Light,
             line = palette.lineLight,
+            codeBg = palette.codeBgLight,
+            codeText = palette.codeTextLight,
             isDark = false,
         )
     }

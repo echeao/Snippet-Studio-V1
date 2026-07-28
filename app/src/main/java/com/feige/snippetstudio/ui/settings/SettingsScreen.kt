@@ -26,6 +26,17 @@ import com.feige.snippetstudio.ui.settings.components.EditorPrefSection
 import com.feige.snippetstudio.ui.theme.*
 
 /**
+ * 深色模式图标背景色自适应辅助函数。
+ * 浅色模式下返回原始色，深色模式下降低 alpha 以避免过于刺眼。
+ *
+ * @param color 原始图标背景色（浅色模式下的柔和品牌色）
+ * @param isDark 当前是否为深色模式
+ * @return 适配后的背景色
+ */
+private fun adaptiveIconBg(color: Color, isDark: Boolean): Color =
+    if (isDark) color.copy(alpha = 0.15f) else color
+
+/**
  * [SettingsScreen] 系统设置与全局偏好管理主界面。
  *
  * 架构重构与设计说明：
@@ -67,7 +78,7 @@ fun SettingsScreen(
                 if (success) {
                     onShowSnackbar(context.getString(R.string.toast_exported))
                 } else {
-                    onShowSnackbar("备份导出失败，请重试")
+                    onShowSnackbar(context.getString(R.string.toast_export_failed))
                 }
             }
         }
@@ -80,9 +91,9 @@ fun SettingsScreen(
         if (uri != null) {
             viewModel.importBackupJson(context, uri) { success, count ->
                 if (success) {
-                    onShowSnackbar("成功恢复导入 $count 个代码片段！")
+                    onShowSnackbar(context.getString(R.string.toast_import_ok, count))
                 } else {
-                    onShowSnackbar("导入失败，文件格式无效")
+                    onShowSnackbar(context.getString(R.string.toast_import_failed))
                 }
             }
         }
@@ -119,7 +130,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.set_repo_cur),
                     subTitle = settings.repoPath,
                     iconColor = Color(0xFF2e7d32),
-                    iconBgColor = Color(0xFFe8f5e9),
+                    iconBgColor = adaptiveIconBg(Color(0xFFe8f5e9), tc.isDark),
                     onClick = { onNavigateToSubPage("repo") }
                 )
             }
@@ -132,7 +143,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.set_git),
                     subTitle = gitSubTitle,
                     iconColor = Color(0xFF0277bd),
-                    iconBgColor = Color(0xFFe1f5fe),
+                    iconBgColor = adaptiveIconBg(Color(0xFFe1f5fe), tc.isDark),
                     trailingContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
@@ -167,7 +178,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.set_cat),
                     subTitle = "查看各语言代码片段数量分布",
                     iconColor = Color(0xFF6a1b9a),
-                    iconBgColor = Color(0xFFf3e5f5),
+                    iconBgColor = adaptiveIconBg(Color(0xFFf3e5f5), tc.isDark),
                     onClick = { onNavigateToSubPage("cat") }
                 )
                 HorizontalDivider(color = tc.line)
@@ -176,7 +187,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.set_tags),
                     subTitle = "自定义常用标签列表 (${settings.customTags.size} 个)",
                     iconColor = Color(0xFFad1457),
-                    iconBgColor = Color(0xFFfce4ec),
+                    iconBgColor = adaptiveIconBg(Color(0xFFfce4ec), tc.isDark),
                     onClick = { onNavigateToSubPage("tags") }
                 )
             }
@@ -195,9 +206,9 @@ fun SettingsScreen(
                 onExportZip = {
                     viewModel.exportZipFile(context) { zipFile ->
                         if (zipFile != null && zipFile.exists()) {
-                            onShowSnackbar("ZIP 压缩包已成功打包生成于缓存目录")
+                            onShowSnackbar(context.getString(R.string.toast_zip_ok))
                         } else {
-                            onShowSnackbar("打包 ZIP 失败")
+                            onShowSnackbar(context.getString(R.string.toast_zip_failed))
                         }
                     }
                 },
@@ -219,11 +230,11 @@ fun SettingsScreen(
                     title = "应用版本号",
                     subTitle = "Snippet Studio v1.2.0 (Build 20260728)",
                     iconColor = Color(0xFF424242),
-                    iconBgColor = Color(0xFFf5f5f5),
+                    iconBgColor = adaptiveIconBg(Color(0xFFf5f5f5), tc.isDark),
                     trailingContent = {
                         Text(text = "v1.2.0", style = CaptionStyle, color = tc.text2)
                     },
-                    onClick = { onShowSnackbar("Snippet Studio v1.2.0 已是最新版本") }
+                    onClick = { onShowSnackbar(context.getString(R.string.toast_latest_version)) }
                 )
                 HorizontalDivider(color = tc.line)
 
@@ -319,7 +330,7 @@ fun SettingsScreen(
         isDanger = true,
         onConfirm = {
             viewModel.resetToDefaults()
-            onShowSnackbar("偏好设置已成功恢复为默认状态")
+            onShowSnackbar(context.getString(R.string.toast_reset_done))
         },
         onDismiss = { showResetConfirmDialog = false }
     )

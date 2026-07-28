@@ -168,10 +168,10 @@ fun HistoryScreen(
             restoreTargetCommit?.let { commitId ->
                 viewModel.restoreToVersion(commitId) { success ->
                     if (success) {
-                        onShowSnackbar("已恢复到选定版本")
+                        onShowSnackbar(context.getString(R.string.toast_restored_version))
                         onBack()
                     } else {
-                        onShowSnackbar("恢复失败")
+                        onShowSnackbar(context.getString(R.string.toast_restore_failed))
                     }
                 }
             }

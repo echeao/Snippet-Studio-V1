@@ -77,6 +77,10 @@ data class TypeIconPalette(
  * @property text3Dark 深色模式三级文本色/占位符色 (低对比度)
  * @property lineDark 深色模式分割线与边框色
  * @property typeIcons 语言类型图标前景色组合
+ * @property codeBgLight 浅色模式代码预览区背景色
+ * @property codeBgDark 深色模式代码预览区背景色
+ * @property codeTextLight 浅色模式代码预览区文字色
+ * @property codeTextDark 深色模式代码预览区文字色
  */
 data class ThemePalette(
     val primary: Color,
@@ -98,6 +102,10 @@ data class ThemePalette(
     val text3Dark: Color,
     val lineDark: Color,
     val typeIcons: TypeIconPalette,
+    val codeBgLight: Color,
+    val codeBgDark: Color,
+    val codeTextLight: Color,
+    val codeTextDark: Color,
 )
 
 /**
@@ -132,6 +140,10 @@ object ColorThemeRegistry {
             md = Color(0xFF3B6B78),
             prompt = Color(0xFF4B635A),
         ),
+        codeBgLight = Color(0xFFF4F6F2),
+        codeBgDark = Color(0xFF1B211D),
+        codeTextLight = Color(0xFF333B35),
+        codeTextDark = Color(0xFFC5D0C8),
     )
 
     /** 海洋蓝色板定义 (Ocean) */
@@ -160,6 +172,10 @@ object ColorThemeRegistry {
             md = Color(0xFF3D7A8E),
             prompt = Color(0xFF3D6B8E),
         ),
+        codeBgLight = Color(0xFFF2F6F9),
+        codeBgDark = Color(0xFF1A2129),
+        codeTextLight = Color(0xFF2E3A42),
+        codeTextDark = Color(0xFFC0D0DC),
     )
 
     /** 暮光橙色板定义 (Sunset) */
@@ -188,6 +204,10 @@ object ColorThemeRegistry {
             md = Color(0xFF7A7A5E),
             prompt = Color(0xFFC87E5A),
         ),
+        codeBgLight = Color(0xFFF9F4F0),
+        codeBgDark = Color(0xFF221B17),
+        codeTextLight = Color(0xFF3D332C),
+        codeTextDark = Color(0xFFD4C4B8),
     )
 
     /** 薰衣草紫色板定义 (Lavender) */
@@ -216,6 +236,10 @@ object ColorThemeRegistry {
             md = Color(0xFF5B6B9A),
             prompt = Color(0xFF6B5B95),
         ),
+        codeBgLight = Color(0xFFF5F3F9),
+        codeBgDark = Color(0xFF1D1A24),
+        codeTextLight = Color(0xFF353040),
+        codeTextDark = Color(0xFFCCC5DA),
     )
 
     /** 极简灰色板定义 (Mono) */
@@ -244,6 +268,10 @@ object ColorThemeRegistry {
             md = Color(0xFF424242),
             prompt = Color(0xFF616161),
         ),
+        codeBgLight = Color(0xFFF5F5F5),
+        codeBgDark = Color(0xFF1C1C1C),
+        codeTextLight = Color(0xFF333333),
+        codeTextDark = Color(0xFFCCCCCC),
     )
 
     /**
