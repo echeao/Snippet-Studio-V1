@@ -239,8 +239,8 @@ fun NewSheetTypeItem(
  *
  * 视觉与交互重构亮点：
  * 1. 外层 Box 配合 [navigationBarsPadding] 沉浸避开 Android 底部导航条手势区。
- * 2. 悬浮容器采用高圆角 28.dp、95% 半透明磨砂背景 [tc.surface] 与 10.dp 柔和弥散阴影。
- * 3. 彻底移除 Tab 下方文本，收粹为高质感图标风格，整体高度压缩至 56.dp 更加精干极简。
+ * 2. 悬浮容器采用高圆角 32.dp、95% 半透明磨砂背景 [tc.surface] 与 10.dp 柔和弥散阴影。
+ * 3. 底栏高度提升至 64.dp，触控胶囊按键加高至 44.dp（符合 48dp 盲操标准），极大地提升手势点击舒适度。
  * 4. 中央“新建(+)”按钮采用立体突显高亮胶囊造型，内嵌按压缩放微动效 (Scale Transition)。
  *
  * @param currentRoute 当前活跃路由路径字符串
@@ -261,11 +261,11 @@ fun FloatingDock(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(32.dp),
             color = tc.surface.copy(alpha = 0.95f),
             shadowElevation = 10.dp,
             border = androidx.compose.foundation.BorderStroke(1.dp, tc.line.copy(alpha = 0.5f)),
@@ -274,7 +274,7 @@ fun FloatingDock(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(64.dp)
                     .padding(horizontal = 6.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
@@ -317,7 +317,7 @@ fun FloatingDock(
 }
 
 /**
- * [DockNavItem] 悬浮胶囊底栏单个纯图标 Tab 按钮组件（无下方文本）。
+ * [DockNavItem] 悬浮胶囊底栏单个纯图标 Tab 按钮组件（加高触控区至 44.dp）。
  *
  * @param selected 是否选中当前路由
  * @param iconRes 矢量图标资源 ID
@@ -343,9 +343,9 @@ fun DockNavItem(
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             color = if (selected) tc.primarySoft else Color.Transparent,
-            modifier = Modifier.size(width = 50.dp, height = 36.dp)
+            modifier = Modifier.size(width = 52.dp, height = 44.dp)
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -355,7 +355,7 @@ fun DockNavItem(
                     painter = painterResource(id = iconRes),
                     contentDescription = label,
                     tint = contentColor,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -363,7 +363,7 @@ fun DockNavItem(
 }
 
 /**
- * [DockNewButton] 悬浮胶囊底栏中央立体凸起【新建(+)】微动效交互按键（纯图标造型）。
+ * [DockNewButton] 悬浮胶囊底栏中央立体凸起【新建(+)】微动效交互按键（加高至 44.dp）。
  *
  * @param onClick 点击弹出 2x2 选择面板回调
  * @param modifier 外部 Modifier 修饰符
@@ -394,7 +394,7 @@ fun DockNewButton(
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(20.dp),
             color = tc.primary,
             shadowElevation = AppElevation.Sm,
             modifier = Modifier
@@ -402,8 +402,8 @@ fun DockNewButton(
                     scaleX = scale
                     scaleY = scale
                 }
-                .size(width = 50.dp, height = 36.dp)
-                .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+                .size(width = 52.dp, height = 44.dp)
+                .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -413,7 +413,7 @@ fun DockNewButton(
                     painter = painterResource(id = R.drawable.ic_plus),
                     contentDescription = "New Snippet",
                     tint = Color.White,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
