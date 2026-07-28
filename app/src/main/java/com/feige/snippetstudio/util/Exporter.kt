@@ -132,6 +132,64 @@ object Exporter {
             null
         }
     }
+
+    /**
+     * 从 SAF 提供的 JSON 备份文件 [Uri] 中读取并反序列化解析出 [Snippet] 代码片段列表。
+     *
+     * @param context 上下文对象
+     * @param uri 用户选中的 JSON 备份文件 Uri
+     * @return 解析出的代码片段列表；若文件损坏或格式不匹配则返回 null
+     */
+    fun parseJsonImport(context: Context, uri: Uri): List<Snippet>? {
+        return try {
+            val jsonString = context.contentResolver.openInputStream(uri)?.use { stream ->
+                stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            } ?: return null
+
+            val rootObj = JSONObject(jsonString)
+            val snippetsArray = rootObj.optJSONArray("snippets") ?: return null
+            val resultList = mutableListOf<Snippet>()
+
+            for (i in 0 until snippetsArray.length()) {
+                val obj = snippetsArray.getJSONObject(i)
+                val id = obj.optString("id", java.util.UUID.randomUUID().toString())
+                val typeCode = obj.optString("type", "general")
+                val title = obj.optString("title", "")
+                val fileName = obj.optString("fileName", "")
+                val content = obj.optString("content", "")
+                val starred = obj.optBoolean("starred", false)
+                val createdAt = obj.optLong("createdAt", System.currentTimeMillis())
+                val updatedAt = obj.optLong("updatedAt", System.currentTimeMillis())
+                val sizeBytes = obj.optInt("sizeBytes", content.toByteArray(Charsets.UTF_8).size)
+
+                val tagsList = mutableListOf<String>()
+                val tagsArr = obj.optJSONArray("tags")
+                if (tagsArr != null) {
+                    for (j in 0 until tagsArr.length()) {
+                        tagsList.add(tagsArr.getString(j))
+                    }
+                }
+
+                val snippet = Snippet(
+                    id = id,
+                    type = com.feige.snippetstudio.model.SnippetType.fromCode(typeCode),
+                    title = title,
+                    fileName = fileName,
+                    content = content,
+                    tags = tagsList,
+                    starred = starred,
+                    createdAt = createdAt,
+                    updatedAt = updatedAt,
+                    sizeBytes = sizeBytes
+                )
+                resultList.add(snippet)
+            }
+            resultList
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }
 
 

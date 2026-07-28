@@ -84,6 +84,84 @@ class SettingsViewModel(
         }
     }
 
+    /** 调整代码编辑器文本字号 (sp) */
+    fun updateEditorFontSp(sp: Float) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                it.copy(editorFontSp = sp.coerceIn(10f, 24f))
+            }
+        }
+    }
+
+    /** 切换代码编辑器自动软换行 */
+    fun toggleWordWrap(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                it.copy(isWordWrap = enabled)
+            }
+        }
+    }
+
+    /** 切换代码编辑器显示行号 */
+    fun toggleShowLineNumbers(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                it.copy(showLineNumbers = enabled)
+            }
+        }
+    }
+
+    /** 调整编辑器 Tab 缩进空格数 (2 或 4) */
+    fun updateTabSize(size: Int) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                it.copy(tabSize = size)
+            }
+        }
+    }
+
+    /** 切换编辑器括号与引号自动配对补全 */
+    fun toggleAutoPairBrackets(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                it.copy(autoPairBrackets = enabled)
+            }
+        }
+    }
+
+    /**
+     * 将选中的 SAF JSON 备份文件反序列化解析并恢复合并入本地数据库中。
+     *
+     * @param context 上下文对象
+     * @param uri 用户选择的 JSON 文件 Uri
+     * @param onResult 结果回调 (success: 是否成功, count: 恢复片段数量)
+     */
+    fun importBackupJson(context: Context, uri: Uri, onResult: (Boolean, Int) -> Unit) {
+        viewModelScope.launch {
+            val snippets = Exporter.parseJsonImport(context, uri)
+            if (snippets != null) {
+                var count = 0
+                val currentTreeUri = settings.value.repoTreeUri
+                snippets.forEach { snippet ->
+                    snippetRepository.saveOrUpdate(snippet, currentTreeUri)
+                    count++
+                }
+                onResult(true, count)
+            } else {
+                onResult(false, 0)
+            }
+        }
+    }
+
+    /** 恢复全局偏好配置为默认状态 */
+    fun resetToDefaults() {
+        viewModelScope.launch {
+            settingsRepository.updateSettings {
+                AppSettings()
+            }
+        }
+    }
+
     /**
      * 将数据库中的全量代码片段导出为选定 SAF 目录下的 JSON 备份文件。
      *
