@@ -53,7 +53,7 @@ fun FilesCompactList(
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        contentPadding = PaddingValues(bottom = 96.dp)
     ) {
         item {
             Surface(

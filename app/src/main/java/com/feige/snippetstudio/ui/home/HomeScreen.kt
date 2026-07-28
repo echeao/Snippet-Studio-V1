@@ -102,7 +102,7 @@ fun HomeScreen(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = Spacing.S6)
+                contentPadding = PaddingValues(bottom = 96.dp)
             ) {
                 // ===== A-1. Dashboard 概览数据统计小部件 =====
                 item {

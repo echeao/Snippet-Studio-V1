@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -69,142 +70,6 @@ fun AppScaffold(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0.dp),
-        bottomBar = {
-            // ===== 底部集成了【新建(+)】高权重操作按钮的 NavigationBar =====
-            if (showBottomBar) {
-                NavigationBar(
-                    containerColor = barBg,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.border(1.dp, borderColor)
-                ) {
-                    // 1. 首页导航按钮
-                    NavigationBarItem(
-                        selected = (currentRoute == Screen.Home.route),
-                        onClick = {
-                            if (currentRoute != Screen.Home.route) {
-                                navController.navigate(Screen.Home.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_home),
-                                contentDescription = "Home"
-                            )
-                        },
-                        label = { Text(stringResource(R.string.home_title)) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = tc.primary,
-                            selectedTextColor = tc.primary,
-                            indicatorColor = tc.primarySoft
-                        ),
-                        modifier = Modifier.testTag("tab_home")
-                    )
-
-                    // 2. 文件与仓库导航按钮
-                    NavigationBarItem(
-                        selected = (currentRoute == Screen.Files.route),
-                        onClick = {
-                            if (currentRoute != Screen.Files.route) {
-                                navController.navigate(Screen.Files.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_folder),
-                                contentDescription = "Files"
-                            )
-                        },
-                        label = { Text(stringResource(R.string.files_title)) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = tc.primary,
-                            selectedTextColor = tc.primary,
-                            indicatorColor = tc.primarySoft
-                        ),
-                        modifier = Modifier.testTag("tab_files")
-                    )
-
-                    // 3. 中央高视觉权重嵌入式新建 (+) 按钮（高亮主色胶囊造型，对齐底部导航栏）
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = { showNewSheet = true },
-                        icon = {
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = tc.primary,
-                                shadowElevation = AppElevation.Sm,
-                                modifier = Modifier
-                                    .size(width = 48.dp, height = 32.dp)
-                                    .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_plus),
-                                        contentDescription = "New Snippet",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        },
-                        label = {
-                            Text(
-                                text = stringResource(R.string.sheet_new_title),
-                                color = tc.primary,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = Color.Transparent
-                        ),
-                        modifier = Modifier.testTag("tab_new")
-                    )
-
-                    // 4. 设置导航按钮
-                    NavigationBarItem(
-                        selected = (currentRoute == Screen.Settings.route),
-                        onClick = {
-                            if (currentRoute != Screen.Settings.route) {
-                                navController.navigate(Screen.Settings.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_settings),
-                                contentDescription = "Settings"
-                            )
-                        },
-                        label = { Text(stringResource(R.string.settings_title)) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = tc.primary,
-                            selectedTextColor = tc.primary,
-                            indicatorColor = tc.primarySoft
-                        ),
-                        modifier = Modifier.testTag("tab_settings")
-                    )
-                }
-            }
-        },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { data ->
                 Snackbar(
@@ -216,7 +81,30 @@ fun AppScaffold(
             }
         }
     ) { innerPadding ->
-        content(innerPadding)
+        Box(modifier = Modifier.fillMaxSize()) {
+            // ===== 1. 全量页面主内容全屏呈现（背景贯穿屏幕最底部，消灭白块断层） =====
+            content(PaddingValues(0.dp))
+
+            // ===== 2. 方案 A 悬浮胶囊底栏 (Overlay 绝对定位在最顶层底部 Alignment.BottomCenter) =====
+            if (showBottomBar) {
+                FloatingDock(
+                    currentRoute = currentRoute,
+                    onNavigate = { targetRoute ->
+                        if (currentRoute != targetRoute) {
+                            navController.navigate(targetRoute) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
+                    onNewClick = { showNewSheet = true },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+        }
 
         // ===== 点击底部嵌入新建按钮弹出的代码片段类型选择 BottomSheet (2x2 网格) =====
         if (showNewSheet) {
@@ -345,4 +233,191 @@ fun NewSheetTypeItem(
         }
     }
 }
+
+/**
+ * [FloatingDock] 方案 A：现代纯图标悬浮胶囊底栏组件 (Modern Icon-only Floating Dock)。
+ *
+ * 视觉与交互重构亮点：
+ * 1. 外层 Box 配合 [navigationBarsPadding] 沉浸避开 Android 底部导航条手势区。
+ * 2. 悬浮容器采用高圆角 28.dp、95% 半透明磨砂背景 [tc.surface] 与 10.dp 柔和弥散阴影。
+ * 3. 彻底移除 Tab 下方文本，收粹为高质感图标风格，整体高度压缩至 56.dp 更加精干极简。
+ * 4. 中央“新建(+)”按钮采用立体突显高亮胶囊造型，内嵌按压缩放微动效 (Scale Transition)。
+ *
+ * @param currentRoute 当前活跃路由路径字符串
+ * @param onNavigate 导航路由切换回调
+ * @param onNewClick 点击中央新建 (+) 按钮回调
+ * @param modifier 外部 Modifier 修饰符
+ */
+@Composable
+fun FloatingDock(
+    currentRoute: String,
+    onNavigate: (String) -> Unit,
+    onNewClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tc = LocalThemeColors.current
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(start = 20.dp, end = 20.dp, bottom = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = tc.surface.copy(alpha = 0.95f),
+            shadowElevation = 10.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, tc.line.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 6.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 1. 首页 Tab 导航项
+                DockNavItem(
+                    selected = (currentRoute == Screen.Home.route),
+                    iconRes = R.drawable.ic_home,
+                    label = stringResource(R.string.home_title),
+                    onClick = { onNavigate(Screen.Home.route) },
+                    modifier = Modifier.weight(1f).testTag("tab_home")
+                )
+
+                // 2. 文件中心/仓库 Tab 导航项
+                DockNavItem(
+                    selected = (currentRoute == Screen.Files.route),
+                    iconRes = R.drawable.ic_folder,
+                    label = stringResource(R.string.files_title),
+                    onClick = { onNavigate(Screen.Files.route) },
+                    modifier = Modifier.weight(1f).testTag("tab_files")
+                )
+
+                // 3. 中央高权重高亮按压新建按键 (+)
+                DockNewButton(
+                    onClick = onNewClick,
+                    modifier = Modifier.weight(1f).testTag("tab_new")
+                )
+
+                // 4. 设置 Tab 导航项
+                DockNavItem(
+                    selected = (currentRoute == Screen.Settings.route),
+                    iconRes = R.drawable.ic_settings,
+                    label = stringResource(R.string.settings_title),
+                    onClick = { onNavigate(Screen.Settings.route) },
+                    modifier = Modifier.weight(1f).testTag("tab_settings")
+                )
+            }
+        }
+    }
+}
+
+/**
+ * [DockNavItem] 悬浮胶囊底栏单个纯图标 Tab 按钮组件（无下方文本）。
+ *
+ * @param selected 是否选中当前路由
+ * @param iconRes 矢量图标资源 ID
+ * @param label 按钮无障碍描述标签
+ * @param onClick 点击交互回调
+ * @param modifier 外部 Modifier 修饰符
+ */
+@Composable
+fun DockNavItem(
+    selected: Boolean,
+    iconRes: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tc = LocalThemeColors.current
+    val contentColor = if (selected) tc.primary else tc.text2.copy(alpha = 0.7f)
+
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = if (selected) tc.primarySoft else Color.Transparent,
+            modifier = Modifier.size(width = 50.dp, height = 36.dp)
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = label,
+                    tint = contentColor,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * [DockNewButton] 悬浮胶囊底栏中央立体凸起【新建(+)】微动效交互按键（纯图标造型）。
+ *
+ * @param onClick 点击弹出 2x2 选择面板回调
+ * @param modifier 外部 Modifier 修饰符
+ */
+@Composable
+fun DockNewButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tc = LocalThemeColors.current
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // 点击按压时的微缩物理弹性动画 (0.92f 缩放)
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1.0f,
+        label = "dockNewPressScale"
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = tc.primary,
+            shadowElevation = AppElevation.Sm,
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .size(width = 50.dp, height = 36.dp)
+                .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_plus),
+                    contentDescription = "New Snippet",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+}
+
 

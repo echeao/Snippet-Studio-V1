@@ -519,7 +519,7 @@ fun SettingsScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(Spacing.S5))
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 
