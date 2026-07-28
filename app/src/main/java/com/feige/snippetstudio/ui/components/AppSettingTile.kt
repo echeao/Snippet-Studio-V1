@@ -213,12 +213,16 @@ fun AppSettingSwitchTile(
         iconColor = iconColor,
         iconBgColor = iconBgColor,
         trailingContent = {
+            val tc = LocalThemeColors.current
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
+                    checkedTrackColor = tc.primary,
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = LocalThemeColors.current.primary
+                    uncheckedTrackColor = tc.surface2,
+                    uncheckedThumbColor = tc.text3,
+                    uncheckedBorderColor = tc.line
                 )
             )
         },
