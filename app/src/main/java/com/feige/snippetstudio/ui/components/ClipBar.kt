@@ -1,9 +1,10 @@
 package com.feige.snippetstudio.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -24,14 +26,15 @@ import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.DetectedClip
 
 /**
- * [ClipBar] 剪贴板检测浮动快捷保存横幅组件。
+ * [ClipBar] 剪贴板检测顶部悬浮灵动快捷保存卡片组件。
  *
- * 当检测到系统剪贴板符合代码/Prompt 特征时弹出，支持快速另存为片段或忽略关闭。
+ * 当检测到系统剪贴板符合代码/Prompt 特征时，在页面上方以灵动浮层形式展开，
+ * 具备柔和悬浮阴影与下滑淡入动画，支持快速另存为片段或忽略关闭，不侵占主界面文档流排版。
  *
  * @param clip 检出的剪贴板内容对象 (未检测到或忽略时为 null)
  * @param onSave 保存点击回调
  * @param onDismiss 忽略/关闭点击回调
- * @param modifier 外部修饰符
+ * @param modifier 外部修饰符 (包含控制悬浮定位 Alignment 与 zIndex)
  */
 @Composable
 fun ClipBar(
@@ -40,12 +43,12 @@ fun ClipBar(
     onDismiss: (DetectedClip) -> Unit,
     modifier: Modifier = Modifier
 ) {
-
     val tc = LocalThemeColors.current
 
     AnimatedVisibility(
         visible = (clip != null),
-        exit = slideOutVertically() + fadeOut(),
+        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
         modifier = modifier
     ) {
         if (clip != null) {
@@ -53,10 +56,16 @@ fun ClipBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Spacing.S4, vertical = Spacing.S2)
-                    .border(1.dp, tc.line, RoundedCornerShape(R_MD))
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(R_MD),
+                        clip = false
+                    )
+                    .border(1.dp, tc.primary.copy(alpha = 0.2f), RoundedCornerShape(R_MD))
                     .testTag("clip_bar"),
                 shape = RoundedCornerShape(R_MD),
-                color = tc.primarySoft
+                color = tc.surface,
+                tonalElevation = 6.dp
             ) {
                 Row(
                     modifier = Modifier

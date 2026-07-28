@@ -11,12 +11,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -33,7 +35,7 @@ import com.feige.snippetstudio.ui.theme.*
  *
  * 架构设计与界面组成：
  * 1. **TopBar 顶部栏 ([HomeTopBar])**：呈现应用 Logo、状态指示与仓库同步按钮。
- * 2. **ClipBar 剪贴板识别条**：监听 Lifecycle [Lifecycle.Event.ON_RESUME] 事件，实现文本复制自动智能捕获。
+ * 2. **ClipBar 剪贴板识别卡片 ([ClipBar])**：顶部 Overlay 悬浮弹窗，监听 Lifecycle [Lifecycle.Event.ON_RESUME] 事件实现动态浮现。
  * 3. **StatsBar 统计小部件 ([HomeStatsBar])**：仪表盘全景展现（代码片段总数、已收藏数、文件夹总数）。
  * 4. **QuickNewSection 快捷新建区**：2x2 快捷类型网格，支持物理按压微动效与品牌微光边框。
  * 5. **RecentSnippetsSection 最近片段列表**：展示最新编辑的代码片段大卡片及其管理上下文菜单。
@@ -91,31 +93,18 @@ fun HomeScreen(
         },
         containerColor = tc.bg
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // ===== A. 剪贴板识别智能快捷条 =====
-            ClipBar(
-                clip = uiState.detectedClip,
-                onSave = { clip ->
-                    viewModel.saveClip(clip) { id ->
-                        onNavigateToEditor(id)
-                    }
-                },
-                onDismiss = { clip ->
-                    viewModel.ignoreClip(clip)
-                }
-            )
-
-            // ===== B. 主内容可滚动区域 =====
+            // ===== A. 主内容可滚动区域 =====
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = Spacing.S6)
             ) {
-                // ===== B-1. Dashboard 概览数据统计小部件 =====
+                // ===== A-1. Dashboard 概览数据统计小部件 =====
                 item {
                     HomeStatsBar(
                         totalCount = uiState.totalActiveCount,
@@ -125,14 +114,14 @@ fun HomeScreen(
                     )
                 }
 
-                // ===== C-2. 2x2 快捷新建类型入口卡片区 =====
+                // ===== A-2. 2x2 快捷新建类型入口卡片区 =====
                 item {
                     QuickNewSection(
                         onNavigateToNewEditor = onNavigateToNewEditor
                     )
                 }
 
-                // ===== C-3. 最近修改代码片段列表 Header =====
+                // ===== A-3. 最近修改代码片段列表 Header =====
                 item {
                     RecentHeader(
                         totalActiveCount = uiState.totalActiveCount,
@@ -140,7 +129,7 @@ fun HomeScreen(
                     )
                 }
 
-                // ===== C-4. 最近代码片段列表或空状态处理 =====
+                // ===== A-4. 最近代码片段列表或空状态处理 =====
                 if (uiState.isLoading) {
                     item { LoadingState() }
                 } else if (uiState.recentSnippets.isEmpty()) {
@@ -183,6 +172,22 @@ fun HomeScreen(
                     }
                 }
             }
+
+            // ===== B. 剪贴板识别智能快捷悬浮弹窗（Overlay 绝对定位在顶部）=====
+            ClipBar(
+                clip = uiState.detectedClip,
+                onSave = { clip ->
+                    viewModel.saveClip(clip) { id ->
+                        onNavigateToEditor(id)
+                    }
+                },
+                onDismiss = { clip ->
+                    viewModel.ignoreClip(clip)
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .zIndex(10f)
+            )
         }
 
         // ===== 弹框 1: 代码片段重命名对话框 =====
