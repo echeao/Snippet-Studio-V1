@@ -32,13 +32,12 @@ import com.feige.snippetstudio.ui.theme.*
  * [HomeScreen] 应用程序首页主界面视图。
  *
  * 架构设计与界面组成：
- * 1. **TopBar 顶部栏 ([HomeTopBar])**：支持呈现应用应用 Logo、模式标签与实时仓库同步按钮。
- * 2. **ClipBar 剪贴板识别条**：监听 Lifecycle [Lifecycle.Event.ON_RESUME] 前台事件，触发复制文本智能捕获。
- * 3. **SearchBar 搜索输入框**：支持垂直平滑折叠/展开动画与智能防抖防抖滚动响应。
- * 4. **StatsBar 统计小部件 ([HomeStatsBar])**：呈现用户代码仓库资产全景（代码片段总数、已收藏数、文件夹总数）。
- * 5. **QuickNewSection 快捷新建区**：2x2 网格，内置 0.96x 物理按压微动效与品牌微光边框。
- * 6. **RecentSnippetsSection 最近片段列表**：展示最新编辑的代码片段大卡片及其右键/长按快捷管理上下文菜单。
- * 7. **模态交互对话框**：包含重命名 [RenameDialog]、移动文件夹 [FolderMoveDialog] 与回收站确认 [ConfirmDialog]。
+ * 1. **TopBar 顶部栏 ([HomeTopBar])**：呈现应用 Logo、状态指示与仓库同步按钮。
+ * 2. **ClipBar 剪贴板识别条**：监听 Lifecycle [Lifecycle.Event.ON_RESUME] 事件，实现文本复制自动智能捕获。
+ * 3. **StatsBar 统计小部件 ([HomeStatsBar])**：仪表盘全景展现（代码片段总数、已收藏数、文件夹总数）。
+ * 4. **QuickNewSection 快捷新建区**：2x2 快捷类型网格，支持物理按压微动效与品牌微光边框。
+ * 5. **RecentSnippetsSection 最近片段列表**：展示最新编辑的代码片段大卡片及其管理上下文菜单。
+ * 6. **模态交互对话框**：包含重命名 [RenameDialog]、移动文件夹 [FolderMoveDialog] 与回收站确认 [ConfirmDialog]。
  *
  * @param viewModel 首页 ViewModel 逻辑依赖
  * @param onNavigateToEditor 导航跳转至代码编辑器的回调函数 (传入片段 ID)
@@ -68,8 +67,6 @@ fun HomeScreen(
     var pendingRenameSnippet by remember { mutableStateOf<Snippet?>(null) }
     var pendingFolderSnippet by remember { mutableStateOf<Snippet?>(null) }
 
-    // 搜索栏展开/收起状态与滚动监听
-    var showSearchBar by remember { mutableStateOf(true) }
     val listState = rememberLazyListState()
 
     // ===== 1. 监听 Lifecycle 生命周期：APP 返回前台 ON_RESUME 时自动检测剪贴板 =====
@@ -85,37 +82,8 @@ fun HomeScreen(
         }
     }
 
-    // ===== 2. 列表滚动防抖监听：自动展开/折叠搜索框 =====
-    var previousScrollIndex by remember { mutableIntStateOf(0) }
-    var previousScrollOffset by remember { mutableIntStateOf(0) }
-    LaunchedEffect(listState) {
-        snapshotFlow {
-            listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
-        }.collect { (index, offset) ->
-            val delta = if (index != previousScrollIndex) {
-                (index - previousScrollIndex) * 500 + (offset - previousScrollOffset)
-            } else {
-                offset - previousScrollOffset
-            }
-
-            // 防抖阀值：向下滑动超过 20px 时收起搜索栏，向上滑动超过 20px 时展开搜索栏
-            if (delta > 20 && showSearchBar && (index > 0 || offset > 10)) {
-                showSearchBar = false
-            } else if (delta < -20 && !showSearchBar) {
-                showSearchBar = true
-            }
-
-            // 滚动回到顶部时自动重置为显示状态
-            if (index == 0 && offset == 0) {
-                showSearchBar = true
-            }
-
-            previousScrollIndex = index
-            previousScrollOffset = offset
-        }
-    }
-
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             HomeTopBar(
                 onRefreshClick = { onShowSnackbar(context.getString(R.string.toast_sync_ok)) }
@@ -141,27 +109,13 @@ fun HomeScreen(
                 }
             )
 
-            // ===== B. 搜索框（具备垂直折叠平滑过渡动画）=====
-            AnimatedVisibility(
-                visible = showSearchBar,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                SearchBar(
-                    value = uiState.searchQuery,
-                    onValueChange = { viewModel.onSearchQueryChange(it) },
-                    placeholder = stringResource(R.string.home_search),
-                    modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
-                )
-            }
-
-            // ===== C. 主内容可滚动区域 =====
+            // ===== B. 主内容可滚动区域 =====
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = Spacing.S6)
             ) {
-                // ===== C-1. Dashboard 概览数据统计小部件 =====
+                // ===== B-1. Dashboard 概览数据统计小部件 =====
                 item {
                     HomeStatsBar(
                         totalCount = uiState.totalActiveCount,

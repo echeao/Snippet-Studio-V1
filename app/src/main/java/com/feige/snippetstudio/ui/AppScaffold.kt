@@ -23,6 +23,8 @@ import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.components.TypeIcon
 import com.feige.snippetstudio.ui.nav.Screen
 import com.feige.snippetstudio.ui.theme.*
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.launch
 
 /**
@@ -56,12 +58,6 @@ fun AppScaffold(
         Screen.Settings.route
     )
 
-    // 控制是否在当前页面显示悬浮新建按钮 FAB（仅在首页与文件/仓库中呈现，设置页面中隐藏）
-    val showFab = currentRoute in listOf(
-        Screen.Home.route,
-        Screen.Files.route
-    )
-
     var showNewSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState()
@@ -71,16 +67,17 @@ fun AppScaffold(
     val borderColor = tc.line
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
-            // ===== 底部 NavigationBar =====
+            // ===== 底部集成了【新建(+)】高权重操作按钮的 NavigationBar =====
             if (showBottomBar) {
                 NavigationBar(
                     containerColor = barBg,
                     contentColor = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.border(1.dp, borderColor)
                 ) {
-                    // 1. 首页按钮
+                    // 1. 首页导航按钮
                     NavigationBarItem(
                         selected = (currentRoute == Screen.Home.route),
                         onClick = {
@@ -109,7 +106,7 @@ fun AppScaffold(
                         modifier = Modifier.testTag("tab_home")
                     )
 
-                    // 2. 文件与仓库按钮
+                    // 2. 文件与仓库导航按钮
                     NavigationBarItem(
                         selected = (currentRoute == Screen.Files.route),
                         onClick = {
@@ -138,7 +135,46 @@ fun AppScaffold(
                         modifier = Modifier.testTag("tab_files")
                     )
 
-                    // 3. 设置按钮
+                    // 3. 中央高视觉权重嵌入式新建 (+) 按钮（高亮主色胶囊造型，对齐底部导航栏）
+                    NavigationBarItem(
+                        selected = false,
+                        onClick = { showNewSheet = true },
+                        icon = {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = tc.primary,
+                                shadowElevation = AppElevation.Sm,
+                                modifier = Modifier
+                                    .size(width = 48.dp, height = 32.dp)
+                                    .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_plus),
+                                        contentDescription = "New Snippet",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.sheet_new_title),
+                                color = tc.primary,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color.Transparent
+                        ),
+                        modifier = Modifier.testTag("tab_new")
+                    )
+
+                    // 4. 设置导航按钮
                     NavigationBarItem(
                         selected = (currentRoute == Screen.Settings.route),
                         onClick = {
@@ -169,26 +205,6 @@ fun AppScaffold(
                 }
             }
         },
-        floatingActionButton = {
-            // ===== 全局悬浮新建 FAB 按钮（磨砂玻璃半透明 Glassmorphism 质感设计） =====
-            if (showFab) {
-                FloatingActionButton(
-                    onClick = { showNewSheet = true },
-                    containerColor = tc.primary.copy(alpha = 0.82f),
-                    contentColor = Color.White,
-                    shape = RoundedCornerShape(R_MD),
-                    modifier = Modifier
-                        .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(R_MD))
-                        .testTag("fab_new")
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_plus),
-                        contentDescription = "New Snippet",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
-        },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { data ->
                 Snackbar(
@@ -202,7 +218,7 @@ fun AppScaffold(
     ) { innerPadding ->
         content(innerPadding)
 
-        // ===== 点击 FAB 弹出的新建代码片段选单底栏 (2x2 网格) =====
+        // ===== 点击底部嵌入新建按钮弹出的代码片段类型选择 BottomSheet (2x2 网格) =====
         if (showNewSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showNewSheet = false },
@@ -293,6 +309,8 @@ fun AppScaffold(
         }
     }
 }
+
+
 
 /**
  * [NewSheetTypeItem] 底栏弹出窗中单个新建类型的选择卡片项组件。

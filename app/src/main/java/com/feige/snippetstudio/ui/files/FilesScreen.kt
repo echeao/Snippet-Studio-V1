@@ -116,6 +116,7 @@ fun FilesScreen(
     }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             FilesTopBar(
                 sortMode = uiState.sortMode,
