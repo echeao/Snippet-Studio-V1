@@ -15,11 +15,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.theme.*
+import com.feige.snippetstudio.util.SyntaxHighlighter
 import com.feige.snippetstudio.util.TimeUtil
 
 /**
@@ -53,6 +55,20 @@ fun SnippetPreviewCard(
     val previewCode = remember(snippet.content) {
         snippet.content.lines().take(4).joinToString("\n")
     }
+
+    /**
+     * 【代码高亮预览】利用 [SyntaxHighlighter] 对截取的 4 行代码预览文本进行语法高亮分析，
+     * 生成包含特定语言关键字、字符串、数字及注释等富文本色彩的 [AnnotatedString]。
+     * 根据内容、代码片段类型以及当前深浅色主题动态缓存结果，避免重绘与列表滑动卡顿。
+     */
+    val highlightedPreviewCode = remember(previewCode, snippet.type, tc.isDark) {
+        if (previewCode.isBlank()) {
+            AnnotatedString("// 空内容")
+        } else {
+            SyntaxHighlighter.highlight(text = previewCode, type = snippet.type, isDark = tc.isDark)
+        }
+    }
+
     val totalLines = remember(snippet.content) {
         snippet.content.lines().size
     }
@@ -193,7 +209,7 @@ fun SnippetPreviewCard(
                 color = codeBgColor
             ) {
                 Text(
-                    text = previewCode.ifBlank { "// 空内容" },
+                    text = highlightedPreviewCode,
                     style = CodeTextStyle,
                     color = codeTextColor,
                     maxLines = 4,
