@@ -4,32 +4,34 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.feige.snippetstudio.data.repo.SettingsRepository
 import com.feige.snippetstudio.data.repo.SnippetRepository
 import com.feige.snippetstudio.model.Snippet
-import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.util.ClipboardDetector
 import com.feige.snippetstudio.util.DetectedClip
 import com.feige.snippetstudio.util.FuzzySearchUtil
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-
-import com.feige.snippetstudio.data.repo.SettingsRepository
+import kotlinx.coroutines.withContext
 
 /**
- * [HomeUiState] 首页的完整响应式 UI 状态实体。
+ * [HomeUiState] 首页的完整响应式 UI 状态数据类。
  *
- * @param recentSnippets 过滤或最新修改的前 5 个代码片段
- * @param totalActiveCount 数据库活动片段总数量
- * @param searchQuery 当前输入的搜索关键字
- * @param cardClickAction 点击卡片默认动作 ("detail" 或 "editor")
- * @param existingFolders 全局已存在的所有文件夹列表
- * @param detectedClip 从剪贴板检测到的未处理文本快照 (若为 null 表示无新文本)
- * @param isLoading 加载状态
- * @param error 错误消息提示
+ * @param recentSnippets 过滤或最新修改的前 5 个代码片段列表
+ * @param totalActiveCount 数据库中所有活动代码片段的总数量
+ * @param starredCount 已设为星标收藏的代码片段数量
+ * @param searchQuery 当前在搜索栏中输入的过滤关键字
+ * @param cardClickAction 点击代码片段卡片的默认响应动作 ("detail" 查看详情 或 "editor" 直接编辑)
+ * @param existingFolders 当前所有活动代码片段归属的非空文件夹名称列表
+ * @param detectedClip 自动检索系统剪贴板识别到的代码片段数据快照（为 null 表示无最新待处理项）
+ * @param isLoading 界面数据加载中状态标识
+ * @param error 异常错误提示信息文本
  */
 data class HomeUiState(
     val recentSnippets: List<Snippet> = emptyList(),
     val totalActiveCount: Int = 0,
+    val starredCount: Int = 0,
     val searchQuery: String = "",
     val cardClickAction: String = "detail",
     val existingFolders: List<String> = emptyList(),
@@ -39,34 +41,34 @@ data class HomeUiState(
 )
 
 /**
- * [HomeViewModel] 首页界面对应的架构 ViewModel 业务控制层。
+ * [HomeViewModel] 首页视图对应的状态管理与业务逻辑 ViewModel。
  *
- * 核心逻辑：
- * 1. 使用 Kotlin Coroutines Flow 的 [combine] 操作符，将代码片段数据库 Flow、搜索词 Flow、剪贴板 Flow 与系统设置 Flow 组合成单向数据流 [uiState]。
- * 2. 处理剪贴板智能代码识别（检查剪贴板 -> 保存为新代码片段 / 忽略）。
- * 3. 驱动收藏、删除、重命名与移动文件夹等数据改写动作。
+ * 核心功能：
+ * 1. 使用 Coroutines Flow 的 [combine] 操作符结合 [Dispatchers.Default] 线程调度器，将数据库观察流、
+ *    内存搜索流、剪贴板识别流与全局设置流合并为高效不可变的 [uiState]。
+ * 2. 剪贴板识别与智能转换代码片段逻辑。
+ * 3. 处理代码片段的星标状态切换、重命名、归属文件夹变更及移入回收站等写操作。
+ *
+ * @param repository 代码片段数据仓储依赖接口
+ * @param settingsRepository 应用全局配置仓储依赖接口（可选）
  */
 class HomeViewModel(
     private val repository: SnippetRepository,
     private val settingsRepository: SettingsRepository? = null
 ) : ViewModel() {
 
+    /** 内存搜索文本关键字数据流 */
     private val _searchQuery = MutableStateFlow("")
+
+    /** 剪贴板最新识别结果数据流 */
     private val _detectedClip = MutableStateFlow<DetectedClip?>(null)
 
     /**
-     * 暴露给 HomeScreen 调用的单向 StateFlow UI 状态。
+     * 暴露给 HomeScreen 订阅的响应式 UI 状态流 [StateFlow]。
      *
-     * 教学解析：
-     * 1. `combine`: 响应式多流组合算子。将 4 个独立的源数据流合并：
-     *    - 数据库片段 Flow
-     *    - 内存搜索关键字 Flow
-     *    - 剪贴板检测 Flow
-     *    - DataStore 全局设置 Flow
-     *    任何一个源 Flow 发生改变时，闭包都会被重新触发计算，自动产出全新的 `HomeUiState`。
-     * 2. `stateIn`: 将冷流 (Cold Flow) 转化为热流 StateFlow。
-     *    `SharingStarted.WhileSubscribed(5000)`: 当界面销毁或退入后台超过 5 秒（如屏幕旋转时保持 5000ms 缓存），
-     *    上游数据流会自动暂停收集，极大地节省电池电量与 CPU 资源开销。
+     * 优化亮点：
+     * 1. 使用 `withContext(Dispatchers.Default)` 将大量数据的模糊匹配过滤与分类统计推入 CPU 后台线程计算，避免阻塞主线程。
+     * 2. `SharingStarted.WhileSubscribed(5000)` 在屏幕旋转或短时间离开时保持缓存，后台超过 5s 自动停止订阅，节省电力开销。
      */
     val uiState: StateFlow<HomeUiState> = combine(
         repository.observeActive(),
@@ -74,55 +76,77 @@ class HomeViewModel(
         _detectedClip,
         settingsRepository?.settingsFlow ?: flowOf(com.feige.snippetstudio.model.AppSettings())
     ) { snippets, query, clip, settings ->
-        // ===== 步骤 1: 根据搜索关键词匹配过滤代码片段 =====
-        val filtered = if (query.isBlank()) {
-            snippets
-        } else {
-            snippets.filter {
-                FuzzySearchUtil.match(it.title, query) ||
-                        FuzzySearchUtil.match(it.content, query) ||
-                        it.tags.any { tag -> FuzzySearchUtil.match(tag, query) }
+        withContext(Dispatchers.Default) {
+            // ===== 步骤 1: 异步后台执行模糊搜索过滤 =====
+            val filtered = if (query.isBlank()) {
+                snippets
+            } else {
+                snippets.filter {
+                    FuzzySearchUtil.match(it.title, query) ||
+                            FuzzySearchUtil.match(it.content, query) ||
+                            it.tags.any { tag -> FuzzySearchUtil.match(tag, query) }
+                }
             }
+
+            // ===== 步骤 2: 提取当前所有已创建的独立文件夹列表 =====
+            val folders = snippets.map { it.folder }.filter { it.isNotBlank() }.distinct()
+
+            // ===== 步骤 3: 计算星标收藏代码片段总数 =====
+            val starredCount = snippets.count { it.starred }
+
+            // ===== 步骤 4: 封装并产出全新的不可变 HomeUiState 状态 =====
+            HomeUiState(
+                recentSnippets = filtered.take(5), // 首页只截取展示最新 5 条记录
+                totalActiveCount = snippets.size,
+                starredCount = starredCount,
+                searchQuery = query,
+                cardClickAction = settings.cardClickAction,
+                existingFolders = folders,
+                detectedClip = clip,
+                isLoading = false
+            )
         }
-
-        // ===== 步骤 2: 提取当前所有已创建的独立文件夹名称列表 =====
-        val folders = snippets.map { it.folder }.filter { it.isNotBlank() }.distinct()
-
-        // ===== 步骤 3: 封装并产出不可变 HomeUiState 状态 =====
-        HomeUiState(
-            recentSnippets = filtered.take(5), // 首页只截取展示最新 5 条记录
-            totalActiveCount = snippets.size,
-            searchQuery = query,
-            cardClickAction = settings.cardClickAction,
-            existingFolders = folders,
-            detectedClip = clip,
-            isLoading = false
-        )
     }.stateIn(
-        scope = viewModelScope, // 绑定 ViewModel 的生命周期作用域
-        started = SharingStarted.WhileSubscribed(5000), // 5 秒防退后台中断策略
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
         initialValue = HomeUiState(isLoading = true)
     )
 
-
-    /** 更新搜索文本关键词 */
+    /**
+     * 更新搜索关键字。
+     *
+     * @param query 用户输入的搜索字符串
+     */
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
     }
 
-    /** 检查系统剪贴板是否有最新复制代码 */
+    /**
+     * 检查系统剪贴板中是否有符合要求的最新代码文本。
+     *
+     * @param context Android 应用上下文 Context
+     */
     fun checkClipboard(context: Context) {
         val clip = ClipboardDetector.detect(context)
         _detectedClip.value = clip
     }
 
-    /** 忽略当前检测到的剪贴板内容 */
+    /**
+     * 忽略当前识别到的剪贴板片段，并计入已忽略哈希集合。
+     *
+     * @param clip 待忽略的剪贴板识别实体
+     */
     fun ignoreClip(clip: DetectedClip) {
         ClipboardDetector.ignore(clip.contentHash)
         _detectedClip.value = null
     }
 
-    /** 将检测到的剪贴板内容一键保存为新代码片段 */
+    /**
+     * 一键保存剪贴板识别结果为新的代码片段并跳转编辑器。
+     *
+     * @param clip 待保存的剪贴板识别实体
+     * @param onSaved 保存成功后的回调，传入新建代码片段的 ID
+     */
     fun saveClip(clip: DetectedClip, onSaved: (String) -> Unit) {
         viewModelScope.launch {
             val snippet = repository.create(
@@ -136,14 +160,25 @@ class HomeViewModel(
         }
     }
 
-    /** 切换代码片段的星标收藏状态 */
+    /**
+     * 切换指定代码片段的星标收藏状态。
+     *
+     * @param id 代码片段唯一标识符 ID
+     * @param currentStarred 当前星标状态
+     */
     fun toggleStar(id: String, currentStarred: Boolean) {
         viewModelScope.launch {
             repository.toggleStar(id, currentStarred)
         }
     }
 
-    /** 重命名代码片段 */
+    /**
+     * 重命名指定的代码片段。
+     *
+     * @param id 代码片段 ID
+     * @param newTitle 新标题
+     * @param newFileName 新文件名
+     */
     fun renameSnippet(id: String, newTitle: String, newFileName: String) {
         viewModelScope.launch {
             val repoUri = settingsRepository?.settingsFlow?.first()?.repoTreeUri ?: ""
@@ -151,7 +186,12 @@ class HomeViewModel(
         }
     }
 
-    /** 移动代码片段归属文件夹 */
+    /**
+     * 变更代码片段归属的文件夹。
+     *
+     * @param id 代码片段 ID
+     * @param newFolder 目标文件夹名称
+     */
     fun updateFolder(id: String, newFolder: String) {
         viewModelScope.launch {
             val repoUri = settingsRepository?.settingsFlow?.first()?.repoTreeUri ?: ""
@@ -159,7 +199,11 @@ class HomeViewModel(
         }
     }
 
-    /** 将代码片段移入回收站 */
+    /**
+     * 将代码片段移入回收站。
+     *
+     * @param id 代码片段 ID
+     */
     fun trashSnippet(id: String) {
         viewModelScope.launch {
             val repoUri = settingsRepository?.settingsFlow?.first()?.repoTreeUri ?: ""
@@ -168,7 +212,13 @@ class HomeViewModel(
     }
 
     companion object {
-        /** 创建包含 ViewModel 依赖项的 ViewModelProvider.Factory 工厂对象 */
+        /**
+         * 创建包含 [HomeViewModel] 依赖项的 [ViewModelProvider.Factory] 工厂对象。
+         *
+         * @param repository 数据仓储依赖
+         * @param settingsRepository 设置仓储依赖（可选）
+         * @return 初始化 ViewModel 的工厂实例
+         */
         fun factory(
             repository: SnippetRepository,
             settingsRepository: SettingsRepository? = null
@@ -180,4 +230,3 @@ class HomeViewModel(
         }
     }
 }
-
