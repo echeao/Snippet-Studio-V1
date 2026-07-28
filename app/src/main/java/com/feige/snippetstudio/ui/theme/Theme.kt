@@ -8,6 +8,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -54,78 +55,82 @@ fun SnippetStudioTheme(
     val style = ColorThemeStyle.fromId(colorThemeId)
     val palette = ColorThemeRegistry.paletteOf(style)
 
-    // 构建运行时使用的 ThemeColors 动态语义色
-    val themeColors = if (darkTheme) {
-        ThemeColors(
-            primary = palette.primary,
-            primary2 = palette.primary2,
-            primarySoft = palette.primarySoft.copy(alpha = 0.16f),
-            primaryLine = palette.primaryLine.copy(alpha = 0.3f),
-            bg = palette.bgDark,
-            surface = palette.surfaceDark,
-            surface2 = palette.surface2Dark,
-            text = palette.textDark,
-            text2 = palette.text2Dark,
-            text3 = palette.text3Dark,
-            line = palette.lineDark,
-            codeBg = palette.codeBgDark,
-            codeText = palette.codeTextDark,
-            isDark = true,
-        )
-    } else {
-        ThemeColors(
-            primary = palette.primary,
-            primary2 = palette.primary2,
-            primarySoft = palette.primarySoft,
-            primaryLine = palette.primaryLine,
-            bg = palette.bgLight,
-            surface = palette.surfaceLight,
-            surface2 = palette.surface2Light,
-            text = palette.textLight,
-            text2 = palette.text2Light,
-            text3 = palette.text3Light,
-            line = palette.lineLight,
-            codeBg = palette.codeBgLight,
-            codeText = palette.codeTextLight,
-            isDark = false,
-        )
+    // 构建运行时使用的 ThemeColors 动态语义色（缓存实例避免整树重组）
+    val themeColors = remember(darkTheme, style) {
+        if (darkTheme) {
+            ThemeColors(
+                primary = palette.primary,
+                primary2 = palette.primary2,
+                primarySoft = palette.primarySoft.copy(alpha = 0.16f),
+                primaryLine = palette.primaryLine.copy(alpha = 0.3f),
+                bg = palette.bgDark,
+                surface = palette.surfaceDark,
+                surface2 = palette.surface2Dark,
+                text = palette.textDark,
+                text2 = palette.text2Dark,
+                text3 = palette.text3Dark,
+                line = palette.lineDark,
+                codeBg = palette.codeBgDark,
+                codeText = palette.codeTextDark,
+                isDark = true,
+            )
+        } else {
+            ThemeColors(
+                primary = palette.primary,
+                primary2 = palette.primary2,
+                primarySoft = palette.primarySoft,
+                primaryLine = palette.primaryLine,
+                bg = palette.bgLight,
+                surface = palette.surfaceLight,
+                surface2 = palette.surface2Light,
+                text = palette.textLight,
+                text2 = palette.text2Light,
+                text3 = palette.text3Light,
+                line = palette.lineLight,
+                codeBg = palette.codeBgLight,
+                codeText = palette.codeTextLight,
+                isDark = false,
+            )
+        }
     }
 
-    // 动态构建符合 Material 3 规范的 ColorScheme
-    val colorScheme = if (darkTheme) {
-        darkColorScheme(
-            primary = themeColors.primary,
-            onPrimary = Color.White,
-            primaryContainer = themeColors.primarySoft,
-            onPrimaryContainer = themeColors.primary,
-            secondary = themeColors.primary2,
-            background = themeColors.bg,
-            onBackground = themeColors.text,
-            surface = themeColors.surface,
-            onSurface = themeColors.text,
-            surfaceVariant = themeColors.surface2,
-            onSurfaceVariant = themeColors.text2,
-            outline = themeColors.line,
-            error = Danger,
-            onError = Color.White
-        )
-    } else {
-        lightColorScheme(
-            primary = themeColors.primary,
-            onPrimary = Color.White,
-            primaryContainer = themeColors.primarySoft,
-            onPrimaryContainer = themeColors.primary,
-            secondary = themeColors.primary2,
-            background = themeColors.bg,
-            onBackground = themeColors.text,
-            surface = themeColors.surface,
-            onSurface = themeColors.text,
-            surfaceVariant = themeColors.surface2,
-            onSurfaceVariant = themeColors.text2,
-            outline = themeColors.line,
-            error = Danger,
-            onError = Color.White
-        )
+    // 动态构建符合 Material 3 规范的 ColorScheme（缓存实例避免整树重组）
+    val colorScheme = remember(darkTheme, style) {
+        if (darkTheme) {
+            darkColorScheme(
+                primary = themeColors.primary,
+                onPrimary = Color.White,
+                primaryContainer = themeColors.primarySoft,
+                onPrimaryContainer = themeColors.primary,
+                secondary = themeColors.primary2,
+                background = themeColors.bg,
+                onBackground = themeColors.text,
+                surface = themeColors.surface,
+                onSurface = themeColors.text,
+                surfaceVariant = themeColors.surface2,
+                onSurfaceVariant = themeColors.text2,
+                outline = themeColors.line,
+                error = Danger,
+                onError = Color.White
+            )
+        } else {
+            lightColorScheme(
+                primary = themeColors.primary,
+                onPrimary = Color.White,
+                primaryContainer = themeColors.primarySoft,
+                onPrimaryContainer = themeColors.primary,
+                secondary = themeColors.primary2,
+                background = themeColors.bg,
+                onBackground = themeColors.text,
+                surface = themeColors.surface,
+                onSurface = themeColors.text,
+                surfaceVariant = themeColors.surface2,
+                onSurfaceVariant = themeColors.text2,
+                outline = themeColors.line,
+                error = Danger,
+                onError = Color.White
+            )
+        }
     }
 
     // 状态栏颜色同步与沉浸式处理

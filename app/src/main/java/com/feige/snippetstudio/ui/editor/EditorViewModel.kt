@@ -242,16 +242,21 @@ class EditorViewModel(
         val text = tfv.text
         val caret = tfv.selection.start.coerceIn(0, text.length)
 
-        // ===== 步骤 1: 截取光标前的文本子集 =====
-        val textBeforeCaret = text.take(caret)
-
-        // ===== 步骤 2: 计算 0-indexed 光标行号 =====
-        val currentLine = textBeforeCaret.count { it == '\n' }
-
-        // ===== 步骤 3: 计算 0-indexed 光标列号 =====
-        val lastNewlinePos = textBeforeCaret.lastIndexOf('\n')
+        // 单次遍历：同时计算换行符总数、光标前换行数、光标前最后一个换行符位置
+        var currentLine = 0
+        var lastNewlinePos = -1
+        var totalNewlines = 0
+        for (i in text.indices) {
+            if (text[i] == '\n') {
+                totalNewlines++
+                if (i < caret) {
+                    currentLine++
+                    lastNewlinePos = i
+                }
+            }
+        }
         val currentCol = if (lastNewlinePos == -1) caret else caret - lastNewlinePos - 1
-        val lines = text.count { it == '\n' } + 1
+        val lines = totalNewlines + 1
 
         _uiState.update {
             it.copy(
@@ -263,7 +268,6 @@ class EditorViewModel(
                 saveState = SaveState.UNSAVED
             )
         }
-        // 触发 Prompt 变量解析
         parsePromptVariables(text)
         triggerAutoSave()
     }

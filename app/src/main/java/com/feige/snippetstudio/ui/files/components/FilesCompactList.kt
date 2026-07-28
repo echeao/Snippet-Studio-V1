@@ -4,6 +4,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -55,7 +56,14 @@ fun FilesCompactList(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
-        item {
+        items(snippets, key = { it.id }) { snippet ->
+            val onOpen = {
+                if (cardClickAction == "editor") {
+                    onNavigateToEditor(snippet.id)
+                } else {
+                    onNavigateToDetail(snippet.id)
+                }
+            }
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -65,27 +73,16 @@ fun FilesCompactList(
                 shape = RoundedCornerShape(R_MD),
                 color = tc.surface
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    snippets.forEachIndexed { index, snippet ->
-                        val onOpen = {
-                            if (cardClickAction == "editor") {
-                                onNavigateToEditor(snippet.id)
-                            } else {
-                                onNavigateToDetail(snippet.id)
-                            }
-                        }
-                        SnippetCompactRow(
-                            snippet = snippet,
-                            onOpen = onOpen,
-                            onRename = { onRename(snippet) },
-                            onMoveFolder = { onMoveFolder(snippet) },
-                            onToggleStar = { onToggleStar(snippet) },
-                            onMore = { onTrash(snippet) },
-                            showDivider = (index < snippets.lastIndex),
-                            showFullDateTime = false
-                        )
-                    }
-                }
+                SnippetCompactRow(
+                    snippet = snippet,
+                    onOpen = onOpen,
+                    onRename = { onRename(snippet) },
+                    onMoveFolder = { onMoveFolder(snippet) },
+                    onToggleStar = { onToggleStar(snippet) },
+                    onMore = { onTrash(snippet) },
+                    showDivider = false,
+                    showFullDateTime = false
+                )
             }
         }
     }

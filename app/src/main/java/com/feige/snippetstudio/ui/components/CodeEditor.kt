@@ -27,6 +27,7 @@ import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.SyntaxHighlighter
 import com.feige.snippetstudio.util.SyntaxLanguage
 import com.feige.snippetstudio.util.SyntaxLanguageDetector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -84,9 +85,14 @@ fun CodeEditor(
 
     // 记住并构建语法高亮转换器 VisualTransformation
     val syntaxTransformation = remember(effectiveLanguage, isDark) {
+        var lastText = ""
+        var lastResult = AnnotatedString("")
         VisualTransformation { text ->
-            val highlighted = SyntaxHighlighter.highlightByLanguage(text.text, effectiveLanguage, isDark)
-            TransformedText(highlighted, OffsetMapping.Identity)
+            if (text.text != lastText) {
+                lastText = text.text
+                lastResult = SyntaxHighlighter.highlightByLanguage(text.text, effectiveLanguage, isDark)
+            }
+            TransformedText(lastResult, OffsetMapping.Identity)
         }
     }
 
@@ -176,33 +182,47 @@ fun CodeEditor(
     ) {
         // ===== 1. 左侧行号装订轨 (Line Number Gutter) =====
         if (showLineNumbers) {
+            val lineHeightDp = (fontSp * 1.6f).dp
+            var gutterViewportHeightPx by remember { mutableStateOf(0) }
+
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
                     .width(44.dp)
                     .background(tc.surface2)
                     .verticalScroll(verticalScrollState) // 与右侧代码区绑着同一个 verticalScrollState 共用垂直滚动
+                    .onSizeChanged { gutterViewportHeightPx = it.height }
                     .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3),
                 horizontalAlignment = Alignment.End
             ) {
-                // 循环渲染每一行的数字文本
-                for (i in 0 until linesCount) {
-                    val isCurrent = (i == currentLineIndex)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            // 动态指定行高为 fontSp * 1.6f，确保与右侧代码输入框的 lineHeight (fontSp * 1.6f) 绝对基线对齐
-                            .height((fontSp * 1.6f).dp)
-                            .padding(end = Spacing.S2),
-                        contentAlignment = Alignment.CenterEnd
-                    ) {
-                        Text(
-                            text = "${i + 1}",
-                            fontFamily = FontFamily.Monospace, // 等宽字体对齐
-                            fontSize = (fontSp * 0.85f).sp,
-                            fontWeight = if (isCurrent) FontWeight.W800 else FontWeight.W400,
-                            color = if (isCurrent) tc.primary else tc.text3
-                        )
+                // 只渲染当前可见区域内的行号，避免大文件时所有行号节点全部进入组合树
+                val lineHeightPx = with(density) { lineHeightDp.toPx() }
+                if (lineHeightPx > 0f && gutterViewportHeightPx > 0) {
+                    val scrollPx = verticalScrollState.value
+                    val visibleStart = (scrollPx / lineHeightPx).toInt().coerceIn(0, linesCount - 1)
+                    val visibleEnd = ((scrollPx + gutterViewportHeightPx) / lineHeightPx + 1).toInt().coerceAtMost(linesCount)
+
+                    // 顶部非可见区域用 Spacer 占位，保持正确的滚动高度
+                    if (visibleStart > 0) {
+                        Spacer(modifier = Modifier.height(lineHeightDp * visibleStart))
+                    }
+                    for (i in visibleStart until visibleEnd) {
+                        val isCurrent = (i == currentLineIndex)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(lineHeightDp)
+                                .padding(end = Spacing.S2),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Text(
+                                text = "${i + 1}",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = (fontSp * 0.85f).sp,
+                                fontWeight = if (isCurrent) FontWeight.W800 else FontWeight.W400,
+                                color = if (isCurrent) tc.primary else tc.text3
+                            )
+                        }
                     }
                 }
             }

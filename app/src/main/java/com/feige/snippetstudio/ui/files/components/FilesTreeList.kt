@@ -220,7 +220,17 @@ fun FilesTreeList(
                             )
                         }
                     } else {
-                        item(key = "folder_compact_card_$folderName") {
+                        items(
+                            items = folderSnippets,
+                            key = { it.id }
+                        ) { snippet ->
+                            val onOpen = {
+                                if (cardClickAction == "editor") {
+                                    onNavigateToEditor(snippet.id)
+                                } else {
+                                    onNavigateToDetail(snippet.id)
+                                }
+                            }
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -230,27 +240,16 @@ fun FilesTreeList(
                                 shape = RoundedCornerShape(R_MD),
                                 color = tc.surface
                             ) {
-                                Column(modifier = Modifier.fillMaxWidth()) {
-                                    folderSnippets.forEachIndexed { index, snippet ->
-                                        val onOpen = {
-                                            if (cardClickAction == "editor") {
-                                                onNavigateToEditor(snippet.id)
-                                            } else {
-                                                onNavigateToDetail(snippet.id)
-                                            }
-                                        }
-                                        SnippetCompactRow(
-                                            snippet = snippet,
-                                            onOpen = onOpen,
-                                            onRename = { onRename(snippet) },
-                                            onMoveFolder = { onMoveFolder(snippet) },
-                                            onToggleStar = { onToggleStar(snippet) },
-                                            onMore = { onTrash(snippet) },
-                                            showDivider = (index < folderSnippets.lastIndex),
-                                            showFullDateTime = false
-                                        )
-                                    }
-                                }
+                                SnippetCompactRow(
+                                    snippet = snippet,
+                                    onOpen = onOpen,
+                                    onRename = { onRename(snippet) },
+                                    onMoveFolder = { onMoveFolder(snippet) },
+                                    onToggleStar = { onToggleStar(snippet) },
+                                    onMore = { onTrash(snippet) },
+                                    showDivider = false,
+                                    showFullDateTime = false
+                                )
                             }
                         }
                     }
