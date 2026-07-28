@@ -145,11 +145,11 @@ object SyntaxHighlighter {
         "\\*\\*.*?\\*\\*|__.*?__"
     )
     private val MD_CODE_PATTERN = Pattern.compile(
-        "`[^`]+`"
+        "`[^`\\r\\n]+`"
     )
-    /** Markdown 多行围栏代码块正则（捕获组 1: 语言标识；捕获组 2: 代码正文） */
+    /** Markdown 多行围栏代码块正则（捕获组 1: 语言标识；捕获组 2: 代码正文；捕获组 3: 结尾围栏标记） */
     private val MD_CODE_BLOCK_PATTERN = Pattern.compile(
-        "(?ms)^```([a-zA-Z0-9_+#-]*)\\r?\\n(.*?)(?:^```|$)"
+        "(?m)^```([a-zA-Z0-9_+#-]*)[ \\t]*\\r?\\n([\\s\\S]*?)(?:(^```[ \\t]*(?:\\r?\\n|\\z))|(?=\\z))"
     )
 
     private val PROMPT_VAR_PATTERN = Pattern.compile(
@@ -221,7 +221,7 @@ object SyntaxHighlighter {
     // ===== Java / C++ / Go / Rust 语言匹配正则表达式模式 =====
 
     private val JAVA_KEYWORD_PATTERN = Pattern.compile(
-        "\\b(public|protected|private|class|interface|enum|extends|implements|import|package|static|final|abstract|void|int|long|double|float|boolean|char|byte|short|return|if|else|for|while|do|switch|case|default|break|continue|try|catch|finally|throw|throws|new|this|super|instanceof|synchronized|volatile|transient|native)\\b"
+        "\\b(public|protected|private|class|interface|enum|extends|implements|import|package|static|final|abstract|void|int|long|double|float|boolean|char|byte|short|return|if|else|for|while|do|switch|case|default|break|continue|try|catch|finally|throw|throws|new|this|super|instanceof|synchronized|volatile|transient|native|var|record|true|false|null)\\b"
     )
     private val JAVA_ANNOTATION_PATTERN = Pattern.compile(
         "@[a-zA-Z_][a-zA-Z0-9_]*"

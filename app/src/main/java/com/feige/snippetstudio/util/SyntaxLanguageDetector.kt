@@ -45,6 +45,24 @@ object SyntaxLanguageDetector {
     }
 
     /**
+     * 根据业务层的 [SnippetType] 直接获取对应的渲染层 [SyntaxLanguage]。
+     * 用于编辑页面底部语言选择栏切换时直接决定语法高亮类型，不受物理文件扩展名限制。
+     *
+     * @param snippetType 代码片段类型
+     * @return 对应的 [SyntaxLanguage] 枚举值
+     */
+    fun fromSnippetType(snippetType: SnippetType): SyntaxLanguage {
+        return when (snippetType) {
+            SnippetType.HTML -> SyntaxLanguage.HTML
+            SnippetType.JS -> SyntaxLanguage.JS
+            SnippetType.MARKDOWN -> SyntaxLanguage.MARKDOWN
+            SnippetType.PROMPT -> SyntaxLanguage.PROMPT
+            SnippetType.JAVA -> SyntaxLanguage.JAVA
+            SnippetType.GENERAL -> SyntaxLanguage.PLAIN
+        }
+    }
+
+    /**
      * 根据 SnippetType 和文件名综合推断语法语言。
      * 优先使用文件扩展名判断，无法识别时回退到 SnippetType 的默认映射。
      *
@@ -57,14 +75,7 @@ object SyntaxLanguageDetector {
         if (byExtension != SyntaxLanguage.PLAIN) return byExtension
 
         // 回退到 SnippetType 业务类型映射（当扩展名无法推断时，按选择的片段类型映射默认高亮）
-        return when (snippetType) {
-            SnippetType.HTML -> SyntaxLanguage.HTML
-            SnippetType.JS -> SyntaxLanguage.JS
-            SnippetType.MARKDOWN -> SyntaxLanguage.MARKDOWN
-            SnippetType.PROMPT -> SyntaxLanguage.PROMPT
-            SnippetType.JAVA -> SyntaxLanguage.JAVA
-            SnippetType.GENERAL -> SyntaxLanguage.PLAIN
-        }
+        return fromSnippetType(snippetType)
     }
 
     /**
