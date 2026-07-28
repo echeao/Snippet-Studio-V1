@@ -9,18 +9,20 @@ import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.theme.*
 
 /**
- * [ConfirmDialog] 通用确认对话框组件。
+ * [ConfirmDialog] 全局高危/确认操作通用对话框组件。
  *
- * 用于高危操作确认（如放入回收站、彻底清空删除等）。
+ * 视觉与交互特性：
+ * 1. 动态感知 [LocalThemeColors]，确保在深色/浅色主题下背景与字体对比度和谐。
+ * 2. 支持语义化 [isDanger] 参数，高危/删除动作自动高亮 WarningDanger 红色。
  *
  * @param show 是否显示对话框
- * @param title 标题
- * @param desc 描述文本
- * @param onConfirm 确认触发闭包
- * @param onDismiss 取消/关闭闭包
- * @param confirmText 确认按钮显示文本（默认“确认”）
- * @param dismissText 取消按钮显示文本（默认“取消”）
- * @param isDanger 是否为破坏性高危操作（使用红色突出警示）
+ * @param title 弹窗标题
+ * @param desc 详细描述文本
+ * @param onConfirm 确认回调
+ * @param onDismiss 取消/关闭回调
+ * @param confirmText 确认按钮文案
+ * @param dismissText 取消按钮文案
+ * @param isDanger 是否为破坏性高危动作（警示红）
  */
 @Composable
 fun ConfirmDialog(
@@ -33,17 +35,16 @@ fun ConfirmDialog(
     dismissText: String = stringResource(R.string.common_cancel),
     isDanger: Boolean = false
 ) {
-
     val tc = LocalThemeColors.current
 
     if (show) {
         AlertDialog(
             onDismissRequest = onDismiss,
             title = {
-                Text(text = title, style = SectionTitleStyle)
+                Text(text = title, style = SectionTitleStyle, color = tc.text)
             },
             text = {
-                Text(text = desc, style = BodyStyle)
+                Text(text = desc, style = BodyStyle, color = tc.text2)
             },
             confirmButton = {
                 TextButton(
@@ -65,10 +66,11 @@ fun ConfirmDialog(
                     onClick = onDismiss,
                     modifier = Modifier.testTag("dialog_dismiss_btn")
                 ) {
-                    Text(text = dismissText, style = ListTitleStyle)
+                    Text(text = dismissText, style = ListTitleStyle, color = tc.text2)
                 }
             },
-            shape = AppShapes.large
+            shape = AppShapes.large,
+            containerColor = tc.surface
         )
     }
 }

@@ -1,12 +1,7 @@
 package com.feige.snippetstudio.ui.settings
 
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,24 +20,27 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.components.*
+import com.feige.snippetstudio.ui.settings.components.AppearanceSection
+import com.feige.snippetstudio.ui.settings.components.DataBackupSection
+import com.feige.snippetstudio.ui.settings.components.EditorPrefSection
 import com.feige.snippetstudio.ui.theme.*
 
 /**
  * [SettingsScreen] 系统设置与全局偏好管理主界面。
  *
- * 教学解析与架构重构说明：
- * 采用 7 大功能分组对应用偏好进行模块化分层：
- * 1. **存储与工作区 [Group 1]**：SAF 物理磁盘目录选择与路径展示。
- * 2. **同步与 Git 控制 [Group 2]**：JGit 沙盒仓与远程 Git 鉴权状态卡片。
- * 3. **内容组织与标签 [Group 3]**：分类代码统计与全局预设标签项。
- * 4. **代码编辑器偏好 [Group 4]**：文本字号大小、自动换行、行号显示、Tab 缩进与符号自动配对。
- * 5. **数据维护与备份 [Group 5]**：JSON 导出备份、JSON 数据导入恢复、ZIP 全量打包与回收站管理。
- * 6. **外观与系统偏好 [Group 6]**：配色风格、深色模式切换、样板代码注入、点击行为单选弹窗、分享动作单选弹窗、多语言。
- * 7. **关于与系统支持 [Group 7]**：应用版本号展示、版本更新日志弹窗、恢复全局默认设置。
+ * 架构重构与设计说明：
+ * 拆分为四大核心模块与 7 个分类设置组：
+ * 1. **存储与工作区**：SAF 物理磁盘目录选取与路径展示。
+ * 2. **同步与 Git 控制**：JGit 沙盒仓与远程 Git 鉴权状态卡片。
+ * 3. **内容组织与标签**：分类代码统计与全局预设标签项。
+ * 4. **代码编辑器偏好 [EditorPrefSection]**：含 [LivePreviewBox] 动态效果展示、字号大小、自动软换行、显示行号、Tab 缩进与符号自动配对。
+ * 5. **数据维护与备份 [DataBackupSection]**：JSON 导出备份、JSON 数据导入恢复、ZIP 全量打包与回收站管理。
+ * 6. **外观与系统偏好 [AppearanceSection]**：配色风格、深色模式切换、样板代码注入、点击行为与语言。
+ * 7. **关于与系统支持**：应用版本号展示、版本更新日志弹窗、恢复全局默认设置。
  *
  * @param viewModel 设置页 ViewModel 控制器
  * @param onNavigateToSubPage 打开二级子设置路由闭包 (如 "git", "repo", "lang", "trash", "theme", "cat", "tags")
- * @param onShowSnackbar 底部消息提示回调
+ * @param onShowSnackbar 底部消息提示闭包
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +54,7 @@ fun SettingsScreen(
     val tc = LocalThemeColors.current
 
     // ===== 交互弹窗状态控制 =====
-    var choiceDialogType by remember { mutableStateOf<String?>(null) } // "card_click", "share_action", "tab_size", "font_size"
+    var choiceDialogType by remember { mutableStateOf<String?>(null) }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
     var showChangelogDialog by remember { mutableStateOf(false) }
 
@@ -101,9 +99,7 @@ fun SettingsScreen(
                         color = tc.text
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = tc.bg
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = tc.bg)
             )
         },
         containerColor = tc.bg
@@ -186,304 +182,38 @@ fun SettingsScreen(
             }
 
             // ===== 分组 4: 代码编辑器偏好设置 =====
-            AppSettingGroup(title = "代码编辑器偏好") {
-                // 编辑器字号选择
-                AppSettingTile(
-                    iconRes = R.drawable.ic_code,
-                    title = "文本字号大小",
-                    subTitle = "调整代码编辑与预览字号大小",
-                    iconColor = tc.primary,
-                    iconBgColor = tc.primarySoft,
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "${settings.editorFontSp} sp",
-                                style = BadgeStyle,
-                                color = tc.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.width(Spacing.S2))
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_chevron_right),
-                                contentDescription = null,
-                                tint = tc.text2.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    },
-                    onClick = { choiceDialogType = "font_size" }
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 自动软换行
-                AppSettingSwitchTile(
-                    iconRes = R.drawable.ic_code,
-                    title = "自动软换行",
-                    subTitle = "超长代码行自动折行显示",
-                    checked = settings.isWordWrap,
-                    onCheckedChange = { viewModel.toggleWordWrap(it) },
-                    iconColor = tc.primary,
-                    iconBgColor = tc.primarySoft
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 显示行号
-                AppSettingSwitchTile(
-                    iconRes = R.drawable.ic_list,
-                    title = "显示代码行号",
-                    subTitle = "编辑器左侧渲染行号辅助栏",
-                    checked = settings.showLineNumbers,
-                    onCheckedChange = { viewModel.toggleShowLineNumbers(it) },
-                    iconColor = tc.primary,
-                    iconBgColor = tc.primarySoft
-                )
-                HorizontalDivider(color = tc.line)
-
-                // Tab 缩进空格
-                AppSettingTile(
-                    iconRes = R.drawable.ic_code,
-                    title = "Tab 键缩进空格",
-                    subTitle = "按下 Tab 键输入的空格数量",
-                    iconColor = tc.primary,
-                    iconBgColor = tc.primarySoft,
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "${settings.tabSize} 空格",
-                                style = BadgeStyle,
-                                color = tc.primary
-                            )
-                            Spacer(modifier = Modifier.width(Spacing.S2))
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_chevron_right),
-                                contentDescription = null,
-                                tint = tc.text2.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    },
-                    onClick = { choiceDialogType = "tab_size" }
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 符号自动补全
-                AppSettingSwitchTile(
-                    iconRes = R.drawable.ic_code,
-                    title = "括号与引号自动配对",
-                    subTitle = "输入 {, (, [, \" 时自动补全对应右符号",
-                    checked = settings.autoPairBrackets,
-                    onCheckedChange = { viewModel.toggleAutoPairBrackets(it) },
-                    iconColor = tc.primary,
-                    iconBgColor = tc.primarySoft
-                )
-            }
+            EditorPrefSection(
+                settings = settings,
+                viewModel = viewModel,
+                onOpenChoiceDialog = { choiceDialogType = it }
+            )
 
             // ===== 分组 5: 数据维护与全量备份 =====
-            AppSettingGroup(title = stringResource(R.string.set_maintain)) {
-                // 导出 JSON 备份
-                AppSettingTile(
-                    iconRes = R.drawable.ic_download,
-                    title = stringResource(R.string.set_backup),
-                    subTitle = "导出全量代码片段为 JSON 备份文件",
-                    iconColor = Color(0xFFef6c00),
-                    iconBgColor = Color(0xFFfff3e0),
-                    onClick = { createDocLauncher.launch("snippet-studio-backup.json") }
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 恢复导入 JSON 备份
-                AppSettingTile(
-                    iconRes = R.drawable.ic_restore,
-                    title = "恢复导入 JSON 备份",
-                    subTitle = "从已有的 JSON 备份文件中恢复合并片段",
-                    iconColor = Color(0xFFd84315),
-                    iconBgColor = Color(0xFFfbe9e7),
-                    onClick = { openDocLauncher.launch("application/json") }
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 导出 ZIP 物理归档包
-                AppSettingTile(
-                    iconRes = R.drawable.ic_download,
-                    title = "导出 ZIP 源码压缩包",
-                    subTitle = "按文件夹树结构打包导出源码归档",
-                    iconColor = Color(0xFFd84315),
-                    iconBgColor = Color(0xFFfbe9e7),
-                    onClick = {
-                        viewModel.exportZipFile(context) { zipFile ->
-                            if (zipFile != null && zipFile.exists()) {
-                                onShowSnackbar("ZIP 压缩包已成功打包生成于缓存目录")
-                            } else {
-                                onShowSnackbar("打包 ZIP 失败")
-                            }
+            DataBackupSection(
+                onExportJson = { createDocLauncher.launch("snippet-studio-backup.json") },
+                onImportJson = { openDocLauncher.launch("application/json") },
+                onExportZip = {
+                    viewModel.exportZipFile(context) { zipFile ->
+                        if (zipFile != null && zipFile.exists()) {
+                            onShowSnackbar("ZIP 压缩包已成功打包生成于缓存目录")
+                        } else {
+                            onShowSnackbar("打包 ZIP 失败")
                         }
                     }
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 回收站管理
-                AppSettingTile(
-                    iconRes = R.drawable.ic_trash,
-                    title = stringResource(R.string.set_trash),
-                    subTitle = "管理已软删除的代码片段与废弃数据",
-                    iconColor = Color(0xFFc62828),
-                    iconBgColor = Color(0xFFffebee),
-                    onClick = { onNavigateToSubPage("trash") }
-                )
-            }
+                },
+                onNavigateToTrash = { onNavigateToSubPage("trash") }
+            )
 
             // ===== 分组 6: 外观与系统交互偏好 =====
-            AppSettingGroup(title = stringResource(R.string.set_look)) {
-                // 配色风格选择
-                val colorThemeLabel = ColorThemeStyle.fromId(settings.colorTheme).displayName
-                AppSettingTile(
-                    iconRes = R.drawable.ic_palette,
-                    title = stringResource(R.string.set_color_theme),
-                    subTitle = "五套定制主题色调切换",
-                    iconColor = Color(0xFF4a148c),
-                    iconBgColor = Color(0xFFf3e5f5),
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                color = tc.primarySoft,
-                                shape = RoundedCornerShape(R_SM)
-                            ) {
-                                Text(
-                                    text = colorThemeLabel,
-                                    style = BadgeStyle,
-                                    color = tc.primary,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(Spacing.S2))
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_chevron_right),
-                                contentDescription = null,
-                                tint = tc.text2.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    },
-                    onClick = { onNavigateToSubPage("theme") }
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 深色 / 浅色模式
-                val isDarkTheme = (settings.theme == "dark" || (settings.theme == "system" && tc.isDark))
-                AppSettingSwitchTile(
-                    iconRes = if (isDarkTheme) R.drawable.ic_moon else R.drawable.ic_sun,
-                    title = stringResource(R.string.set_dark),
-                    subTitle = if (isDarkTheme) "当前已开启夜间深色调" else "当前为日间浅色调",
-                    checked = isDarkTheme,
-                    onCheckedChange = { viewModel.toggleDarkMode(it) },
-                    iconColor = Color(0xFFf57f17),
-                    iconBgColor = Color(0xFFfffde7)
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 默认样板代码
-                AppSettingSwitchTile(
-                    iconRes = R.drawable.ic_code,
-                    title = stringResource(R.string.set_use_boilerplate),
-                    subTitle = "新建片段时自动填充对应类型的示例代码",
-                    checked = settings.useBoilerplate,
-                    onCheckedChange = { viewModel.toggleUseBoilerplate(it) },
-                    iconColor = Color(0xFF00838f),
-                    iconBgColor = Color(0xFFe0f7fa)
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 卡片点击行为单选
-                val cardClickLabel = if (settings.cardClickAction == "editor") "直接进入编辑器" else "查看片段详情"
-                AppSettingTile(
-                    iconRes = R.drawable.ic_touch,
-                    title = "卡片默认点击行为",
-                    subTitle = cardClickLabel,
-                    iconColor = Color(0xFF283593),
-                    iconBgColor = Color(0xFFe8eaf6),
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = cardClickLabel,
-                                style = CaptionStyle,
-                                color = tc.text2
-                            )
-                            Spacer(modifier = Modifier.width(Spacing.S2))
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_chevron_right),
-                                contentDescription = null,
-                                tint = tc.text2.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    },
-                    onClick = { choiceDialogType = "card_click" }
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 分享剪藏动作单选
-                val shareActionLabel = if (settings.shareAction == "silent") stringResource(R.string.share_action_silent) else stringResource(R.string.share_action_panel)
-                AppSettingTile(
-                    iconRes = R.drawable.ic_clipboard,
-                    title = stringResource(R.string.set_share_action),
-                    subTitle = shareActionLabel,
-                    iconColor = Color(0xFF00695c),
-                    iconBgColor = Color(0xFFe0f2f1),
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = shareActionLabel,
-                                style = CaptionStyle,
-                                color = tc.text2
-                            )
-                            Spacer(modifier = Modifier.width(Spacing.S2))
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_chevron_right),
-                                contentDescription = null,
-                                tint = tc.text2.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    },
-                    onClick = { choiceDialogType = "share_action" }
-                )
-                HorizontalDivider(color = tc.line)
-
-                // 多语言选择
-                val langLabel = when (settings.lang) {
-                    "ja" -> stringResource(R.string.lang_ja)
-                    "en" -> stringResource(R.string.lang_en)
-                    else -> stringResource(R.string.lang_zh)
-                }
-                AppSettingTile(
-                    iconRes = R.drawable.ic_globe,
-                    title = stringResource(R.string.set_lang),
-                    subTitle = langLabel,
-                    iconColor = Color(0xFF1565c0),
-                    iconBgColor = Color(0xFFe3f2fd),
-                    trailingContent = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = langLabel,
-                                style = BadgeStyle,
-                                color = tc.primary
-                            )
-                            Spacer(modifier = Modifier.width(Spacing.S2))
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_chevron_right),
-                                contentDescription = null,
-                                tint = tc.text2.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    },
-                    onClick = { onNavigateToSubPage("lang") }
-                )
-            }
+            AppearanceSection(
+                settings = settings,
+                viewModel = viewModel,
+                onNavigateToSubPage = onNavigateToSubPage,
+                onOpenChoiceDialog = { choiceDialogType = it }
+            )
 
             // ===== 分组 7: 关于与系统支持 =====
             AppSettingGroup(title = "关于与支持") {
-                // 版本号显示
                 AppSettingTile(
                     iconRes = R.drawable.ic_settings,
                     title = "应用版本号",
@@ -497,7 +227,6 @@ fun SettingsScreen(
                 )
                 HorizontalDivider(color = tc.line)
 
-                // 版本更新日志
                 AppSettingTile(
                     iconRes = R.drawable.ic_spark,
                     title = "版本更新日志",
@@ -508,7 +237,6 @@ fun SettingsScreen(
                 )
                 HorizontalDivider(color = tc.line)
 
-                // 恢复默认设置
                 AppSettingTile(
                     iconRes = R.drawable.ic_warning,
                     title = "重置为默认偏好",

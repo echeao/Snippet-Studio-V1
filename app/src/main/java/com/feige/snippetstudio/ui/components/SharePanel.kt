@@ -1,13 +1,17 @@
 package com.feige.snippetstudio.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -19,18 +23,20 @@ import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
 
 /**
- * [SharePanel] 系统分享剪藏快速编辑面板 (ModalBottomSheet)。
+ * [SharePanel] 系统分享剪藏快速编辑与卡片预览面板组件 (ModalBottomSheet)。
  *
- * 当用户从其他应用通过系统 Share Sheet 分享文本或文件到 Snippet Studio 时弹出，
- * 允许用户在保存前快速编辑标题、选择片段类型，并预览分享内容摘要。
+ * 视觉与交互特性：
+ * 1. 当用户从其他应用通过系统 Share Sheet 分享文本或文件时弹出。
+ * 2. 带有 Mac 风格经典红黄绿三色控窗按键 Header 结合高质感代码卡片。
+ * 3. 允许用户在保存前自定义标题、选择片段语言分类，并开展内容即时预览。
  *
- * @param show 显隐控制
- * @param sharedText 从系统分享接收到的原始文本
- * @param detectedType 自动推断的片段类型
- * @param sharedFileName 分享来源文件名（文件分享时非 null，纯文本分享时为 null）
- * @param onDismiss 关闭/取消回调
- * @param onConfirm 确认保存回调 (title, type)
- * @param onPreview 仅预览回调（不保存）
+ * @param show 是否显隐控制
+ * @param sharedText 接收到的文本数据
+ * @param detectedType 智能检测导出的片段类型
+ * @param sharedFileName 分享来源文件名（仅文件分享时存在）
+ * @param onDismiss 关闭弹窗回调
+ * @param onConfirm 保存确认闭包 (title, type)
+ * @param onPreview 仅预览闭包
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,7 +120,7 @@ fun SharePanel(
                 }
             }
 
-            // 分享内容预览
+            // 分享内容预览 label
             Text(
                 text = stringResource(R.string.share_panel_preview_label),
                 style = CaptionStyle,
@@ -137,25 +143,43 @@ fun SharePanel(
                 }
             }
 
+            // Mac 风格三色红黄绿按键 Header 结合的高质感代码卡片容器
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 120.dp),
-                shape = RoundedCornerShape(8.dp),
+                    .heightIn(max = 140.dp)
+                    .border(1.dp, tc.line, RoundedCornerShape(10.dp)),
+                shape = RoundedCornerShape(10.dp),
                 color = tc.surface2
             ) {
-                Text(
-                    text = sharedText,
-                    style = CaptionStyle,
-                    fontSize = 12.sp,
-                    color = tc.text2,
-                    maxLines = 6,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(Spacing.S3)
-                )
+                Column {
+                    // Mac 风格控窗三点
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(tc.line.copy(alpha = 0.2f))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(modifier = Modifier.size(9.dp).background(Color(0xFFFF5F56), CircleShape))
+                        Box(modifier = Modifier.size(9.dp).background(Color(0xFFFFBD2E), CircleShape))
+                        Box(modifier = Modifier.size(9.dp).background(Color(0xFF27C93F), CircleShape))
+                    }
+
+                    Text(
+                        text = sharedText,
+                        style = CaptionStyle,
+                        fontSize = 12.sp,
+                        color = tc.text2,
+                        maxLines = 6,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(Spacing.S3)
+                    )
+                }
             }
 
-            // 操作按钮
+            // 操作按钮行
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
