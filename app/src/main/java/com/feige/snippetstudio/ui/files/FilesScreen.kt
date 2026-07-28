@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
@@ -82,13 +83,15 @@ fun FilesScreen(
     var previousScrollIndex by remember { mutableIntStateOf(0) }
     var previousScrollOffset by remember { mutableIntStateOf(0) }
 
-    // 优化：更加平滑与稳定的滚动防抖判定
+    // 优化：更加平滑与稳定的滚动防抖判定，结合 distinctUntilChanged 避免无意义重绘
     LaunchedEffect(activeListState) {
         previousScrollIndex = 0
         previousScrollOffset = 0
         snapshotFlow {
             activeListState.firstVisibleItemIndex to activeListState.firstVisibleItemScrollOffset
-        }.collect { (index, offset) ->
+        }
+        .distinctUntilChanged()
+        .collect { (index, offset) ->
             val delta = if (index != previousScrollIndex) {
                 (index - previousScrollIndex) * 400 + (offset - previousScrollOffset)
             } else {
@@ -131,7 +134,7 @@ fun FilesScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // ===== 1. 搜索框（使用 expandVertically/shrinkVertically 柔和垂直折叠动画）=====
+            // ===== 1. 搜索框（使用 expandVertically/shrinkVertically 柔缓垂直折叠动画）=====
             AnimatedVisibility(
                 visible = showSearchBar,
                 enter = fadeIn() + expandVertically(),
@@ -164,8 +167,15 @@ fun FilesScreen(
                 EmptyState(
                     title = if (isFiltered) stringResource(R.string.empty_filter_title) else stringResource(R.string.empty_none_title),
                     desc = if (isFiltered) stringResource(R.string.empty_filter_desc) else stringResource(R.string.empty_none_desc),
-                    actionLabel = if (!isFiltered) stringResource(R.string.sheet_new_title) else null,
-                    onAction = if (!isFiltered) { { onNavigateToNewEditor(SnippetType.HTML.code) } } else null
+                    actionLabel = if (isFiltered) "重置筛选条件" else stringResource(R.string.sheet_new_title),
+                    onAction = if (isFiltered) {
+                        {
+                            viewModel.onSearchQueryChange("")
+                            viewModel.onFilterSelect(FilterOption.All)
+                        }
+                    } else {
+                        { onNavigateToNewEditor(SnippetType.HTML.code) }
+                    }
                 )
             } else {
                 if (uiState.viewMode == ViewMode.FLAT) {

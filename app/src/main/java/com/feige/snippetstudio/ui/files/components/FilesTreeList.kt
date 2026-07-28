@@ -93,78 +93,85 @@ fun FilesTreeList(
                 )
                 var showFolderMenu by remember { mutableStateOf(false) }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = Spacing.S4, vertical = Spacing.S2)
+                        .padding(horizontal = Spacing.S4, vertical = Spacing.S1)
                         .clip(RoundedCornerShape(R_SM))
-                        .clickable { expandedMap[folderName] = !isExpanded }
-                        .padding(vertical = 4.dp, horizontal = 4.dp)
+                        .clickable { expandedMap[folderName] = !isExpanded },
+                    color = if (isExpanded) tc.surface.copy(alpha = 0.6f) else tc.surface.copy(alpha = 0.25f),
+                    shape = RoundedCornerShape(R_SM)
                 ) {
-                    // 展开/折叠 旋转小箭头
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_chevron_right),
-                        contentDescription = "Expand/Collapse",
-                        tint = tc.text2,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .size(18.dp)
-                            .rotate(arrowRotation)
-                    )
-                    Spacer(modifier = Modifier.width(Spacing.S1))
+                            .fillMaxWidth()
+                            .padding(vertical = Spacing.S2, horizontal = Spacing.S2)
+                    ) {
+                        // 展开/折叠 旋转小箭头（带有 0° 到 90° 旋转补间动画）
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_chevron_right),
+                            contentDescription = "Expand/Collapse",
+                            tint = tc.text2,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .rotate(arrowRotation)
+                        )
+                        Spacer(modifier = Modifier.width(Spacing.S1))
 
-                    // 文件夹图标
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_folder),
-                        contentDescription = "Folder Group",
-                        tint = tc.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(Spacing.S2))
+                        // 文件夹大类图标
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_folder),
+                            contentDescription = "Folder Group",
+                            tint = tc.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(Spacing.S2))
 
-                    // 文件夹名称与数量
-                    Text(
-                        text = "$folderName (${folderSnippets.size})",
-                        style = SectionTitleStyle,
-                        color = tc.text,
-                        modifier = Modifier.weight(1f)
-                    )
+                        // 文件夹名称与内部文件数量统计 Badge
+                        Text(
+                            text = "$folderName (${folderSnippets.size})",
+                            style = SectionTitleStyle,
+                            color = tc.text,
+                            modifier = Modifier.weight(1f)
+                        )
 
-                    // 非根目录文件夹展示“更多”操作按钮（如重命名文件夹）
-                    if (!isRootFolder) {
-                        Box {
-                            IconButton(
-                                onClick = { showFolderMenu = true },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_more_vert),
-                                    contentDescription = "Folder Options",
-                                    tint = tc.text2,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
+                        // 非根目录文件夹展示“更多”操作下拉菜单（支持重命名文件夹）
+                        if (!isRootFolder) {
+                            Box {
+                                IconButton(
+                                    onClick = { showFolderMenu = true },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_more_vert),
+                                        contentDescription = "Folder Options",
+                                        tint = tc.text2,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
 
-                            DropdownMenu(
-                                expanded = showFolderMenu,
-                                onDismissRequest = { showFolderMenu = false },
-                                modifier = Modifier.background(tc.surface)
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("重命名文件夹", color = tc.text, style = BodyStyle) },
-                                    onClick = {
-                                        showFolderMenu = false
-                                        onRenameFolder(folderName)
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.ic_edit),
-                                            contentDescription = null,
-                                            tint = tc.primary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                )
+                                DropdownMenu(
+                                    expanded = showFolderMenu,
+                                    onDismissRequest = { showFolderMenu = false },
+                                    modifier = Modifier.background(tc.surface)
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("重命名文件夹", color = tc.text, style = BodyStyle) },
+                                        onClick = {
+                                            showFolderMenu = false
+                                            onRenameFolder(folderName)
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.ic_edit),
+                                                contentDescription = null,
+                                                tint = tc.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

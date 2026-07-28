@@ -9,8 +9,10 @@ import com.feige.snippetstudio.data.repo.SnippetRepository
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.components.FilterOption
 import com.feige.snippetstudio.util.FuzzySearchUtil
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * [SortMode] 列表排序模式枚举。
@@ -128,66 +130,68 @@ class FilesViewModel(
         _filterParams,
         settingsRepository?.settingsFlow ?: flowOf(com.feige.snippetstudio.model.AppSettings())
     ) { allSnippets, allDbFolders, params, settings ->
-        var list = allSnippets
+        withContext(Dispatchers.Default) {
+            var list = allSnippets
 
-        // ===== 1. 按类型 / 收藏状态条件过滤 =====
-        list = when {
-            params.filter.isFav -> list.filter { it.starred }
-            params.filter.type != null -> list.filter { it.type == params.filter.type }
-            else -> list
-        }
-
-        // ===== 2. 按搜索词模糊匹配 (标题 / 正文 / 标签) =====
-        if (params.query.isNotBlank()) {
-            list = list.filter {
-                FuzzySearchUtil.match(it.title, params.query) ||
-                        FuzzySearchUtil.match(it.content, params.query) ||
-                        it.tags.any { tag -> FuzzySearchUtil.match(tag, params.query) }
+            // ===== 1. 按类型 / 收藏状态条件过滤 =====
+            list = when {
+                params.filter.isFav -> list.filter { it.starred }
+                params.filter.type != null -> list.filter { it.type == params.filter.type }
+                else -> list
             }
+
+            // ===== 2. 按搜索词模糊匹配 (标题 / 正文 / 标签) =====
+            if (params.query.isNotBlank()) {
+                list = list.filter {
+                    FuzzySearchUtil.match(it.title, params.query) ||
+                            FuzzySearchUtil.match(it.content, params.query) ||
+                            it.tags.any { tag -> FuzzySearchUtil.match(tag, params.query) }
+                }
+            }
+
+            // ===== 3. 按指定 SortMode 排序模式升降序排列 =====
+            list = when (params.sort) {
+                SortMode.UPDATED_DESC -> list.sortedByDescending { it.updatedAt }
+                SortMode.NAME_ASC -> list.sortedBy { it.displayTitle.lowercase() }
+                SortMode.TYPE_ASC -> list.sortedBy { it.type.displayName }
+            }
+
+            // ===== 4. 优化：高效 O(N) 文件夹树状分组算子 (Folder Tree Grouping) =====
+            // 提取 Room 数据库中 FolderEntity 持久化的所有文件夹与 Snippet 中出现的文件夹，去重合并
+            val dbFolderPaths = allDbFolders.map { it.path }
+            val snippetFolderPaths = allSnippets.map { it.folder }
+            val existingFoldersList = (dbFolderPaths + snippetFolderPaths)
+                .filter { it.isNotBlank() }
+                .distinct()
+                .sorted()
+
+            // 使用 O(N) 的 groupBy 单次遍历快速收集已知片段
+            val snippetsByFolder = list.groupBy { it.folder }
+
+            // 使用 LinkedHashMap 保持根目录优先及字母排序顺序
+            val groupedMap = LinkedHashMap<String, List<Snippet>>()
+            
+            // A. 插入根目录 Snippet (folder 为空的片段)
+            groupedMap["根目录"] = snippetsByFolder[""] ?: emptyList()
+
+            // B. 遍历已知文件夹，保证即使是空文件夹也能正常占位展示
+            existingFoldersList.forEach { folderName ->
+                groupedMap[folderName] = snippetsByFolder[folderName] ?: emptyList()
+            }
+
+            FilesUiState(
+                snippets = list,
+                groupedFolders = groupedMap,
+                existingFolders = existingFoldersList,
+                searchQuery = params.query,
+                filterOption = params.filter,
+                sortMode = params.sort,
+                viewMode = params.viewMode,
+                densityMode = params.densityMode,
+                cardClickAction = settings.cardClickAction,
+                isLoading = false
+            )
         }
-
-        // ===== 3. 按指定 SortMode 排序模式升降序排列 =====
-        list = when (params.sort) {
-            SortMode.UPDATED_DESC -> list.sortedByDescending { it.updatedAt }
-            SortMode.NAME_ASC -> list.sortedBy { it.displayTitle.lowercase() }
-            SortMode.TYPE_ASC -> list.sortedBy { it.type.displayName }
-        }
-
-        // ===== 4. 优化：高效 O(N) 文件夹树状分组算子 (Folder Tree Grouping) =====
-        // 提取 Room 数据库中 FolderEntity 持久化的所有文件夹与 Snippet 中出现的文件夹，去重合并
-        val dbFolderPaths = allDbFolders.map { it.path }
-        val snippetFolderPaths = allSnippets.map { it.folder }
-        val existingFoldersList = (dbFolderPaths + snippetFolderPaths)
-            .filter { it.isNotBlank() }
-            .distinct()
-            .sorted()
-
-        // 使用 O(N) 的 groupBy 单次遍历快速收集已知片段
-        val snippetsByFolder = list.groupBy { it.folder }
-
-        // 使用 LinkedHashMap 保持根目录优先及字母排序顺序
-        val groupedMap = LinkedHashMap<String, List<Snippet>>()
-        
-        // A. 插入根目录 Snippet (folder 为空的片段)
-        groupedMap["根目录"] = snippetsByFolder[""] ?: emptyList()
-
-        // B. 遍历已知文件夹，保证即使是空文件夹也能正常占位展示
-        existingFoldersList.forEach { folderName ->
-            groupedMap[folderName] = snippetsByFolder[folderName] ?: emptyList()
-        }
-
-        FilesUiState(
-            snippets = list,
-            groupedFolders = groupedMap,
-            existingFolders = existingFoldersList,
-            searchQuery = params.query,
-            filterOption = params.filter,
-            sortMode = params.sort,
-            viewMode = params.viewMode,
-            densityMode = params.densityMode,
-            cardClickAction = settings.cardClickAction,
-            isLoading = false
-        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

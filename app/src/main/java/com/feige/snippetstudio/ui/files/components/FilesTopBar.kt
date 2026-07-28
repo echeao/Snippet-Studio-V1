@@ -1,5 +1,6 @@
 package com.feige.snippetstudio.ui.files.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -80,12 +81,16 @@ fun FilesTopBar(
             }
 
             // ===== 按钮 1: 切换【大卡片 / 高密度】显示密度模式 =====
+            val compactBgColor by animateColorAsState(
+                targetValue = if (densityMode == DensityMode.COMPACT) tc.primary.copy(alpha = 0.15f) else Color.Transparent,
+                label = "compactBgColor"
+            )
             IconButton(
                 onClick = onToggleDensityClick,
                 modifier = Modifier
                     .testTag("files_density_mode_btn")
                     .clip(RoundedCornerShape(R_SM))
-                    .background(if (densityMode == DensityMode.COMPACT) tc.primary.copy(alpha = 0.12f) else Color.Transparent)
+                    .background(compactBgColor)
             ) {
                 Icon(
                     painter = painterResource(id = if (densityMode == DensityMode.COMFORT) R.drawable.ic_list else R.drawable.ic_grid),
@@ -96,12 +101,16 @@ fun FilesTopBar(
             }
 
             // ===== 按钮 2: 切换【平铺 / 树状】视图结构 =====
+            val treeBgColor by animateColorAsState(
+                targetValue = if (viewMode == ViewMode.TREE) tc.primary.copy(alpha = 0.15f) else Color.Transparent,
+                label = "treeBgColor"
+            )
             IconButton(
                 onClick = onToggleViewModeClick,
                 modifier = Modifier
                     .testTag("files_view_mode_btn")
                     .clip(RoundedCornerShape(R_SM))
-                    .background(if (viewMode == ViewMode.TREE) tc.primary.copy(alpha = 0.12f) else Color.Transparent)
+                    .background(treeBgColor)
             ) {
                 Icon(
                     painter = painterResource(id = if (viewMode == ViewMode.FLAT) R.drawable.ic_tree else R.drawable.ic_treetolist),
