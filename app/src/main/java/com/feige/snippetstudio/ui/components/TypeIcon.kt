@@ -35,6 +35,7 @@ fun TypeIcon(
         SnippetType.JS -> iconColors.js
         SnippetType.MARKDOWN -> iconColors.md
         SnippetType.PROMPT -> iconColors.prompt
+        SnippetType.JAVA -> iconColors.html // 使用暖色调突出 Java
         SnippetType.GENERAL -> iconColors.prompt
     }
     val bg = if (tc.isDark) fg.copy(alpha = 0.2f) else {
@@ -43,6 +44,7 @@ fun TypeIcon(
             SnippetType.JS -> C_JsBg
             SnippetType.MARKDOWN -> C_MdBg
             SnippetType.PROMPT -> C_PromptBg
+            SnippetType.JAVA -> C_HtmlBg
             SnippetType.GENERAL -> C_PromptBg
         }
     }
@@ -101,6 +103,15 @@ fun TypeIcon(
                     contentDescription = "Prompt",
                     tint = fg,
                     modifier = Modifier.size(size * 0.55f)
+                )
+            }
+            SnippetType.JAVA -> {
+                Text(
+                    text = "J",
+                    color = fg,
+                    fontSize = (size.value * 0.45f).sp,
+                    fontWeight = FontWeight.W900,
+                    fontFamily = FontFamily.Monospace
                 )
             }
             SnippetType.GENERAL -> {

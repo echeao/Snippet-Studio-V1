@@ -78,6 +78,7 @@ fun CodeEditor(
         SnippetType.JS -> SyntaxLanguage.JS
         SnippetType.MARKDOWN -> SyntaxLanguage.MARKDOWN
         SnippetType.PROMPT -> SyntaxLanguage.PROMPT
+        SnippetType.JAVA -> SyntaxLanguage.JAVA
         SnippetType.GENERAL -> SyntaxLanguage.PLAIN
     }
 

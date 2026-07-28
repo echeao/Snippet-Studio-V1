@@ -147,6 +147,10 @@ object SyntaxHighlighter {
     private val MD_CODE_PATTERN = Pattern.compile(
         "`[^`]+`"
     )
+    /** Markdown 多行围栏代码块正则（捕获组 1: 语言标识；捕获组 2: 代码正文） */
+    private val MD_CODE_BLOCK_PATTERN = Pattern.compile(
+        "(?ms)^```([a-zA-Z0-9_+#-]*)\\r?\\n(.*?)(?:^```|$)"
+    )
 
     private val PROMPT_VAR_PATTERN = Pattern.compile(
         "\\{\\{?[a-zA-Z0-9_\\u4e00-\\u9fa5]+\\}?\\}|\\$[a-zA-Z0-9_]+"
@@ -277,6 +281,7 @@ object SyntaxHighlighter {
                 SnippetType.HTML -> highlightHtml(text, isDark)
                 SnippetType.MARKDOWN -> highlightMarkdown(text, isDark)
                 SnippetType.PROMPT -> highlightPrompt(text, isDark)
+                SnippetType.JAVA -> highlightJava(text, isDark)
                 SnippetType.GENERAL -> highlightPrompt(text, isDark)
             }
         }
@@ -572,24 +577,450 @@ object SyntaxHighlighter {
         }
     }
 
-    /** Markdown 标题与加粗代码语法高亮 */
+    /**
+     * 根据围栏代码块中的语言标识串（如 "java", "py", "js"）或文本特征推断对应的 [SyntaxLanguage]。
+     *
+     * @param tag 语言标签串 (如 "java", "javascript", "python")
+     * @param content 代码块内部正文
+     * @return 识别出的 [SyntaxLanguage]
+     */
+    private fun resolveLanguageFromTag(tag: String, content: String): SyntaxLanguage {
+        val cleanTag = tag.trim().lowercase()
+        return when (cleanTag) {
+            "java" -> SyntaxLanguage.JAVA
+            "js", "javascript", "ts", "typescript", "mjs" -> SyntaxLanguage.JS
+            "html", "htm" -> SyntaxLanguage.HTML
+            "css", "scss", "less" -> SyntaxLanguage.CSS
+            "json" -> SyntaxLanguage.JSON
+            "py", "python" -> SyntaxLanguage.PYTHON
+            "xml", "svg" -> SyntaxLanguage.XML
+            "yaml", "yml" -> SyntaxLanguage.YAML
+            "sh", "bash", "zsh", "shell" -> SyntaxLanguage.SHELL
+            "c", "cpp", "c++", "h", "hpp" -> SyntaxLanguage.CPP
+            "go", "golang" -> SyntaxLanguage.GO
+            "rs", "rust" -> SyntaxLanguage.RUST
+            else -> SyntaxLanguageDetector.fromContent(content)
+        }
+    }
+
+    /**
+     * 在文本指定区间段应用特定编程语言的高亮算法（用于 Markdown 嵌套代码块高亮）。
+     *
+     * @param codeText 代码块内部正文
+     * @param language 目标语法语言 [SyntaxLanguage]
+     * @param offset 代码块内部起点在全文中的绝对字符偏移量
+     * @param isDark 是否为深色模式
+     */
+    private fun AnnotatedString.Builder.applyLanguageHighlightInRange(
+        codeText: String,
+        language: SyntaxLanguage,
+        offset: Int,
+        isDark: Boolean
+    ) {
+        when (language) {
+            SyntaxLanguage.JAVA -> applyJavaHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.JS -> applyJsHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.CSS -> applyCssHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.PYTHON -> applyPythonHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.JSON -> applyJsonHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.SHELL -> applyShellHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.CPP -> applyCppHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.GO -> applyGoHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.RUST -> applyRustHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.YAML -> applyYamlHighlightInRange(codeText, offset, isDark)
+            SyntaxLanguage.HTML, SyntaxLanguage.XML -> applyXmlHighlightInRange(codeText, offset, isDark)
+            else -> { /* PLAIN / PROMPT 保持默认样式 */ }
+        }
+    }
+
+    /**
+     * 在指定偏移范围内应用 Python 语法高亮。
+     */
+    private fun AnnotatedString.Builder.applyPythonHighlightInRange(pyText: String, offset: Int, isDark: Boolean) {
+        val kwMatcher = PYTHON_KEYWORD_PATTERN.matcher(pyText)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, offset + kwMatcher.start(), offset + kwMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(pyText)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, offset + numMatcher.start(), offset + numMatcher.end())
+        }
+
+        val strMatcher = PYTHON_STRING_PATTERN.matcher(pyText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+
+        val decMatcher = PYTHON_DECORATOR_PATTERN.matcher(pyText)
+        val decStyle = getDecoratorStyle(isDark)
+        while (decMatcher.find()) {
+            addStyle(decStyle, offset + decMatcher.start(), offset + decMatcher.end())
+        }
+
+        val cmtMatcher = PYTHON_COMMENT_PATTERN.matcher(pyText)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, offset + cmtMatcher.start(), offset + cmtMatcher.end())
+        }
+    }
+
+    /**
+     * 在指定偏移范围内应用 JSON 语法高亮。
+     */
+    private fun AnnotatedString.Builder.applyJsonHighlightInRange(jsonText: String, offset: Int, isDark: Boolean) {
+        val keyMatcher = JSON_KEY_PATTERN.matcher(jsonText)
+        val keyStyle = getTagStyle(isDark)
+        while (keyMatcher.find()) {
+            addStyle(keyStyle, offset + keyMatcher.start(), offset + keyMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(jsonText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(jsonText)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, offset + numMatcher.start(), offset + numMatcher.end())
+        }
+
+        val boolMatcher = JSON_BOOL_PATTERN.matcher(jsonText)
+        val boolStyle = getKeywordStyle(isDark)
+        while (boolMatcher.find()) {
+            addStyle(boolStyle, offset + boolMatcher.start(), offset + boolMatcher.end())
+        }
+    }
+
+    /**
+     * 在指定偏移范围内应用 Shell/Bash 语法高亮。
+     */
+    private fun AnnotatedString.Builder.applyShellHighlightInRange(shText: String, offset: Int, isDark: Boolean) {
+        val kwMatcher = SHELL_KEYWORD_PATTERN.matcher(shText)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, offset + kwMatcher.start(), offset + kwMatcher.end())
+        }
+
+        val varMatcher = SHELL_VAR_PATTERN.matcher(shText)
+        val varStyle = getShellVarStyle(isDark)
+        while (varMatcher.find()) {
+            addStyle(varStyle, offset + varMatcher.start(), offset + varMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(shText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+
+        val cmtMatcher = SHELL_COMMENT_PATTERN.matcher(shText)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, offset + cmtMatcher.start(), offset + cmtMatcher.end())
+        }
+    }
+
+    /**
+     * 在指定偏移范围内应用 XML/HTML 语法高亮。
+     */
+    private fun AnnotatedString.Builder.applyXmlHighlightInRange(xmlText: String, offset: Int, isDark: Boolean) {
+        val tagMatcher = HTML_TAG_PATTERN.matcher(xmlText)
+        val tagStyle = getTagStyle(isDark)
+        while (tagMatcher.find()) {
+            addStyle(tagStyle, offset + tagMatcher.start(), offset + tagMatcher.end())
+        }
+
+        val attrMatcher = HTML_ATTR_NAME_PATTERN.matcher(xmlText)
+        val attrStyle = getAttrStyle(isDark)
+        while (attrMatcher.find()) {
+            addStyle(attrStyle, offset + attrMatcher.start(), offset + attrMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(xmlText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+
+        val cmtMatcher = HTML_COMMENT_PATTERN.matcher(xmlText)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, offset + cmtMatcher.start(), offset + cmtMatcher.end())
+        }
+    }
+
+    /**
+     * 在指定偏移范围内应用 YAML 语法高亮。
+     */
+    private fun AnnotatedString.Builder.applyYamlHighlightInRange(yamlText: String, offset: Int, isDark: Boolean) {
+        val keyMatcher = YAML_KEY_PATTERN.matcher(yamlText)
+        val keyStyle = getYamlKeyStyle(isDark)
+        while (keyMatcher.find()) {
+            addStyle(keyStyle, offset + keyMatcher.start(), offset + keyMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(yamlText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(yamlText)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, offset + numMatcher.start(), offset + numMatcher.end())
+        }
+
+        val cmtMatcher = YAML_COMMENT_PATTERN.matcher(yamlText)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, offset + cmtMatcher.start(), offset + cmtMatcher.end())
+        }
+    }
+
+    /**
+     * 在指定偏移范围内应用 Java 语法高亮。
+     */
+    private fun AnnotatedString.Builder.applyJavaHighlightInRange(javaText: String, offset: Int, isDark: Boolean) {
+        val funcMatcher = JS_FUNC_CALL_PATTERN.matcher(javaText)
+        val funcStyle = getFunctionStyle(isDark)
+        while (funcMatcher.find()) {
+            addStyle(funcStyle, offset + funcMatcher.start(), offset + funcMatcher.end())
+        }
+
+        val annoMatcher = JAVA_ANNOTATION_PATTERN.matcher(javaText)
+        val annoStyle = getDecoratorStyle(isDark)
+        while (annoMatcher.find()) {
+            addStyle(annoStyle, offset + annoMatcher.start(), offset + annoMatcher.end())
+        }
+
+        val kwMatcher = JAVA_KEYWORD_PATTERN.matcher(javaText)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, offset + kwMatcher.start(), offset + kwMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(javaText)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, offset + numMatcher.start(), offset + numMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(javaText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+
+        val cmtMatcher = JS_COMMENT_PATTERN.matcher(javaText)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, offset + cmtMatcher.start(), offset + cmtMatcher.end())
+        }
+    }
+
+    /**
+     * 在指定偏移范围内应用 C/C++ 语法高亮。
+     */
+    private fun AnnotatedString.Builder.applyCppHighlightInRange(cppText: String, offset: Int, isDark: Boolean) {
+        val prepMatcher = CPP_PREPROCESSOR_PATTERN.matcher(cppText)
+        val prepStyle = getTagStyle(isDark)
+        while (prepMatcher.find()) {
+            addStyle(prepStyle, offset + prepMatcher.start(), offset + prepMatcher.end())
+        }
+
+        val funcMatcher = JS_FUNC_CALL_PATTERN.matcher(cppText)
+        val funcStyle = getFunctionStyle(isDark)
+        while (funcMatcher.find()) {
+            addStyle(funcStyle, offset + funcMatcher.start(), offset + funcMatcher.end())
+        }
+
+        val kwMatcher = CPP_KEYWORD_PATTERN.matcher(cppText)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, offset + kwMatcher.start(), offset + kwMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(cppText)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, offset + numMatcher.start(), offset + numMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(cppText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+
+        val cmtMatcher = JS_COMMENT_PATTERN.matcher(cppText)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, offset + cmtMatcher.start(), offset + cmtMatcher.end())
+        }
+    }
+
+    /**
+     * 在指定偏移范围内应用 Go 语法高亮。
+     */
+    private fun AnnotatedString.Builder.applyGoHighlightInRange(goText: String, offset: Int, isDark: Boolean) {
+        val funcMatcher = JS_FUNC_CALL_PATTERN.matcher(goText)
+        val funcStyle = getFunctionStyle(isDark)
+        while (funcMatcher.find()) {
+            addStyle(funcStyle, offset + funcMatcher.start(), offset + funcMatcher.end())
+        }
+
+        val kwMatcher = GO_KEYWORD_PATTERN.matcher(goText)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, offset + kwMatcher.start(), offset + kwMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(goText)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, offset + numMatcher.start(), offset + numMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(goText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+
+        val rawStrMatcher = GO_RAW_STRING_PATTERN.matcher(goText)
+        while (rawStrMatcher.find()) {
+            addStyle(strStyle, offset + rawStrMatcher.start(), offset + rawStrMatcher.end())
+        }
+
+        val cmtMatcher = JS_COMMENT_PATTERN.matcher(goText)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, offset + cmtMatcher.start(), offset + cmtMatcher.end())
+        }
+    }
+
+    /**
+     * 在指定偏移范围内应用 Rust 语法高亮。
+     */
+    private fun AnnotatedString.Builder.applyRustHighlightInRange(rustText: String, offset: Int, isDark: Boolean) {
+        val attrMatcher = RUST_ATTRIBUTE_PATTERN.matcher(rustText)
+        val attrStyle = getDecoratorStyle(isDark)
+        while (attrMatcher.find()) {
+            addStyle(attrStyle, offset + attrMatcher.start(), offset + attrMatcher.end())
+        }
+
+        val macroMatcher = RUST_MACRO_PATTERN.matcher(rustText)
+        val macroStyle = getTagStyle(isDark)
+        while (macroMatcher.find()) {
+            addStyle(macroStyle, offset + macroMatcher.start(), offset + macroMatcher.end())
+        }
+
+        val funcMatcher = JS_FUNC_CALL_PATTERN.matcher(rustText)
+        val funcStyle = getFunctionStyle(isDark)
+        while (funcMatcher.find()) {
+            addStyle(funcStyle, offset + funcMatcher.start(), offset + funcMatcher.end())
+        }
+
+        val kwMatcher = RUST_KEYWORD_PATTERN.matcher(rustText)
+        val kwStyle = getKeywordStyle(isDark)
+        while (kwMatcher.find()) {
+            addStyle(kwStyle, offset + kwMatcher.start(), offset + kwMatcher.end())
+        }
+
+        val numMatcher = NUMBER_PATTERN.matcher(rustText)
+        val numStyle = getNumberStyle(isDark)
+        while (numMatcher.find()) {
+            addStyle(numStyle, offset + numMatcher.start(), offset + numMatcher.end())
+        }
+
+        val strMatcher = JS_STRING_PATTERN.matcher(rustText)
+        val strStyle = getStringStyle(isDark)
+        while (strMatcher.find()) {
+            addStyle(strStyle, offset + strMatcher.start(), offset + strMatcher.end())
+        }
+
+        val cmtMatcher = JS_COMMENT_PATTERN.matcher(rustText)
+        val cmtStyle = getCommentStyle(isDark)
+        while (cmtMatcher.find()) {
+            addStyle(cmtStyle, offset + cmtMatcher.start(), offset + cmtMatcher.end())
+        }
+    }
+
+    /** Markdown 标题、加粗以及多语言内嵌围栏代码块语法高亮 */
     private fun AnnotatedString.Builder.highlightMarkdown(text: String, isDark: Boolean) {
+        val codeBlockRanges = mutableListOf<IntRange>()
+
+        // 1. 优先提取多行围栏代码块 (```java, ```js 等)，进行局部精细代码高亮
+        val blockMatcher = MD_CODE_BLOCK_PATTERN.matcher(text)
+        val codeBlockBorderStyle = SpanStyle(
+            color = if (isDark) Color(0xFF82AAFF) else Color(0xFF1565C0),
+            fontWeight = FontWeight.Bold
+        )
+
+        while (blockMatcher.find()) {
+            val fullStart = blockMatcher.start()
+            val fullEnd = blockMatcher.end()
+            codeBlockRanges.add(fullStart until fullEnd)
+
+            val langTag = blockMatcher.group(1)?.trim()?.lowercase() ?: ""
+            val innerStart = blockMatcher.start(2)
+            val innerEnd = blockMatcher.end(2)
+
+            // 高亮 ``` 代码块界定符号
+            addStyle(codeBlockBorderStyle, fullStart, (fullStart + 3 + langTag.length).coerceAtMost(fullEnd))
+            if (text.substring(fullStart, fullEnd).endsWith("```")) {
+                addStyle(codeBlockBorderStyle, (fullEnd - 3).coerceAtLeast(fullStart), fullEnd)
+            }
+
+            if (innerStart < innerEnd) {
+                val codeContent = text.substring(innerStart, innerEnd)
+                val lang = resolveLanguageFromTag(langTag, codeContent)
+                applyLanguageHighlightInRange(codeContent, lang, innerStart, isDark)
+            }
+        }
+
+        fun isInsideCodeBlock(start: Int, end: Int): Boolean {
+            return codeBlockRanges.any { range -> start >= range.first && end <= (range.last + 1) }
+        }
+
+        // 2. 标粗 Markdown 标题 (避开代码块内部)
         val headerMatcher = MD_HEADER_PATTERN.matcher(text)
         val headerStyle = getHeaderStyle(isDark)
         while (headerMatcher.find()) {
-            addStyle(headerStyle, headerMatcher.start(), headerMatcher.end())
+            val start = headerMatcher.start()
+            val end = headerMatcher.end()
+            if (!isInsideCodeBlock(start, end)) {
+                addStyle(headerStyle, start, end)
+            }
         }
 
+        // 3. 标粗 Markdown **粗体** 文本 (避开代码块内部)
         val boldMatcher = MD_BOLD_PATTERN.matcher(text)
         val boldStyle = SpanStyle(fontWeight = FontWeight.Bold)
         while (boldMatcher.find()) {
-            addStyle(boldStyle, boldMatcher.start(), boldMatcher.end())
+            val start = boldMatcher.start()
+            val end = boldMatcher.end()
+            if (!isInsideCodeBlock(start, end)) {
+                addStyle(boldStyle, start, end)
+            }
         }
 
+        // 4. 高亮 Markdown 行内 `代码` 标记 (避开代码块内部)
         val codeMatcher = MD_CODE_PATTERN.matcher(text)
         val codeStyle = getStringStyle(isDark)
         while (codeMatcher.find()) {
-            addStyle(codeStyle, codeMatcher.start(), codeMatcher.end())
+            val start = codeMatcher.start()
+            val end = codeMatcher.end()
+            if (!isInsideCodeBlock(start, end)) {
+                addStyle(codeStyle, start, end)
+            }
         }
     }
 

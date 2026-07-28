@@ -35,8 +35,9 @@ object MarkdownRenderer {
                     h2 { font-size: 18px; margin-top: 14px; }
                     h3 { font-size: 16px; margin-top: 12px; }
                     code { background: #EFEDFF; color: #5B4FE0; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
-                    pre { background: #F5F6FA; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: monospace; }
-                    pre code { background: transparent; padding: 0; color: inherit; }
+                    pre { background: #F5F6FA; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: monospace; position: relative; border: 1px solid #E7E8F0; }
+                    .code-lang-badge { display: inline-block; font-size: 11px; font-weight: bold; text-transform: uppercase; color: #5B4FE0; background: rgba(91,79,224,0.1); padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; }
+                    pre code { background: transparent; padding: 0; color: inherit; display: block; }
                     ul { padding-left: 20px; }
                     a { color: #5B4FE0; text-decoration: none; }
                     p { margin: 8px 0; }
@@ -48,13 +49,18 @@ object MarkdownRenderer {
         for (line in lines) {
             val trimmed = line.trim()
 
-            // 匹配多行代码块分隔线 (```)
+            // 匹配多行围栏代码块分隔线 (```lang)
             if (trimmed.startsWith("```")) {
                 if (inCodeBlock) {
                     htmlBuilder.append("</code></pre>\n")
                     inCodeBlock = false
                 } else {
-                    htmlBuilder.append("<pre><code>")
+                    val lang = trimmed.substring(3).trim()
+                    if (lang.isNotEmpty()) {
+                        htmlBuilder.append("<pre><span class=\"code-lang-badge\">").append(escapeHtml(lang)).append("</span><code class=\"language-").append(escapeHtml(lang)).append("\">")
+                    } else {
+                        htmlBuilder.append("<pre><code>")
+                    }
                     inCodeBlock = true
                 }
                 continue

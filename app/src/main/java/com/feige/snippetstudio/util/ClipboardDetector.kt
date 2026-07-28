@@ -96,6 +96,7 @@ object ClipboardDetector {
     private fun inferType(text: String): SnippetType {
         return when {
             text.contains("<") && text.contains(">") -> SnippetType.HTML
+            text.contains(Regex("\\b(public\\s+class|package\\s+[a-zA-Z0-9_.]+|import\\s+java|System\\.out\\.print)\\b")) -> SnippetType.JAVA
             text.contains(Regex("function|const |let |=>|console\\.")) -> SnippetType.JS
             text.contains(Regex("(^#|\\*\\*|^\\s*- )", RegexOption.MULTILINE)) -> SnippetType.MARKDOWN
             else -> SnippetType.PROMPT

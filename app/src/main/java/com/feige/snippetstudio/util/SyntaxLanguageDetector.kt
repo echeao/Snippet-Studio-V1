@@ -56,12 +56,13 @@ object SyntaxLanguageDetector {
         val byExtension = fromFileName(fileName)
         if (byExtension != SyntaxLanguage.PLAIN) return byExtension
 
-        // 回退到 SnippetType 业务类型映射
+        // 回退到 SnippetType 业务类型映射（当扩展名无法推断时，按选择的片段类型映射默认高亮）
         return when (snippetType) {
             SnippetType.HTML -> SyntaxLanguage.HTML
             SnippetType.JS -> SyntaxLanguage.JS
             SnippetType.MARKDOWN -> SyntaxLanguage.MARKDOWN
             SnippetType.PROMPT -> SyntaxLanguage.PROMPT
+            SnippetType.JAVA -> SyntaxLanguage.JAVA
             SnippetType.GENERAL -> SyntaxLanguage.PLAIN
         }
     }

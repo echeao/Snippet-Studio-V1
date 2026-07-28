@@ -16,6 +16,7 @@ enum class SnippetType(val code: String, val displayName: String, val extension:
     JS("js", "JavaScript", ".js"),
     MARKDOWN("markdown", "Markdown", ".md"),
     PROMPT("prompt", "Prompt", ".txt"),
+    JAVA("java", "Java", ".java"),
     GENERAL("general", "通用文本", ".txt");
 
     companion object {
@@ -25,14 +26,20 @@ enum class SnippetType(val code: String, val displayName: String, val extension:
          * 教学解析：
          * Kotlin 1.9+ 推荐使用 `entries` 代替传统的 `values()`，`entries` 返回不变集合 (EnumEntries)，
          * 性能更好且避免了每次调用都分配新 Array 对象的开销。
+         *
+         * @param code 类型的唯一标识代码 (如 "html", "java", "js")
+         * @return 对应的 [SnippetType] 枚举；若未找到匹配则回退返回 GENERAL 通用类型
          */
         fun fromCode(code: String): SnippetType {
             return entries.firstOrNull { it.code.lowercase() == code.lowercase() } ?: GENERAL
         }
 
         /**
-         * 根据文件名后缀推断代码片段类型 [SnippetType]。
+         * 根据文件名后缀自动推断代码片段业务类型 [SnippetType]。
          * 使用 `substringAfterLast` 获取包含点之后的扩展名并转小写比对。
+         *
+         * @param fileName 带有扩展名或无扩展名的文件名（如 "Main.java", "script.js"）
+         * @return 推断出的 [SnippetType] 枚举
          */
         fun fromFileName(fileName: String): SnippetType {
             val ext = if (fileName.contains('.')) ".${fileName.substringAfterLast('.').lowercase()}" else ""
@@ -41,6 +48,7 @@ enum class SnippetType(val code: String, val displayName: String, val extension:
                 ".js", ".jsx", ".ts", ".tsx", ".mjs" -> JS
                 ".md", ".markdown" -> MARKDOWN
                 ".txt", ".prompt" -> PROMPT
+                ".java" -> JAVA
                 else -> GENERAL
             }
         }

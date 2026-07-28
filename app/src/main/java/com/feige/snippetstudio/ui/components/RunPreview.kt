@@ -226,7 +226,7 @@ fun RunPreview(
                 )
             }
 
-            SnippetType.PROMPT, SnippetType.GENERAL -> {
+            SnippetType.PROMPT, SnippetType.JAVA, SnippetType.GENERAL -> {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
