@@ -4,16 +4,251 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Snippet Studio Code Editor</title>
-    <link rel="stylesheet" href="editor.css">
-    <script src="editor.js" defer></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100% !important;
+            height: 100% !important;
+            overflow: hidden !important;
+            background-color: #121418 !important;
+            color: #e6edf3 !important;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 14px;
+        }
+
+        #editor-wrapper {
+            display: flex !important;
+            width: 100% !important;
+            height: 100% !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+
+        /* 左侧行号装订轨 */
+        #gutter {
+            width: 48px !important;
+            height: 100% !important;
+            background-color: #1a1d24 !important;
+            color: #6e7681 !important;
+            text-align: right !important;
+            padding-right: 8px !important;
+            padding-top: 12px !important;
+            user-select: none !important;
+            font-size: 12px !important;
+            line-height: 1.6 !important;
+            overflow: hidden !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+            flex-shrink: 0 !important;
+        }
+
+        .gutter-line {
+            height: 22.4px; /* 14px * 1.6 */
+        }
+
+        .gutter-line.active {
+            color: #58a6ff !important;
+            font-weight: bold !important;
+        }
+
+        /* 右侧文本输入区域 */
+        #textarea-container {
+            flex: 1 !important;
+            height: 100% !important;
+            position: relative !important;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+            padding-top: 12px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+        }
+
+        #code-input {
+            display: block !important;
+            width: 100% !important;
+            min-height: 100% !important;
+            background: transparent !important;
+            border: none !important;
+            outline: none !important;
+            resize: none !important;
+            color: #e6edf3 !important;
+            font-family: inherit !important;
+            font-size: inherit !important;
+            line-height: 1.6 !important;
+            white-space: pre-wrap !important;
+            word-break: break-all !important;
+            tab-size: 4 !important;
+            padding-bottom: 160px !important; /* 末行超越缓冲区 Scroll Beyond Last Line */
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        /* 滚动条样式美化 */
+        #textarea-container::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        #textarea-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        #textarea-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+    </style>
 </head>
 <body>
-    <!-- 纯本地离线代码编辑器容器结构 -->
     <div id="editor-wrapper">
         <div id="gutter"></div>
         <div id="textarea-container">
             <textarea id="code-input" spellcheck="false" autocomplete="off" autocapitalize="off" autofocus></textarea>
         </div>
     </div>
+
+    <script>
+        /**
+         * Snippet Studio Inline Code Editor Driver
+         * 全内联高可靠离线驱动程序
+         */
+        var textarea = null;
+        var gutter = null;
+        var container = null;
+        var isUpdatingFromNative = false;
+        var currentLineCount = 0;
+        var pendingCode = null; // 还没拿到 DOM 时的挂起代码缓存
+
+        function initEditor() {
+            textarea = document.getElementById('code-input');
+            gutter = document.getElementById('gutter');
+            container = document.getElementById('textarea-container');
+
+            if (!textarea || !gutter || !container) return;
+
+            // 1. 监听打字变动
+            textarea.addEventListener('input', function() {
+                if (!isUpdatingFromNative) {
+                    updateGutter();
+                    notifyCodeChange();
+                }
+            });
+
+            // 2. 监听选区光标
+            textarea.addEventListener('keyup', updateCursorPosition);
+            textarea.addEventListener('click', updateCursorPosition);
+            textarea.addEventListener('select', updateCursorPosition);
+
+            // 3. 同步滚动
+            container.addEventListener('scroll', function() {
+                gutter.scrollTop = container.scrollTop;
+            });
+
+            // 如果之前有挂起的初始代码，第一时间冲刷灌入！
+            if (pendingCode !== null) {
+                setCodeContent(pendingCode, 'html');
+                pendingCode = null;
+            }
+
+            // 4. 通知 Native 就绪
+            if (window.AndroidBridge) {
+                window.AndroidBridge.onEditorReady();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initEditor);
+        if (document.readyState === 'interactive' || document.readyState === 'complete') {
+            initEditor();
+        }
+
+        function updateGutter() {
+            if (!textarea || !gutter) return;
+            var lines = textarea.value.split('\n');
+            var lineCount = lines.length;
+            if (lineCount !== currentLineCount) {
+                currentLineCount = lineCount;
+                var gutterHtml = '';
+                for (var i = 1; i <= lineCount; i++) {
+                    gutterHtml += '<div class="gutter-line" id="line-' + i + '">' + i + '</div>';
+                }
+                gutterHtml += '<div style="height: 160px;"></div>';
+                gutter.innerHTML = gutterHtml;
+            }
+        }
+
+        function updateCursorPosition() {
+            if (!textarea || !window.AndroidBridge) return;
+            var pos = textarea.selectionStart;
+            var textBeforeCaret = textarea.value.substring(0, pos);
+            var lines = textBeforeCaret.split('\n');
+            var currentLine = lines.length - 1;
+            var currentCol = lines[lines.length - 1].length;
+
+            window.AndroidBridge.onCursorChanged(currentLine, currentCol);
+        }
+
+        function notifyCodeChange() {
+            if (window.AndroidBridge && textarea) {
+                window.AndroidBridge.onCodeChanged(textarea.value);
+            }
+        }
+
+        // ===== 供 Android Native 调用的 JS 接口通道 =====
+
+        function setCodeContent(code, language) {
+            if (!textarea) {
+                pendingCode = code;
+                return;
+            }
+            isUpdatingFromNative = true;
+            if (textarea.value !== code) {
+                textarea.value = code;
+                updateGutter();
+            }
+            isUpdatingFromNative = false;
+        }
+
+        function setFontSizeSp(fontSp) {
+            if (!document.body || !textarea) return;
+            document.body.style.fontSize = fontSp + 'px';
+        }
+
+        function setWordWrapEnabled(enabled) {
+            if (!textarea) return;
+            textarea.style.whiteSpace = enabled ? 'pre-wrap' : 'pre';
+        }
+
+        function setThemeIsDark(isDark) {
+            if (!document.body || !gutter || !textarea) return;
+            if (isDark) {
+                document.body.style.backgroundColor = '#121418';
+                document.body.style.color = '#e6edf3';
+                textarea.style.color = '#e6edf3';
+                gutter.style.backgroundColor = '#1a1d24';
+                gutter.style.color = '#6e7681';
+            } else {
+                document.body.style.backgroundColor = '#ffffff';
+                document.body.style.color = '#24292f';
+                textarea.style.color = '#24292f';
+                gutter.style.backgroundColor = '#f6f8fa';
+                gutter.style.color = '#8c959f';
+            }
+        }
+
+        function insertSymbolText(symbol) {
+            if (!textarea) return;
+            var start = textarea.selectionStart;
+            var end = textarea.selectionEnd;
+            var text = textarea.value;
+            textarea.value = text.substring(0, start) + symbol + text.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + symbol.length;
+            textarea.focus();
+            updateGutter();
+            notifyCodeChange();
+        }
+    </script>
 </body>
 </html>

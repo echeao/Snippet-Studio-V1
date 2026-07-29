@@ -14,12 +14,12 @@ import com.feige.snippetstudio.ui.theme.LocalThemeColors
 import org.json.JSONObject
 
 /**
- * [WebCodeEditor] 100% 本地离线自包含的高性能代码编辑器组件。
+ * [WebCodeEditor] 100% 本地离线单文件全内联自包含的高性能代码编辑器组件。
  *
- * 时序与线程安全重构：
- * 1. **PageFinished 双重判定**：在 WebViewClient 的 [WebViewClient.onPageFinished] 中确保页面 DOM 完全加载后再注入初始代码。
- * 2. **Post 线程安全执行**：所有 [WebView.evaluateJavascript] 指令统一包裹在 [WebView.post] 中执行，100% 确保处于 UI 主线程与就绪上下文。
- * 3. **JSONObject.quote 安全转义**：彻底解决复杂文本、换行符 `\n` 引发的 SyntaxError 问题。
+ * 架构重构亮点：
+ * 1. **废除 remember 闭包**：直接基于 WebView 实例引用做 [executeJs] 调度，绝对消除闭包捕获空对象引发的指令丢弃。
+ * 2. **单文件全内联**：依赖 `file:///android_asset/editor/index.html` 单文件包含，100% 离线秒开零卡死。
+ * 3. **JSONObject.quote 防崩序列化**：对包含换行符与复杂字符的长代码进行官方安全转义。
  *
  * @param textFieldValue 代码与选区信息
  * @param onValueChange 变动回调
@@ -47,15 +47,6 @@ fun WebCodeEditor(
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var isPageLoaded by remember { mutableStateOf(false) }
 
-    // 封装主线程 safePost 方法，确保 evaluateJavascript 不被提前丢弃
-    val runJs: (String) -> Unit = remember(webViewRef) {
-        { jsScript ->
-            webViewRef?.post {
-                webViewRef?.evaluateJavascript(jsScript, null)
-            }
-        }
-    }
-
     // 创建 Android-JS 通信桥接类
     val jsBridge = remember {
         EditorJsBridge(
@@ -68,9 +59,17 @@ fun WebCodeEditor(
                 onCursorChange(line, col)
             },
             onEditorReady = {
-                // JS 引擎就绪
+                // 网页 JS 引擎已就绪
             }
         )
+    }
+
+    // 安全直连调度执行 JS，绝不依赖脆弱的 remember 闭包
+    fun executeJs(script: String) {
+        val target = webViewRef ?: return
+        target.post {
+            target.evaluateJavascript(script, null)
+        }
     }
 
     // 当页面完成加载或 textFieldValue / snippetType 变更时，更新 Web 端内容
@@ -78,28 +77,28 @@ fun WebCodeEditor(
         if (isPageLoaded) {
             val safeJsonCode = JSONObject.quote(textFieldValue.text)
             val langCode = snippetType.code
-            runJs("setCodeContent($safeJsonCode, '$langCode');")
+            executeJs("setCodeContent($safeJsonCode, '$langCode');")
         }
     }
 
     // 动态同步字号设置
     LaunchedEffect(isPageLoaded, fontSp) {
         if (isPageLoaded) {
-            runJs("setFontSizeSp($fontSp);")
+            executeJs("setFontSizeSp($fontSp);")
         }
     }
 
     // 动态同步自动换行设置
     LaunchedEffect(isPageLoaded, isWordWrap) {
         if (isPageLoaded) {
-            runJs("setWordWrapEnabled($isWordWrap);")
+            executeJs("setWordWrapEnabled($isWordWrap);")
         }
     }
 
     // 动态同步深浅色主题设置
     LaunchedEffect(isPageLoaded, isDark) {
         if (isPageLoaded) {
-            runJs("setThemeIsDark($isDark);")
+            executeJs("setThemeIsDark($isDark);")
         }
     }
 
@@ -138,7 +137,7 @@ fun WebCodeEditor(
                     }
                 }
 
-                // 加载 assets 本地离线编辑器主模板
+                // 加载 assets 本地离线单文件全内联主模板
                 loadUrl("file:///android_asset/editor/index.html")
             }
         },
