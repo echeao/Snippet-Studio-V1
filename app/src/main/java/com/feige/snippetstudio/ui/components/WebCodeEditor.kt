@@ -14,12 +14,12 @@ import com.feige.snippetstudio.ui.theme.LocalThemeColors
 import org.json.JSONObject
 
 /**
- * [WebCodeEditor] 100% 本地离线自包含的 Web 虚拟化代码编辑器组件。
+ * [WebCodeEditor] 100% 本地离线自包含的高性能代码编辑器组件。
  *
- * 安全与性能重构亮点：
- * 1. **全量离线化加载**：使用 `file:///android_asset/editor/index.html` 本地资源，完全剥离远程 CDN 依赖，绝不黑屏卡死。
- * 2. **JSONObject 严格序列化**：使用 Android 官方 [JSONObject.quote] 对任意多行文本、换行符 `\n` 进行百分百安全的 JSON 字符串转义，杜绝 JS 语法解析异常。
- * 3. **实时双向桥接**：打字变动、字号微调与主题变动秒级同步响应。
+ * 时序与线程安全重构：
+ * 1. **PageFinished 双重判定**：在 WebViewClient 的 [WebViewClient.onPageFinished] 中确保页面 DOM 完全加载后再注入初始代码。
+ * 2. **Post 线程安全执行**：所有 [WebView.evaluateJavascript] 指令统一包裹在 [WebView.post] 中执行，100% 确保处于 UI 主线程与就绪上下文。
+ * 3. **JSONObject.quote 安全转义**：彻底解决复杂文本、换行符 `\n` 引发的 SyntaxError 问题。
  *
  * @param textFieldValue 代码与选区信息
  * @param onValueChange 变动回调
@@ -43,9 +43,18 @@ fun WebCodeEditor(
     val tc = LocalThemeColors.current
     val isDark = tc.isDark
 
-    // 记录 WebView 实例引用与初始化就绪状态
+    // 记录 WebView 实例引用与页面加载完毕标志
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
-    var isEditorReady by remember { mutableStateOf(false) }
+    var isPageLoaded by remember { mutableStateOf(false) }
+
+    // 封装主线程 safePost 方法，确保 evaluateJavascript 不被提前丢弃
+    val runJs: (String) -> Unit = remember(webViewRef) {
+        { jsScript ->
+            webViewRef?.post {
+                webViewRef?.evaluateJavascript(jsScript, null)
+            }
+        }
+    }
 
     // 创建 Android-JS 通信桥接类
     val jsBridge = remember {
@@ -59,39 +68,38 @@ fun WebCodeEditor(
                 onCursorChange(line, col)
             },
             onEditorReady = {
-                isEditorReady = true
+                // JS 引擎就绪
             }
         )
     }
 
-    // 当内部资源就绪或外部 textFieldValue 变更时，更新 Web 端代码内容
-    LaunchedEffect(isEditorReady, textFieldValue.text, snippetType) {
-        if (isEditorReady) {
-            // 使用 Android 官方 JSONObject.quote 对文本进行绝对安全防溃的安全转义
+    // 当页面完成加载或 textFieldValue / snippetType 变更时，更新 Web 端内容
+    LaunchedEffect(isPageLoaded, textFieldValue.text, snippetType) {
+        if (isPageLoaded) {
             val safeJsonCode = JSONObject.quote(textFieldValue.text)
             val langCode = snippetType.code
-            webViewRef?.evaluateJavascript("setCodeContent($safeJsonCode, '$langCode');", null)
+            runJs("setCodeContent($safeJsonCode, '$langCode');")
         }
     }
 
     // 动态同步字号设置
-    LaunchedEffect(isEditorReady, fontSp) {
-        if (isEditorReady) {
-            webViewRef?.evaluateJavascript("setFontSizeSp($fontSp);", null)
+    LaunchedEffect(isPageLoaded, fontSp) {
+        if (isPageLoaded) {
+            runJs("setFontSizeSp($fontSp);")
         }
     }
 
     // 动态同步自动换行设置
-    LaunchedEffect(isEditorReady, isWordWrap) {
-        if (isEditorReady) {
-            webViewRef?.evaluateJavascript("setWordWrapEnabled($isWordWrap);", null)
+    LaunchedEffect(isPageLoaded, isWordWrap) {
+        if (isPageLoaded) {
+            runJs("setWordWrapEnabled($isWordWrap);")
         }
     }
 
     // 动态同步深浅色主题设置
-    LaunchedEffect(isEditorReady, isDark) {
-        if (isEditorReady) {
-            webViewRef?.evaluateJavascript("setThemeIsDark($isDark);", null)
+    LaunchedEffect(isPageLoaded, isDark) {
+        if (isPageLoaded) {
+            runJs("setThemeIsDark($isDark);")
         }
     }
 
@@ -113,7 +121,22 @@ fun WebCodeEditor(
                 // 注入 JS 桥接接口对象
                 addJavascriptInterface(jsBridge, "AndroidBridge")
 
-                webViewClient = object : WebViewClient() {}
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        isPageLoaded = true
+
+                        // 页面完成 DOM 绘制，立即主线程安全灌入初始代码与配置
+                        val safeJsonCode = JSONObject.quote(textFieldValue.text)
+                        val langCode = snippetType.code
+                        view?.post {
+                            view.evaluateJavascript("setCodeContent($safeJsonCode, '$langCode');", null)
+                            view.evaluateJavascript("setFontSizeSp($fontSp);", null)
+                            view.evaluateJavascript("setWordWrapEnabled($isWordWrap);", null)
+                            view.evaluateJavascript("setThemeIsDark($isDark);", null)
+                        }
+                    }
+                }
 
                 // 加载 assets 本地离线编辑器主模板
                 loadUrl("file:///android_asset/editor/index.html")

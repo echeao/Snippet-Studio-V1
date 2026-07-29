@@ -1,14 +1,16 @@
 package com.feige.snippetstudio.ui.components
 
+import android.os.Handler
+import android.os.Looper
 import android.webkit.JavascriptInterface
 
 /**
  * [EditorJsBridge] 是用于 Android 原生 Kotlin WebView 与内嵌 Web 代码编辑器之间的数据交互桥接器。
  *
- * 核心职责：
- * 1. 接收 Web 编辑器打字事件回调 [onCodeChanged]，通知外部 ViewModel 同步最新代码文本。
- * 2. 接收 Web 编辑器光标与选区变动回调 [onCursorChanged]，通知外部 UI 更新底部状态栏行列号。
- * 3. 接收网页就绪通知 [onEditorReady]，触发初始化数据灌入。
+ * 线程安全重构：
+ * 1. WebView 的 [JavascriptInterface] 回调发生在 Binder 后台子线程。
+ * 2. 使用 [mainHandler] 将所有代码变动、光标位置、就绪通知强制派发回 Android [Looper.getMainLooper] 主线程。
+ * 3. 彻底消除非主线程更新 Compose 状态引发的时序死锁与渲染不刷新问题。
  *
  * @param onCodeChanged 网页代码文本发生变化时的回调闭包
  * @param onCursorChanged 网页光标位置发生变化时的回调闭包 (行号, 列号)
@@ -20,6 +22,8 @@ class EditorJsBridge(
     private val onEditorReady: () -> Unit
 ) {
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     /**
      * JS 调用原生的代码修改回调接口
      *
@@ -27,7 +31,9 @@ class EditorJsBridge(
      */
     @JavascriptInterface
     fun onCodeChanged(code: String) {
-        onCodeChanged.invoke(code)
+        mainHandler.post {
+            onCodeChanged.invoke(code)
+        }
     }
 
     /**
@@ -38,7 +44,9 @@ class EditorJsBridge(
      */
     @JavascriptInterface
     fun onCursorChanged(line: Int, col: Int) {
-        onCursorChanged.invoke(line, col)
+        mainHandler.post {
+            onCursorChanged.invoke(line, col)
+        }
     }
 
     /**
@@ -46,6 +54,8 @@ class EditorJsBridge(
      */
     @JavascriptInterface
     fun onEditorReady() {
-        onEditorReady.invoke()
+        mainHandler.post {
+            onEditorReady.invoke()
+        }
     }
 }
