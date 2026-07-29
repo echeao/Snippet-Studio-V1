@@ -310,6 +310,37 @@ class EditorViewModel(
         triggerAutoSave()
     }
 
+    /**
+     * Sora-Editor 文本变更回调（适配层）。
+     * Sora-Editor 返回纯 String 而非 TextFieldValue，此方法适配到现有接口。
+     * @param newText Sora-Editor 发布的最新文本内容
+     */
+    fun onSoraTextChange(newText: String) {
+        val currentTfv = _uiState.value.textFieldValue
+        if (currentTfv.text != newText) {
+            onTextFieldValueChange(
+                TextFieldValue(text = newText, selection = androidx.compose.ui.text.TextRange(newText.length.coerceAtLeast(0)))
+            )
+        }
+    }
+
+    /**
+     * Sora-Editor 光标位置变更回调（高效版）。
+     * 直接提供行列号，无需遍历全文，降低光标移动时的 CPU 开销。
+     * @param line 光标所在行号 (0-indexed)
+     * @param column 光标所在列号 (0-indexed)
+     */
+    fun onSoraCursorChange(line: Int, column: Int) {
+        val currentText = _uiState.value.textFieldValue.text
+        _uiState.update {
+            it.copy(
+                currentLineIndex = line,
+                currentColumnIndex = column,
+                lineCount = currentText.count { c -> c == '\n' } + 1
+            )
+        }
+    }
+
 
     /** 从快捷符号栏插入特定代码符号到当前光标处 */
     fun insertSymbol(symbol: String) {

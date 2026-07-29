@@ -65,6 +65,10 @@ private val ScrollBeyondLastLine = 120.dp
  * Code editor with a single scroll owner.  The gutter is a Canvas overlay instead of a Column of
  * Text composables, so only line numbers in the viewport are drawn even for very large files.
  */
+@Deprecated(
+    message = "旧版 CodeEditor 基于 BasicTextField + Canvas 渲染，容易发生大文件卡顿。已全面升级为原生 SoraCodeEditor。",
+    replaceWith = ReplaceWith("SoraCodeEditor(text, onTextChange, onCursorChange, language, isDark, themeColors, fontSp)")
+)
 @Composable
 fun CodeEditor(
     textFieldValue: TextFieldValue,

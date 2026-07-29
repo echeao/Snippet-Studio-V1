@@ -150,20 +150,16 @@ fun EditorScreen(
         ) {
             if (uiState.selectedTab == 0) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    CodeEditor(
-                        textFieldValue = uiState.textFieldValue,
-                        onValueChange = { viewModel.onTextFieldValueChange(it) },
+                    SoraCodeEditor(
+                        text = uiState.textFieldValue.text,
+                        onTextChange = { viewModel.onSoraTextChange(it) },
+                        onCursorChange = { line, col -> viewModel.onSoraCursorChange(line, col) },
+                        language = SyntaxLanguageDetector.fromSnippetType(uiState.type),
+                        isDark = tc.isDark,
+                        themeColors = tc,
                         fontSp = uiState.fontSp,
-                        currentLineIndex = uiState.currentLineIndex,
-                        lineCount = uiState.lineCount,
-                        snippetType = uiState.type,
-                        syntaxLanguage = SyntaxLanguageDetector.fromSnippetType(uiState.type),
-                        isWordWrap = uiState.isWordWrap,
                         showLineNumbers = uiState.showLineNumbers,
-                        highlightCurrentLine = uiState.highlightCurrentLine,
-                        topContentPadding = safeTopPadding,
-                        onFontSizeChange = { viewModel.adjustFontSize(it) },
-                        fontFamily = editorFont,
+                        isWordWrap = uiState.isWordWrap,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -260,6 +256,8 @@ fun EditorScreen(
                 noWorkspaceConfigured = uiState.noWorkspaceConfigured,
                 onTabSelect = { viewModel.selectTab(it) },
                 onValueChange = { viewModel.onTextFieldValueChange(it) },
+                onSoraTextChange = { viewModel.onSoraTextChange(it) },
+                onSoraCursorChange = { line, col -> viewModel.onSoraCursorChange(line, col) },
                 onInsertSymbol = { viewModel.insertSymbol(it) },
                 onAdjustFontSize = { viewModel.adjustFontSize(it) },
                 onToggleFullscreen = { viewModel.toggleFullscreen() },

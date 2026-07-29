@@ -24,7 +24,10 @@ enum class ColorThemeStyle(val id: String, val displayName: String, val iconSuff
     LAVENDER("lavender", "薰衣草紫", "lavender"),
     
     /** 极简灰 */
-    MONO("mono", "极简灰", "mono");
+    MONO("mono", "极简灰", "mono"),
+
+    /** 深夜蓝黑（AMOLED 纯黑 + VS Code 深蓝点缀） */
+    MIDNIGHT("midnight", "深夜蓝黑", "mono");
 
     companion object {
         /**
@@ -274,6 +277,38 @@ object ColorThemeRegistry {
         codeTextDark = Color(0xFFCCCCCC),
     )
 
+    /** 深夜蓝黑色板定义 (Midnight - 真·纯黑 AMOLED) */
+    val Midnight = ThemePalette(
+        primary = Color(0xFF007ACC),
+        primary2 = Color(0xFF0098FF),
+        primarySoft = Color(0xFF1E2A38),
+        primaryLine = Color(0xFF005999),
+        bgLight = Color(0xFFF5F7FA),
+        surfaceLight = Color(0xFFFFFFFF),
+        surface2Light = Color(0xFFEAEFF5),
+        textLight = Color(0xFF181C20),
+        text2Light = Color(0xFF404850),
+        text3Light = Color(0xFF707880),
+        lineLight = Color(0xFFD8E0E8),
+        bgDark = Color(0xFF000000),      // 真 OLED 纯黑
+        surfaceDark = Color(0xFF12151A),
+        surface2Dark = Color(0xFF1A1F26),
+        textDark = Color(0xFFE6EDF3),
+        text2Dark = Color(0xFF8B949E),
+        text3Dark = Color(0xFF6E7681),
+        lineDark = Color(0xFF21262D),
+        typeIcons = TypeIconPalette(
+            html = Color(0xFFE44D26),
+            js = Color(0xFFF7DF1E),
+            md = Color(0xFF58A6FF),
+            prompt = Color(0xFF007ACC),
+        ),
+        codeBgLight = Color(0xFFEFF2F5),
+        codeBgDark = Color(0xFF0D1117),
+        codeTextLight = Color(0xFF24292E),
+        codeTextDark = Color(0xFFC9D1D9),
+    )
+
     /**
      * 根据风格枚举获取对应的完整色板。
      *
@@ -286,5 +321,6 @@ object ColorThemeRegistry {
         ColorThemeStyle.SUNSET -> Sunset
         ColorThemeStyle.LAVENDER -> Lavender
         ColorThemeStyle.MONO -> Mono
+        ColorThemeStyle.MIDNIGHT -> Midnight
     }
 }

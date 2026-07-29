@@ -14,9 +14,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
-import com.feige.snippetstudio.ui.components.CodeEditor
 import com.feige.snippetstudio.ui.components.RunPreview
 import com.feige.snippetstudio.ui.components.SegmentedControl
+import com.feige.snippetstudio.ui.components.SoraCodeEditor
 import com.feige.snippetstudio.ui.components.SymbolBar
 import com.feige.snippetstudio.ui.theme.CaptionStyle
 import com.feige.snippetstudio.ui.theme.LocalThemeColors
@@ -53,19 +53,21 @@ import com.feige.snippetstudio.util.SyntaxLanguageDetector
 @Composable
 fun EditorMainContent(
     selectedTab: Int,
-    textFieldValue: TextFieldValue,
+    textFieldValue: androidx.compose.ui.text.input.TextFieldValue,
     snippetType: SnippetType,
     fontSp: Float,
-    editorFont: FontFamily,
+    editorFont: androidx.compose.ui.text.font.FontFamily,  // 保留签名兼容，Sora 暂用系统 Mono
     currentLineIndex: Int,
     lineCount: Int = 1,
     isWordWrap: Boolean,
     showLineNumbers: Boolean,
-    highlightCurrentLine: Boolean,
+    highlightCurrentLine: Boolean,  // 保留签名兼容，Sora 内部通过颜色方案处理
     isFullscreen: Boolean,
     noWorkspaceConfigured: Boolean,
     onTabSelect: (Int) -> Unit,
-    onValueChange: (TextFieldValue) -> Unit,
+    onValueChange: (androidx.compose.ui.text.input.TextFieldValue) -> Unit,
+    onSoraTextChange: (String) -> Unit,      // ★ Sora 文本变更回调（纯 String）
+    onSoraCursorChange: (Int, Int) -> Unit,  // ★ Sora 光标变更回调（行, 列）
     onInsertSymbol: (String) -> Unit,
     onAdjustFontSize: (Float) -> Unit,
     onToggleFullscreen: () -> Unit,
@@ -79,7 +81,7 @@ fun EditorMainContent(
         if (noWorkspaceConfigured) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFFFF3CD),
+                color = androidx.compose.ui.graphics.Color(0xFFFFF3CD),
             ) {
                 Row(
                     modifier = Modifier
@@ -91,13 +93,13 @@ fun EditorMainContent(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_folder),
                         contentDescription = null,
-                        tint = Color(0xFF856404),
+                        tint = androidx.compose.ui.graphics.Color(0xFF856404),
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = "未绑定工作区目录，文件仅存储在应用私有空间，手机文件管理器不可见。请前往 设置 → 工作区仓库 绑定目录。",
                         style = CaptionStyle,
-                        color = Color(0xFF856404),
+                        color = androidx.compose.ui.graphics.Color(0xFF856404),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -113,7 +115,10 @@ fun EditorMainContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             SegmentedControl(
-                options = listOf(stringResource(R.string.editor_code), stringResource(R.string.editor_preview)),
+                options = listOf(
+                    androidx.compose.ui.res.stringResource(R.string.editor_code),
+                    androidx.compose.ui.res.stringResource(R.string.editor_preview)
+                ),
                 selectedIndex = selectedTab,
                 onSelect = onTabSelect
             )
@@ -157,26 +162,24 @@ fun EditorMainContent(
 
         // ===== 主编辑视图 / 预览视图切换 =====
         if (selectedTab == 0) {
-            // 代码编辑 Tab
+            // ===== 代码编辑 Tab（使用 Sora-Editor 原生高性能编辑器）=====
             Column(modifier = Modifier.weight(1f)) {
                 SymbolBar(
                     snippetType = snippetType,
                     onInsertSymbol = onInsertSymbol
                 )
 
-                CodeEditor(
-                    textFieldValue = textFieldValue,
-                    onValueChange = onValueChange,
+                // SoraCodeEditor 接入：原生 View 渲染，性能远超 BasicTextField + VisualTransformation
+                SoraCodeEditor(
+                    text = textFieldValue.text,
+                    onTextChange = onSoraTextChange,
+                    onCursorChange = onSoraCursorChange,
+                    language = SyntaxLanguageDetector.fromSnippetType(snippetType),
+                    isDark = tc.isDark,
+                    themeColors = tc,
                     fontSp = fontSp,
-                    currentLineIndex = currentLineIndex,
-                    lineCount = lineCount,
-                    snippetType = snippetType,
-                    syntaxLanguage = SyntaxLanguageDetector.fromSnippetType(snippetType),
-                    isWordWrap = isWordWrap,
                     showLineNumbers = showLineNumbers,
-                    highlightCurrentLine = highlightCurrentLine,
-                    onFontSizeChange = onAdjustFontSize,
-                    fontFamily = editorFont,
+                    isWordWrap = isWordWrap,
                     modifier = Modifier.weight(1f)
                 )
             }

@@ -58,8 +58,9 @@ android {
     }
   }
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    // Sora-Editor 要求 JDK 17 或以上，同步升级，原为 VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
   }
   buildFeatures {
     compose = true
@@ -130,4 +131,10 @@ dependencies {
 
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
+
+  // ===== Sora-Editor 原生代码编辑器 =====
+  // 核心编辑器组件（原生 View，性能远超 WebView 方案）
+  implementation("io.github.Rosemoe.sora-editor:editor:0.23.6")
+  // TextMate 语法高亮模块（VS Code 同款 Tree-sitter 引擎）
+  implementation("io.github.Rosemoe.sora-editor:language-textmate:0.23.6")
 }

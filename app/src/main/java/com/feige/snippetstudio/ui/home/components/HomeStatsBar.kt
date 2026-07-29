@@ -1,5 +1,7 @@
 package com.feige.snippetstudio.ui.home.components
 
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -7,18 +9,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.ui.theme.*
 
 /**
- * [HomeStatsBar] 首页仪表盘轻量数据统计卡片小部件。
+ * [HomeStatsBar] 首页仪表盘轻量数据统计卡片小部件（全新精致视觉版）。
  *
- * 用于在首页展示当前用户的代码资产概览，包含：代码片段总量、已收藏星标数以及划分的文件夹总数。
+ * 采用微渐变容器 + 数字变动平滑动画，提升首页的精美度与高级感。
  *
  * @param totalCount 活动代码片段总数量
  * @param starredCount 星标收藏代码片段总数
@@ -34,6 +38,10 @@ fun HomeStatsBar(
 ) {
     val tc = LocalThemeColors.current
 
+    val animatedTotal by animateIntAsState(targetValue = totalCount, animationSpec = tween(600), label = "total")
+    val animatedStarred by animateIntAsState(targetValue = starredCount, animationSpec = tween(600), label = "starred")
+    val animatedFolder by animateIntAsState(targetValue = folderCount, animationSpec = tween(600), label = "folder")
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -42,73 +50,82 @@ fun HomeStatsBar(
         shape = RoundedCornerShape(R_MD),
         color = tc.surface
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = Spacing.S3, horizontal = Spacing.S4),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            tc.primarySoft.copy(alpha = 0.25f),
+                            tc.surface
+                        )
+                    )
+                )
         ) {
-            // ===== 1. 代码片段总数统计列 =====
-            StatItem(
-                label = "总代码数",
-                value = totalCount.toString(),
-                valueColor = tc.text
-            )
-
-            // 垂直分割线
-            Box(
+            Row(
                 modifier = Modifier
-                    .width(1.dp)
-                    .height(24.dp)
-                    .background(tc.line)
-            )
+                    .fillMaxWidth()
+                    .padding(vertical = Spacing.S3 + 2.dp, horizontal = Spacing.S4),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // ===== 1. 代码片段总数统计列 =====
+                StatItem(
+                    label = "总代码数",
+                    value = animatedTotal,
+                    valueColor = tc.text
+                )
 
-            // ===== 2. 星标收藏数统计列 =====
-            StatItem(
-                label = "已收藏",
-                value = starredCount.toString(),
-                valueColor = tc.primary
-            )
+                // 垂直分割线
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(24.dp)
+                        .background(tc.line)
+                )
 
-            // 垂直分割线
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(24.dp)
-                    .background(tc.line)
-            )
+                // ===== 2. 星标收藏数统计列 =====
+                StatItem(
+                    label = "已收藏",
+                    value = animatedStarred,
+                    valueColor = tc.primary
+                )
 
-            // ===== 3. 文件夹分类数统计列 =====
-            StatItem(
-                label = "文件夹数",
-                value = folderCount.toString(),
-                valueColor = tc.text2
-            )
+                // 垂直分割线
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(24.dp)
+                        .background(tc.line)
+                )
+
+                // ===== 3. 文件夹分类数统计列 =====
+                StatItem(
+                    label = "文件夹数",
+                    value = animatedFolder,
+                    valueColor = tc.text2
+                )
+            }
         }
     }
 }
 
 /**
  * [StatItem] 内部单项统计数字与标签组合。
- *
- * @param label 统计项目文本标签
- * @param value 统计项目具体数值字符串
- * @param valueColor 数值高亮颜色
  */
 @Composable
 private fun StatItem(
     label: String,
-    value: String,
+    value: Int,
     valueColor: androidx.compose.ui.graphics.Color
 ) {
     val tc = LocalThemeColors.current
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = value,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
+            text = value.toString(),
+            fontSize = 19.sp,
+            fontWeight = FontWeight.ExtraBold,
             color = valueColor
         )
         Spacer(modifier = Modifier.height(2.dp))
@@ -119,3 +136,4 @@ private fun StatItem(
         )
     }
 }
+

@@ -18,6 +18,10 @@ import java.util.regex.Pattern
  *
  * 支持语言：HTML, JS, CSS, JSON, Python, Markdown, Prompt, XML, YAML, Shell
  */
+@Deprecated(
+    message = "项目已升级为 Sora-Editor + TextMate 语法高亮引擎。旧版基于 BasicTextField + 正则匹配的 SyntaxHighlighter 仅保留作为历史参考或轻量预览兼容，不再用于主代码编辑器。",
+    replaceWith = ReplaceWith("SoraCodeEditor", "com.feige.snippetstudio.ui.components.SoraCodeEditor")
+)
 object SyntaxHighlighter {
 
     // ===== 词法单元色彩定义 (Token Styles) =====
