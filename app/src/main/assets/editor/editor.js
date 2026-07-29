@@ -1,123 +1,128 @@
 /**
- * Snippet Studio Code Editor JS Bridge & Engine Driver
- * 核心功能：初始化 Ace Editor 虚拟化内核，并建立与 Android Native (AndroidBridge) 的双向实时通信管道。
+ * Snippet Studio Offline Web Code Editor Driver
+ * 100% 离线自包含的高性能代码编辑器内核驱动
  */
 
-let editor = null;
+let textarea = null;
+let gutter = null;
+let container = null;
 let isUpdatingFromNative = false;
+let currentLineCount = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. 初始化 Ace 代码编辑器
-    editor = ace.edit("editor");
-    
-    // 2. 基础性能与体验配置 (开启虚拟滚动、末行超越留白、自动换行)
-    editor.setOptions({
-        theme: "ace/theme/one_dark",
-        mode: "ace/mode/html",
-        fontSize: "14px",
-        showPrintMargin: false,
-        wrap: true,                       // 开启自动软换行
-        scrollPastEnd: 0.6,              // 允许越过最后一行滚动 (Scroll Beyond Last Line 缓冲区)
-        fixedWidthGutter: true,
-        useWorker: false,                // 禁用远程 Worker 下载避免纯离线报错
-        behavioursEnabled: true,         // 开启自动成对补全括号
-        animatedScroll: true
-    });
+    textarea = document.getElementById('code-input');
+    gutter = document.getElementById('gutter');
+    container = document.getElementById('textarea-container');
 
-    // 3. 监听文本修改变动事件，回调给 Android Native
-    editor.session.on('change', () => {
-        if (!isUpdatingFromNative && window.AndroidBridge) {
-            const code = editor.getValue();
-            window.AndroidBridge.onCodeChanged(code);
+    if (!textarea || !gutter || !container) return;
+
+    // 1. 监听文本变动事件
+    textarea.addEventListener('input', () => {
+        if (!isUpdatingFromNative) {
+            updateGutter();
+            notifyCodeChange();
         }
     });
 
-    // 4. 监听光标与选中区域移动事件，回调行列号给 Android Native 状态栏
-    editor.selection.on('changeCursor', () => {
-        if (window.AndroidBridge) {
-            const pos = editor.getCursorPosition();
-            window.AndroidBridge.onCursorChanged(pos.row, pos.column);
-        }
+    // 2. 监听光标与选中区域移动事件，实时计算行列号
+    textarea.addEventListener('keyup', updateCursorPosition);
+    textarea.addEventListener('click', updateCursorPosition);
+    textarea.addEventListener('select', updateCursorPosition);
+
+    // 3. 监听垂直滚动，使左侧行号轨与代码区完美同步滚动
+    container.addEventListener('scroll', () => {
+        gutter.scrollTop = container.scrollTop;
     });
 
-    // 5. 通知 Android Native 网页编辑器资源已就绪
+    // 4. 通知 Android Native 网页离线编辑器就绪
     if (window.AndroidBridge) {
         window.AndroidBridge.onEditorReady();
     }
 });
 
-// ===== 供 Android Native (Kotlin WebView) 调用的 JS 函数通道 =====
-
-/**
- * 填充代码内容并设置语言 Mode
- * @param {string} code 代码全文内容
- * @param {string} language 语言名称 (如 "html", "javascript", "markdown", "java", "css", "json")
- */
-function setCodeContent(code, language) {
-    if (!editor) return;
-    isUpdatingFromNative = true;
-    const currentCode = editor.getValue();
-    if (currentCode !== code) {
-        editor.setValue(code, -1); // -1 保持选区在最顶端
+/** 更新行号轨道渲染 */
+function updateGutter() {
+    if (!textarea || !gutter) return;
+    const lines = textarea.value.split('\n');
+    const lineCount = lines.length;
+    if (lineCount !== currentLineCount) {
+        currentLineCount = lineCount;
+        let gutterHtml = '';
+        for (let i = 1; i <= lineCount; i++) {
+            gutterHtml += `<div class="gutter-line" id="line-${i}">${i}</div>`;
+        }
+        gutterHtml += `<div style="height: 140px;"></div>`;
+        gutter.innerHTML = gutterHtml;
     }
-    setLanguageMode(language);
+}
+
+/** 实时计算当前光标行号与列号并回调 Native */
+function updateCursorPosition() {
+    if (!textarea || !window.AndroidBridge) return;
+    const pos = textarea.selectionStart;
+    const textBeforeCaret = textarea.value.substring(0, pos);
+    const lines = textBeforeCaret.split('\n');
+    const currentLine = lines.length - 1;
+    const currentCol = lines[lines.length - 1].length;
+
+    window.AndroidBridge.onCursorChanged(currentLine, currentCol);
+}
+
+/** 通知 Native 代码变动 */
+function notifyCodeChange() {
+    if (window.AndroidBridge && textarea) {
+        window.AndroidBridge.onCodeChanged(textarea.value);
+    }
+}
+
+// ===== Native 调用的对外接口通道 =====
+
+/** 填充代码内容 */
+function setCodeContent(code, language) {
+    if (!textarea) return;
+    isUpdatingFromNative = true;
+    if (textarea.value !== code) {
+        textarea.value = code;
+        updateGutter();
+    }
     isUpdatingFromNative = false;
 }
 
-/**
- * 设置代码语法语言 Mode
- * @param {string} lang 语言 Key
- */
-function setLanguageMode(lang) {
-    if (!editor) return;
-    const modeMap = {
-        'html': 'ace/mode/html',
-        'js': 'ace/mode/javascript',
-        'javascript': 'ace/mode/javascript',
-        'markdown': 'ace/mode/markdown',
-        'md': 'ace/mode/markdown',
-        'css': 'ace/mode/css',
-        'java': 'ace/mode/java',
-        'json': 'ace/mode/json',
-        'prompt': 'ace/mode/text'
-    };
-    const targetMode = modeMap[lang.toLowerCase()] || 'ace/mode/text';
-    editor.session.setMode(targetMode);
-}
-
-/**
- * 设置编辑器字体大小 (sp)
- * @param {number} fontSp 字体字号大小
- */
+/** 设置字号 */
 function setFontSizeSp(fontSp) {
-    if (!editor) return;
-    editor.setFontSize(`${fontSp}px`);
+    if (!document.body || !textarea) return;
+    document.body.style.fontSize = fontSp + 'px';
 }
 
-/**
- * 设置是否开启自动换行 (Word Wrap)
- * @param {boolean} enabled 是否开启
- */
+/** 设置自动换行 */
 function setWordWrapEnabled(enabled) {
-    if (!editor) return;
-    editor.session.setUseWrapMode(enabled);
+    if (!textarea) return;
+    textarea.style.whiteSpace = enabled ? 'pre-wrap' : 'pre';
 }
 
-/**
- * 设置主题 (深色 / 浅色)
- * @param {boolean} isDark 当前是否为深色主题
- */
+/** 设置主题 */
 function setThemeIsDark(isDark) {
-    if (!editor) return;
-    editor.setTheme(isDark ? "ace/theme/one_dark" : "ace/theme/chrome");
+    if (!document.body || !gutter) return;
+    if (isDark) {
+        document.body.style.backgroundColor = '#121418';
+        document.body.style.color = '#abb2bf';
+        gutter.style.backgroundColor = '#1a1d24';
+    } else {
+        document.body.style.backgroundColor = '#ffffff';
+        document.body.style.color = '#212529';
+        gutter.style.backgroundColor = '#f8f9fa';
+    }
 }
 
-/**
- * 向当前光标位置插入快捷符号字符串
- * @param {string} symbol 符号内容 (如 "{}", "</>", "const ")
- */
+/** 插入符号 */
 function insertSymbolText(symbol) {
-    if (!editor) return;
-    editor.insert(symbol);
-    editor.focus();
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    textarea.value = text.substring(0, start) + symbol + text.substring(end);
+    textarea.selectionStart = textarea.selectionEnd = start + symbol.length;
+    textarea.focus();
+    updateGutter();
+    notifyCodeChange();
 }

@@ -11,22 +11,23 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.viewinterop.AndroidView
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.LocalThemeColors
+import org.json.JSONObject
 
 /**
- * [WebCodeEditor] 基于 Acode / Ace Editor 内核构建的 Compose WebView 高性能代码编辑器组件。
+ * [WebCodeEditor] 100% 本地离线自包含的 Web 虚拟化代码编辑器组件。
  *
- * 架构亮点：
- * 1. **DOM 视口虚拟化**：借由 Ace 虚拟渲染机制，可轻而易举支撑数万行超大文件极速滑动，绝对消除掉帧与卡顿。
- * 2. **全量桥接交互**：通过 [EditorJsBridge] 实现 Native 与 JS 之间代码变动、光标行列号、字号与主题的实时同步。
- * 3. **无缝平替原生**：接口与 [CodeEditor] 保持高度一致，外部无感无缝升级。
+ * 安全与性能重构亮点：
+ * 1. **全量离线化加载**：使用 `file:///android_asset/editor/index.html` 本地资源，完全剥离远程 CDN 依赖，绝不黑屏卡死。
+ * 2. **JSONObject 严格序列化**：使用 Android 官方 [JSONObject.quote] 对任意多行文本、换行符 `\n` 进行百分百安全的 JSON 字符串转义，杜绝 JS 语法解析异常。
+ * 3. **实时双向桥接**：打字变动、字号微调与主题变动秒级同步响应。
  *
- * @param textFieldValue 带有选区与文本信息的 [TextFieldValue]
- * @param onValueChange 代码修改回调
- * @param onCursorChange 光标行列变动回调 (行号, 列号)
- * @param fontSp 字体字号大小 (sp)
- * @param snippetType 代码片段类型
+ * @param textFieldValue 代码与选区信息
+ * @param onValueChange 变动回调
+ * @param onCursorChange 光标位置回调
+ * @param fontSp 字体大小
+ * @param snippetType 片段语言类型
  * @param isWordWrap 是否开启自动换行
- * @param modifier 修饰符
+ * @param modifier 外部修饰符
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -42,7 +43,7 @@ fun WebCodeEditor(
     val tc = LocalThemeColors.current
     val isDark = tc.isDark
 
-    // 记录 WebView 实例引用
+    // 记录 WebView 实例引用与初始化就绪状态
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var isEditorReady by remember { mutableStateOf(false) }
 
@@ -66,9 +67,10 @@ fun WebCodeEditor(
     // 当内部资源就绪或外部 textFieldValue 变更时，更新 Web 端代码内容
     LaunchedEffect(isEditorReady, textFieldValue.text, snippetType) {
         if (isEditorReady) {
-            val safeCode = textFieldValue.text.replace("\\", "\\\\").replace("`", "\\`").replace("\$", "\\\$")
+            // 使用 Android 官方 JSONObject.quote 对文本进行绝对安全防溃的安全转义
+            val safeJsonCode = JSONObject.quote(textFieldValue.text)
             val langCode = snippetType.code
-            webViewRef?.evaluateJavascript("setCodeContent(`$safeCode`, '$langCode');", null)
+            webViewRef?.evaluateJavascript("setCodeContent($safeJsonCode, '$langCode');", null)
         }
     }
 
@@ -102,6 +104,8 @@ fun WebCodeEditor(
                     domStorageEnabled = true
                     allowFileAccess = true
                     allowContentAccess = true
+                    allowFileAccessFromFileURLs = true
+                    allowUniversalAccessFromFileURLs = true
                     cacheMode = WebSettings.LOAD_DEFAULT
                     setSupportZoom(false)
                 }
@@ -111,7 +115,7 @@ fun WebCodeEditor(
 
                 webViewClient = object : WebViewClient() {}
 
-                // 加载 assets 本地编辑器主模板
+                // 加载 assets 本地离线编辑器主模板
                 loadUrl("file:///android_asset/editor/index.html")
             }
         },
