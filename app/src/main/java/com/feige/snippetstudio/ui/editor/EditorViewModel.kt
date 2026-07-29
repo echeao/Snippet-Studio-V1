@@ -11,6 +11,7 @@ import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.util.PromptVariableParser
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -340,7 +341,9 @@ class EditorViewModel(
 
     /** 更新偏好设置：自动换行 */
     fun setWordWrap(enabled: Boolean) {
-        viewModelScope.launch {
+        if (_uiState.value.isWordWrap == enabled) return
+        _uiState.update { it.copy(isWordWrap = enabled) }
+        viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.updateSettings { it.copy(isWordWrap = enabled) }
         }
     }
@@ -361,14 +364,18 @@ class EditorViewModel(
 
     /** 更新偏好设置：显示行号 */
     fun setShowLineNumbers(show: Boolean) {
-        viewModelScope.launch {
+        if (_uiState.value.showLineNumbers == show) return
+        _uiState.update { it.copy(showLineNumbers = show) }
+        viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.updateSettings { it.copy(showLineNumbers = show) }
         }
     }
 
     /** 更新偏好设置：高亮当前行 */
     fun setHighlightCurrentLine(highlight: Boolean) {
-        viewModelScope.launch {
+        if (_uiState.value.highlightCurrentLine == highlight) return
+        _uiState.update { it.copy(highlightCurrentLine = highlight) }
+        viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.updateSettings { it.copy(highlightCurrentLine = highlight) }
         }
     }

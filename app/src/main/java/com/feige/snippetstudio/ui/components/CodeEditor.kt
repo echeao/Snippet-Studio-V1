@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -112,6 +113,14 @@ fun CodeEditor(
     var viewportHeightPx by remember { mutableStateOf(0) }
     var internalValue by remember { mutableStateOf(textFieldValue) }
     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val latestOnValueChange by rememberUpdatedState(onValueChange)
+    val latestOnFontSizeChange by rememberUpdatedState(onFontSizeChange)
+    val handleValueChange: (TextFieldValue) -> Unit = remember {
+        { newValue ->
+            internalValue = newValue
+            latestOnValueChange(newValue)
+        }
+    }
 
     LaunchedEffect(textFieldValue.text) {
         if (internalValue.text != textFieldValue.text) internalValue = textFieldValue
@@ -164,10 +173,12 @@ fun CodeEditor(
             .fillMaxSize()
             .background(colors.surface)
             .onSizeChanged { viewportHeightPx = it.height }
-            .pointerInput(onFontSizeChange) {
-                if (onFontSizeChange != null) {
+            .pointerInput(Unit) {
+                if (latestOnFontSizeChange != null) {
                     detectTransformGestures { _, _, zoom, _ ->
-                        if (abs(zoom - 1f) > 0.03f) onFontSizeChange((zoom - 1f).coerceIn(-3f, 3f))
+                        if (abs(zoom - 1f) > 0.03f) {
+                            latestOnFontSizeChange?.invoke((zoom - 1f).coerceIn(-3f, 3f))
+                        }
                     }
                 }
             }
@@ -197,7 +208,7 @@ fun CodeEditor(
                 if (isWordWrap) {
                     BasicTextField(
                         value = internalValue,
-                        onValueChange = { internalValue = it; onValueChange(it) },
+                        onValueChange = handleValueChange,
                         onTextLayout = { layoutResult = it },
                         visualTransformation = transformation,
                         textStyle = textStyle,
@@ -208,7 +219,7 @@ fun CodeEditor(
                     Box(Modifier.fillMaxWidth().horizontalScroll(horizontalScroll)) {
                         BasicTextField(
                             value = internalValue,
-                            onValueChange = { internalValue = it; onValueChange(it) },
+                            onValueChange = handleValueChange,
                             onTextLayout = { layoutResult = it },
                             visualTransformation = transformation,
                             textStyle = textStyle,

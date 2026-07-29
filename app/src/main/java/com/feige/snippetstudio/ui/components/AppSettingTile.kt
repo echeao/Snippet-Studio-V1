@@ -216,7 +216,9 @@ fun AppSettingSwitchTile(
             val tc = LocalThemeColors.current
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                // The whole tile owns the click. Letting both this Switch and its clickable
+                // parent write the preference can enqueue duplicate DataStore updates.
+                onCheckedChange = null,
                 colors = SwitchDefaults.colors(
                     checkedTrackColor = tc.primary,
                     checkedThumbColor = Color.White,
