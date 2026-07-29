@@ -2,6 +2,7 @@ package com.feige.snippetstudio.ui.components
 
 import android.content.Context
 import android.content.res.AssetManager
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -267,7 +268,7 @@ fun SoraCodeEditor(
     // ===== 将 Sora CodeEditor View 嵌入 Compose 布局 =====
     AndroidView(
         factory = { editor },
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         update = { ed ->
             // update 回调处理 View 属性
             ed.setTextSize(fontSp)
@@ -322,6 +323,10 @@ private fun initTextMateRegistry(context: Context) {
             language("java") {
                 grammar = "textmate/java.tmLanguage.json"
                 scopeName = "source.java"
+            }
+            language("markdown") {
+                grammar = "textmate/markdown.tmLanguage.json"
+                scopeName = "text.html.markdown"
             }
         })
         // 验证语法是否真正注册成功
@@ -386,9 +391,9 @@ private fun buildSoraLanguage(language: SyntaxLanguage): Language? {
             SyntaxLanguage.CSS -> "source.css"
             SyntaxLanguage.PYTHON -> "source.python"
             SyntaxLanguage.JAVA -> "source.java"
+            SyntaxLanguage.MARKDOWN -> "text.html.markdown"
             // 以下语言暂无 TextMate 语法文件，降级为无高亮
             SyntaxLanguage.JSON,
-            SyntaxLanguage.MARKDOWN,
             SyntaxLanguage.YAML,
             SyntaxLanguage.SHELL,
             SyntaxLanguage.CPP,
@@ -425,9 +430,24 @@ private fun buildColorScheme(
 ): EditorColorScheme {
     return base.also { scheme ->
         // 编辑器主背景色
+        val bgColor = tc.surface.toArgb()
         scheme.setColor(
             EditorColorScheme.WHOLE_BACKGROUND,
-            tc.surface.toArgb()
+            bgColor
+        )
+        // 滚动条轨道背景（必须与主背景一致，否则右侧出现色块）
+        scheme.setColor(
+            EditorColorScheme.SCROLL_BAR_TRACK,
+            bgColor
+        )
+        // 滚动条滑块颜色
+        scheme.setColor(
+            EditorColorScheme.SCROLL_BAR_THUMB,
+            tc.text3.copy(alpha = 0.3f).toArgb()
+        )
+        scheme.setColor(
+            EditorColorScheme.SCROLL_BAR_THUMB_PRESSED,
+            tc.text3.copy(alpha = 0.5f).toArgb()
         )
         // 行号栏背景
         scheme.setColor(
@@ -447,7 +467,7 @@ private fun buildColorScheme(
         // 当前行背景高亮
         scheme.setColor(
             EditorColorScheme.CURRENT_LINE,
-            tc.primarySoft.copy(alpha = if (isDark) 0.15f else 0.5f).toArgb()
+            tc.primarySoft.copy(alpha = if (isDark) 0.10f else 0.04f).toArgb()
         )
         // 光标颜色
         scheme.setColor(

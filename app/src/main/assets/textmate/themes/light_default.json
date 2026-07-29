@@ -28,6 +28,18 @@
     { "scope": ["constant.other.color", "support.constant.property-value"], "settings": { "foreground": "#7B1FA2" } },
     { "scope": ["storage.type.annotation", "entity.name.function.decorator"], "settings": { "foreground": "#F57F17", "fontStyle": "italic" } },
     { "scope": ["variable.css", "support.variable.dom"], "settings": { "foreground": "#00796B" } },
-    { "scope": ["punctuation.definition.tag"], "settings": { "foreground": "#00796B" } }
+    { "scope": ["punctuation.definition.tag"], "settings": { "foreground": "#00796B" } },
+    { "scope": ["entity.name.section.markdown", "heading.1.markdown", "heading.2.markdown", "heading.3.markdown"], "settings": { "foreground": "#1565C0", "fontStyle": "bold" } },
+    { "scope": ["heading.4.markdown"], "settings": { "foreground": "#1565C0" } },
+    { "scope": ["punctuation.definition.heading.markdown"], "settings": { "foreground": "#7B1FA2" } },
+    { "scope": ["markup.bold.markdown"], "settings": { "fontStyle": "bold" } },
+    { "scope": ["markup.italic.markdown"], "settings": { "fontStyle": "italic" } },
+    { "scope": ["markup.strikethrough.markdown"], "settings": { "fontStyle": "strikethrough" } },
+    { "scope": ["markup.inline.raw.string.markdown", "markup.raw.block.markdown"], "settings": { "foreground": "#C62828" } },
+    { "scope": ["markup.quote.markdown", "punctuation.definition.blockquote.markdown"], "settings": { "foreground": "#00796B", "fontStyle": "italic" } },
+    { "scope": ["markup.underline.link.markdown", "markup.underline.link.image.markdown"], "settings": { "foreground": "#1565C0", "fontStyle": "underline" } },
+    { "scope": ["string.other.link.title.markdown"], "settings": { "foreground": "#2E7D32" } },
+    { "scope": ["punctuation.definition.list.begin.markdown"], "settings": { "foreground": "#E65100" } },
+    { "scope": ["punctuation.definition.bold.markdown", "punctuation.definition.italic.markdown", "punctuation.definition.raw.markdown"], "settings": { "foreground": "#757575" } }
   ]
 }
