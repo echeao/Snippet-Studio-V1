@@ -41,10 +41,18 @@ import androidx.compose.foundation.gestures.detectTransformGestures
  * 3. **当前行高亮背景层**：根据当前光标所在的 [currentLineIndex]，在编辑器背景绘制突出显示的高亮带。
  * 4. **自动换行与横向滚动控制**：通过 [isWordWrap] 参数切换软换行还是横向自由滚动。
  *
+ * 性能优化说明（v1.1.1）：
+ * - 行号虚拟化窗口补全了底部占位 Spacer，修复末尾行号被截断的 Bug。
+ * - 使用 [rememberUpdatedState] 将 linesCount 与 derivedStateOf 解耦，
+ *   避免每次打字时重建虚拟化计算 lambda。
+ * - currentLineTopDp 的 remember key 移除了冗余的 currentLineIndex 项。
+ * - 语法高亮防抖延迟从 120ms 调整至 150ms，减少频繁打字时的高亮重算压力。
+ *
  * @param textFieldValue 当前编辑框的 [TextFieldValue]（包含文本内容与光标 Selection 选中信息）
  * @param onValueChange 文本变动回调
  * @param fontSp 字体大小 (sp)
  * @param currentLineIndex 当前光标所在的行索引 (0-based)
+ * @param lineCount 总行数（由 ViewModel 后台异步计算传入，避免在组合阶段扫描字符）
  * @param snippetType 代码片段类型
  * @param syntaxLanguage 语法高亮语言（可选，传入则优先使用，否则根据 snippetType 推断）
  * @param isWordWrap 是否开启自动换行
@@ -76,12 +84,12 @@ fun CodeEditor(
 
     // 确定实际使用的语法语言（对 SnippetType 进行穷举匹配）
     val effectiveLanguage = syntaxLanguage ?: when (snippetType) {
-        SnippetType.HTML -> SyntaxLanguage.HTML
-        SnippetType.JS -> SyntaxLanguage.JS
+        SnippetType.HTML     -> SyntaxLanguage.HTML
+        SnippetType.JS       -> SyntaxLanguage.JS
         SnippetType.MARKDOWN -> SyntaxLanguage.MARKDOWN
-        SnippetType.PROMPT -> SyntaxLanguage.PROMPT
-        SnippetType.JAVA -> SyntaxLanguage.JAVA
-        SnippetType.GENERAL -> SyntaxLanguage.PLAIN
+        SnippetType.PROMPT   -> SyntaxLanguage.PROMPT
+        SnippetType.JAVA     -> SyntaxLanguage.JAVA
+        SnippetType.GENERAL  -> SyntaxLanguage.PLAIN
     }
 
     // 记住语法高亮富文本结果，初始填充纯文本避免组件首次渲染空白
@@ -89,16 +97,18 @@ fun CodeEditor(
         mutableStateOf(AnnotatedString(textFieldValue.text))
     }
 
-    // 异步计算语法高亮：在 Dispatchers.Default 协程后台线程处理正则匹配，配合 120ms 防抖避免打字频繁阻塞 UI 线程
+    // 异步计算语法高亮：在 Dispatchers.Default 协程后台线程处理正则匹配，
+    // 配合 150ms 防抖避免打字频繁阻塞 UI 线程（从 120ms 微调至 150ms）
     LaunchedEffect(textFieldValue.text, effectiveLanguage, isDark) {
-        kotlinx.coroutines.delay(120)
+        kotlinx.coroutines.delay(150)
         val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
             SyntaxHighlighter.highlightByLanguage(textFieldValue.text, effectiveLanguage, isDark)
         }
         highlightedAnnotated = result
     }
 
-    // 构建 VisualTransformation 转换器：在防抖计算的 120ms 极短过渡期内，若高亮结果长度与文本长度不一致，安全降级使用原 text 文本，绝对防止选区与光标索引越界闪退
+    // 构建 VisualTransformation 转换器：在防抖计算的 150ms 极短过渡期内，
+    // 若高亮结果长度与文本长度不一致，安全降级使用原 text 文本，绝对防止选区与光标索引越界闪退
     val syntaxTransformation = remember(highlightedAnnotated) {
         VisualTransformation { text ->
             val safeTransformed = if (highlightedAnnotated.length == text.length) {
@@ -138,8 +148,9 @@ fun CodeEditor(
 
     val density = androidx.compose.ui.platform.LocalDensity.current
 
-    // 计算当前光标在视觉屏幕上的真实 Y 轴 Top 偏移量（dp），解决软自动换行折行时高亮背景横条与光标错位的问题
-    val currentLineTopDp = remember(textLayoutResult, internalTfv.selection, currentLineIndex, fontSp) {
+    // 计算当前光标在视觉屏幕上的真实 Y 轴 Top 偏移量（dp），解决软自动换行折行时高亮背景横条与光标错位的问题。
+    // 优化：移除了冗余的 currentLineIndex key，selection 变化已足够触发重算，避免双重触发。
+    val currentLineTopDp = remember(textLayoutResult, internalTfv.selection, fontSp) {
         val layout = textLayoutResult
         if (layout != null && internalTfv.text.isNotEmpty()) {
             val caret = internalTfv.selection.start.coerceIn(0, layout.layoutInput.text.length)
@@ -193,7 +204,10 @@ fun CodeEditor(
     ) {
         // ===== 1. 左侧行号装订轨 (Line Number Gutter) =====
         if (showLineNumbers) {
+            // 每行逻辑行高（与右侧代码区 lineHeight 保持一致）
             val lineHeightDp = (fontSp * 1.6f).dp
+
+            // Gutter 视口高度（px），用于计算可见行窗口
             var gutterViewportHeightPx by remember { mutableStateOf(0) }
 
             Column(
@@ -201,36 +215,21 @@ fun CodeEditor(
                     .fillMaxHeight()
                     .width(44.dp)
                     .background(tc.surface2)
-                    .verticalScroll(verticalScrollState) // 与右侧代码区绑着同一个 verticalScrollState 共用垂直滚动
+                    // 与右侧代码区绑着同一个 verticalScrollState 共用垂直滚动
+                    .verticalScroll(verticalScrollState)
                     .onSizeChanged { gutterViewportHeightPx = it.height }
                     .padding(top = Spacing.S3 + topContentPadding),
                 horizontalAlignment = Alignment.End
             ) {
                 val lineHeightPx = with(density) { lineHeightDp.toPx() }
 
-                // 使用 derivedStateOf 状态派生拦截机制：仅当滚动产生的行索引范围真正变化时才引发重组，避免每一帧滚动都重绘所有行号
-                val visibleLineRange by remember(linesCount, lineHeightPx, gutterViewportHeightPx) {
-                    derivedStateOf {
-                        if (lineHeightPx > 0f && gutterViewportHeightPx > 0) {
-                            val scrollPx = verticalScrollState.value
-                            val start = (scrollPx / lineHeightPx).toInt().coerceIn(0, linesCount - 1)
-                            val end = ((scrollPx + gutterViewportHeightPx) / lineHeightPx + 1).toInt().coerceAtMost(linesCount)
-                            start until end
-                        } else {
-                            0 until 0
-                        }
-                    }
-                }
-
-                if (visibleLineRange.first < visibleLineRange.last) {
-                    val visibleStart = visibleLineRange.first
-                    val visibleEnd = visibleLineRange.last
-
-                    // 顶部非可见区域用 Spacer 占位，保持正确的滚动高度
-                    if (visibleStart > 0) {
-                        Spacer(modifier = Modifier.height(lineHeightDp * visibleStart))
-                    }
-                    for (i in visibleStart until visibleEnd) {
+                // ── WordWrap 模式 vs 无换行模式 分支渲染 ──────────────────────────────
+                // WordWrap 开启时，每条逻辑行可能折成多个视觉行，行高不固定，
+                // 虚拟化窗口无法精确预估总高度，直接全量渲染所有行号（行号 Text 轻量无性能问题）。
+                // WordWrap 关闭时，每行视觉高度固定等于 lineHeightDp，保留虚拟化窗口提升大文件性能。
+                if (isWordWrap) {
+                    // ── 模式 A：WordWrap 全量渲染所有行号 ──────────────────────────
+                    for (i in 0 until linesCount) {
                         val isCurrent = (i == currentLineIndex)
                         Box(
                             modifier = Modifier
@@ -248,9 +247,73 @@ fun CodeEditor(
                             )
                         }
                     }
+                } else {
+                    // ── 模式 B：无换行虚拟化窗口渲染 ──────────────────────────────────
+                    // 使用 rememberUpdatedState 将 linesCount 封装为 Compose 可追踪状态，
+                    // 解除与 remember key 的耦合：derivedStateOf 内部追踪 linesCountState.value
+                    // 的读取，linesCount 变化时自动重算，无需重建整个 lambda，消除每次打字的重建开销。
+                    val linesCountState = rememberUpdatedState(linesCount)
+
+                    val visibleLineRange by remember(lineHeightPx, gutterViewportHeightPx) {
+                        derivedStateOf {
+                            // 注：linesCountState.value 被 derivedStateOf 自动追踪
+                            val currentLinesCount = linesCountState.value
+                            if (lineHeightPx > 0f && gutterViewportHeightPx > 0) {
+                                val scrollPx = verticalScrollState.value.toFloat()
+                                val start = (scrollPx / lineHeightPx)
+                                    .toInt()
+                                    .coerceIn(0, (currentLinesCount - 1).coerceAtLeast(0))
+                                // 多渲染 2 行缓冲区，防止快速滚动时行号一帧空白闪烁
+                                val end = ((scrollPx + gutterViewportHeightPx) / lineHeightPx + 2)
+                                    .toInt()
+                                    .coerceAtMost(currentLinesCount)
+                                start until end
+                            } else {
+                                0 until 0
+                            }
+                        }
+                    }
+
+                    if (visibleLineRange.first < visibleLineRange.last) {
+                        val visibleStart = visibleLineRange.first
+                        val visibleEnd   = visibleLineRange.last
+
+                        // 顶部非可见区域：用 Spacer 占位，保持正确的滚动总高度
+                        if (visibleStart > 0) {
+                            Spacer(modifier = Modifier.height(lineHeightDp * visibleStart))
+                        }
+
+                        // 渲染可见行号
+                        for (i in visibleStart until visibleEnd) {
+                            val isCurrent = (i == currentLineIndex)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(lineHeightDp)
+                                    .padding(end = Spacing.S2),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Text(
+                                    text = "${i + 1}",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = (fontSp * 0.85f).sp,
+                                    fontWeight = if (isCurrent) FontWeight.W800 else FontWeight.W400,
+                                    color = if (isCurrent) tc.primary else tc.text3
+                                )
+                            }
+                        }
+
+                        // ★ Bug Fix：底部非可见区域补足占位 Spacer。
+                        // 原版缺少此 Spacer 导致 Gutter Column 总高度 < 代码区高度，
+                        // 用户滚动到文档末尾时行号已耗尽，产生末尾行号截断的视觉 Bug。
+                        val remainingLines = linesCount - visibleEnd
+                        if (remainingLines > 0) {
+                            Spacer(modifier = Modifier.height(lineHeightDp * remainingLines))
+                        }
+                    }
                 }
-                
-                // 行号轨道末尾 120.dp 越过留白缓冲层，保证与右侧代码区高度同步对齐
+
+                // 行号轨道末尾缓冲留白，与右侧代码区 Spacer 高度保持一致
                 Spacer(modifier = Modifier.height(120.dp))
             }
         }
@@ -328,5 +391,3 @@ fun CodeEditor(
         }
     }
 }
-
-
