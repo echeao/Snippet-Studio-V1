@@ -46,31 +46,48 @@
 .\gradlew.bat :app:compileDebugKotlin
 ```
 
-## 未完成问题：高亮初始化竞态
+## ~~未完成问题：高亮初始化竞态~~（已解决 2026-07-30）
 
-当前 `SoraCodeEditor.kt` 仍将以下动作放在两个独立的 `LaunchedEffect` 中：
+**原问题**：主题配色与语言初始化分属两个独立 `LaunchedEffect`，并发启动导致语言分析器可能在配色方案绑定前开始分析，用户看到无高亮正文。
 
-1. 主题/`TextMateColorScheme`：约第 111 行。
-2. `TextMateLanguage` 的创建和 `editor.setEditorLanguage(lang)`：约第 137 行。
+**修复方案**（已实施并编译通过）：
 
-两者会并发启动。语言分析器有机会在有效 TextMate 配色/主题尚未绑定到编辑器之前开始第一次分析，用户仍可能看到“无高亮”的正文。下一任应将它们改为确定的顺序。
+将两个 effect 合并为单一顺序协程 `LaunchedEffect(language, tmInitialized.value)`，严格按以下顺序执行：
 
-推荐实现顺序：
-
-1. `initTextMateRegistry(context)` 完成。
-2. 在同一个协程中按 `isDark` 调用 `ThemeRegistry.getInstance().setTheme(...)`。
+1. `initTextMateRegistry(context)` 完成（前置 effect）。
+2. 在同一协程中按 `isDark` 调用 `ThemeRegistry.getInstance().setTheme(...)`。
 3. 创建 `TextMateColorScheme`。
-4. 在主线程先执行 `editor.colorScheme = buildColorScheme(textMateColorScheme, themeColors, isDark)`。
+4. 在主线程执行 `editor.colorScheme = buildColorScheme(...)`。
 5. 再创建 `TextMateLanguage`，然后调用 `editor.setEditorLanguage(lang)`。
-6. 仅在内容不一致时同步 `editor.setText(latestText)`，最后才令 `isEditorReady = true`。
+6. 仅在内容不一致时同步 `editor.setText(latestText)`，最后 `isEditorReady = true`。
 
-主题切换可使用单独 effect，但它应只更新已经创建好的 `TextMateColorScheme`；不要在首次语言初始化时与语言 effect 并发竞争。建议以 `mutableStateOf<TextMateColorScheme?>(null)` 持有当前 scheme，主题 effect 在其非空后更新 `ThemeRegistry` 与应用 UI 色覆盖。
+主题切换使用独立 `LaunchedEffect(isDark, themeColors, tmFirstInitDone)`，以 `tmFirstInitDone` 布尔门控（而非 `currentTmColorScheme`）避免循环触发。该 effect 仅在首次初始化完成后响应主题变更，不会与初始化 effect 竞争。
 
 ## 语言覆盖范围
 
 当前 TextMate assets 仅包含：JavaScript、HTML、CSS、Python、Java。
 
 `buildSoraLanguage()` 明确将以下语言降级为 `EmptyLanguage`：JSON、Markdown、YAML、Shell、C/C++、Go、Rust、Prompt、Plain。因此这些类型当前**不可能**有 Sora TextMate 高亮。若用户测试的是 Markdown 或 Prompt，这不是配色问题，而是缺少 grammar asset。
+
+## 根本原因：IThemeSource 文件名缺少扩展名（已修复 2026-07-30）
+
+**现象**：所有语言类型均无高亮，文本可见但无颜色区分。
+
+**根因分析**（通过 adb logcat 诊断确认）：
+
+1. `IThemeSource.fromInputStream(stream, fileName, charset)` 的第二个参数 `fileName` 被 tm4e 的 `guessFileFormat()` 用于判断主题文件格式（JSON / PLIST）。
+2. 之前传入 `"dark_default"`（无扩展名），tm4e 无法识别格式，抛出 `IllegalArgumentException: Unsupported file type: dark_default`。
+3. 异常被外层 try-catch 捕获，主题从未加载 → `TextMateColorScheme` 无 token 颜色 → 所有文本回退到 TEXT_NORMAL（单色）。
+4. 语法加载和 tokenize 均正常（grammar 不依赖主题），因此问题仅表现为"有分词但无颜色"。
+
+**修复**：
+
+文件名参数加上 `.json` 扩展名：
+```kotlin
+IThemeSource.fromInputStream(assets.open("textmate/themes/dark_default.json"), "dark_default.json", null)
+```
+
+同时将 `initTextMateRegistry()` 重构为三步独立 try-catch（FileProvider → 语法 → 主题），避免一个环节失败拖垮整体初始化。
 
 当前编辑页使用 `SyntaxLanguageDetector.fromSnippetType(uiState.type)`，不是文件名探测：
 

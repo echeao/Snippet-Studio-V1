@@ -76,7 +76,7 @@ fun SoraCodeEditor(
     // 始终保持最新的光标偏移引用，供文本同步后恢复光标位置
     val latestSelectionOffset by rememberUpdatedState(selectionOffset)
 
-    // ===== 核心状态门控 =====
+   // ===== 核心状态门控 =====
     // isExternalUpdate：标记当前内容变更是否由外部（Compose 侧）触发，防止循环回调
     var isExternalUpdate by remember { mutableStateOf(false) }
     // isEditorReady：仅当语言和初始文本都已写入编辑器后才开放用户输入事件。
@@ -85,6 +85,12 @@ fun SoraCodeEditor(
 
     // TextMate 注册表初始化标记（仅在 Context 变化时执行一次）
     val tmInitialized = remember(context) { mutableStateOf(false) }
+    // 持有当前 TextMateColorScheme 引用，供主题切换 effect 复用（避免重复创建）
+    var currentTmColorScheme by remember { mutableStateOf<TextMateColorScheme?>(null) }
+    // 首次初始化完成标记：主题切换 effect 以此为门控，避免与初始化 effect 竞争或循环触发
+    var tmFirstInitDone by remember { mutableStateOf(false) }
+    // 主题标识缓存：用于跳过主题切换 effect 的冗余触发
+    var lastThemeKey by remember { mutableStateOf("") }
 
     // 创建并记忆 Sora CodeEditor 实例
     val editor = remember {
@@ -107,18 +113,23 @@ fun SoraCodeEditor(
         }
     }
 
-    // ===== 主题切换：响应 isDark 或 themeColors 变化 =====
-    LaunchedEffect(isDark, themeColors, tmInitialized.value) {
+    // ===== 首次初始化：注册表 → 主题 → 配色 → 语言 → 文本（严格顺序，消除竞态）=====
+    // 合并原先独立的"主题配色"与"语言初始化"两个 effect 为单一顺序协程，
+    // 确保 TextMateColorScheme 在 setEditorLanguage() 之前已绑定到编辑器。
+    LaunchedEffect(language, tmInitialized.value) {
         if (!tmInitialized.value) return@LaunchedEffect
+    
+        // 第一步：关闭事件传播门控，阻止初始化期间任何事件泄漏到 ViewModel
+        isEditorReady = false
+    
+        // 第二步：设置 TextMate 主题并创建配色方案（IO 线程）
         val textMateColorScheme = withContext(Dispatchers.IO) {
             val themeName = if (isDark) "dark_default" else "light_default"
             try {
                 ThemeRegistry.getInstance().setTheme(themeName)
             } catch (e: Exception) {
-                // 主题切换失败时静默回退
+                android.util.Log.w("SoraCodeEditor", "TextMate 主题设置失败: ${e.message}")
             }
-            // TextMate 的 token 使用 255 以上的颜色槽位。普通 EditorColorScheme
-            // 无法解析这些槽位，会返回 0（透明），从而造成“内容还在但看不见”。
             try {
                 TextMateColorScheme.create(ThemeRegistry.getInstance())
             } catch (e: Exception) {
@@ -126,37 +137,74 @@ fun SoraCodeEditor(
                 null
             }
         }
-        // 先使用能解析 TextMate token 颜色的 scheme，再覆盖应用专有 UI 颜色。
-        // 初始化异常时保留已有配色，避免以不完整的普通 scheme 覆盖编辑器。
+    
+        // 第三步：在主线程绑定配色方案到编辑器（必须先于语言设置）
         if (textMateColorScheme != null) {
             editor.colorScheme = buildColorScheme(textMateColorScheme, themeColors, isDark)
+            currentTmColorScheme = textMateColorScheme
+            // 诊断：检查 TextMate token 颜色槽位是否非零（非透明）
+            val testColor = textMateColorScheme.getColor(256)
+            android.util.Log.d("SoraCodeEditor", "[TM-Init] colorScheme 已绑定, getColor(256)=0x${Integer.toHexString(testColor)}")
+        } else {
+            android.util.Log.w("SoraCodeEditor", "[TM-Init] TextMateColorScheme 为 null，编辑器将使用默认配色（无 TextMate 高亮）")
         }
-    }
-
-    // ===== 语言初始化与切换：关闭门控 → 设置语言 → 必要时同步文本 → 开放门控 =====
-    LaunchedEffect(language, tmInitialized.value) {
-        if (!tmInitialized.value) return@LaunchedEffect
-
-        // 第一步：关闭事件传播门控，阻止初始化期间任何事件泄漏到 ViewModel
-        isEditorReady = false
-
-        // 第二步：在 IO 线程构建 TextMate 语言实例
+    
+        // 第四步：在 IO 线程构建 TextMate 语言实例
         val lang: Language = withContext(Dispatchers.IO) {
             buildSoraLanguage(language) ?: EmptyLanguage()
         }
-
-        // 第三步：Sora 的 setEditorLanguage() 保留已有 Content，并对该 Content 调用
-        // AnalyzeManager.reset()。因此首屏文本可持续可见，同时 TextMate 能立即分析它。
-        // 仅当语言创建期间外部文本确实发生变化时才补一次同步，避免不必要的闪屏。
+        android.util.Log.d("SoraCodeEditor", "语言初始化: $language -> ${lang.javaClass.simpleName}, colorScheme=${textMateColorScheme != null}")
+    
+        // 第五步：Sora 的 setEditorLanguage() 保留已有 Content，并对该 Content 调用
+        // AnalyzeManager.reset()。此时配色已就绪，token 颜色可正确解析。
         isExternalUpdate = true
         editor.setEditorLanguage(lang)
+        // 仅当语言创建期间外部文本确实发生变化时才补一次同步，避免不必要的闪屏。
         if (editor.text.toString() != latestText) {
             editor.setText(latestText)
         }
         isExternalUpdate = false
-
-        // 第四步：只有内容与外部状态一致后才接收用户编辑事件。
+    
+        // 第六步：只有内容与外部状态一致后才接收用户编辑事件。
         isEditorReady = true
+        // 记录当前主题标识，使主题切换 effect 跳过初始化后的冗余触发
+        lastThemeKey = "${isDark}_${themeColors.hashCode()}"
+        // 标记首次初始化完成，解锁主题切换 effect
+        tmFirstInitDone = true
+    }
+    
+    // ===== 主题切换：仅在首次初始化完成后响应 isDark / themeColors 真实变化 =====
+    // 以 tmFirstInitDone 为门控；通过 lastThemeKey 跳过初始化后的冗余触发，
+    // 避免在语言分析器异步启动期间替换 colorScheme 导致渲染异常。
+    LaunchedEffect(isDark, themeColors, tmFirstInitDone) {
+        if (!tmFirstInitDone) return@LaunchedEffect
+        // 构造当前主题标识；若与上次应用的一致则跳过（消除初始化后的冗余触发）
+        val themeKey = "${isDark}_${themeColors.hashCode()}"
+        if (themeKey == lastThemeKey) return@LaunchedEffect
+        lastThemeKey = themeKey
+
+        android.util.Log.d("SoraCodeEditor", "主题切换: isDark=$isDark")
+        withContext(Dispatchers.IO) {
+            val themeName = if (isDark) "dark_default" else "light_default"
+            try {
+                ThemeRegistry.getInstance().setTheme(themeName)
+            } catch (e: Exception) {
+                android.util.Log.w("SoraCodeEditor", "主题切换失败: ${e.message}")
+            }
+        }
+        // ThemeRegistry 内部状态已更新，重新创建 scheme 以读取新主题的 token 颜色
+        val newScheme = withContext(Dispatchers.IO) {
+            try {
+                TextMateColorScheme.create(ThemeRegistry.getInstance())
+            } catch (e: Exception) {
+                android.util.Log.w("SoraCodeEditor", "主题切换配色创建失败: ${e.message}")
+                null
+            }
+        }
+        if (newScheme != null) {
+            editor.colorScheme = buildColorScheme(newScheme, themeColors, isDark)
+            currentTmColorScheme = newScheme
+        }
     }
 
     // ===== 字体大小响应 =====
@@ -239,49 +287,68 @@ fun SoraCodeEditor(
  * @param context Android 上下文，用于访问 assets
  */
 private fun initTextMateRegistry(context: Context) {
-    try {
-        val assets: AssetManager = context.assets
+    val assets: AssetManager = context.assets
 
-        // 注册 Assets 文件解析器
+    // === 第 1 步：注册 Assets 文件解析器 ===
+    try {
         FileProviderRegistry.getInstance().addFileProvider(
             AssetsFileResolver(assets)
         )
+        android.util.Log.d("SoraCodeEditor", "[TM-Init] FileProviderRegistry OK")
+    } catch (e: Exception) {
+        android.util.Log.e("SoraCodeEditor", "[TM-Init] FileProviderRegistry 失败", e)
+        return
+    }
 
-        // 注册 TextMate 语法规则（语言 → 语法文件映射）
+    // === 第 2 步：加载语法 ===
+    try {
         GrammarRegistry.getInstance().loadGrammars(languages {
             language("javascript") {
                 grammar = "textmate/javascript.tmLanguage.json"
-                defaultScopeName()
                 scopeName = "source.js"
             }
             language("html") {
                 grammar = "textmate/html.tmLanguage.json"
-                defaultScopeName()
                 scopeName = "text.html.basic"
             }
             language("css") {
                 grammar = "textmate/css.tmLanguage.json"
-                defaultScopeName()
                 scopeName = "source.css"
             }
             language("python") {
                 grammar = "textmate/python.tmLanguage.json"
-                defaultScopeName()
                 scopeName = "source.python"
             }
             language("java") {
                 grammar = "textmate/java.tmLanguage.json"
-                defaultScopeName()
                 scopeName = "source.java"
             }
         })
+        // 验证语法是否真正注册成功
+        val testGrammar = GrammarRegistry.getInstance().findGrammar("source.js")
+        android.util.Log.d("SoraCodeEditor", "[TM-Init] 语法加载完成, findGrammar(source.js)=${testGrammar != null}")
+        if (testGrammar != null) {
+            // 直接 tokenize 测试：验证 grammar 能否实际工作
+            try {
+                val result = testGrammar.tokenizeLine("const x = 1;", null, null)
+                android.util.Log.d("SoraCodeEditor", "[TM-Init] tokenize 测试: ${result?.tokens?.size ?: 0} tokens")
+            } catch (e: Exception) {
+                android.util.Log.e("SoraCodeEditor", "[TM-Init] tokenize 测试失败", e)
+            }
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("SoraCodeEditor", "[TM-Init] 语法加载失败", e)
+    }
 
-        // 注册深色和浅色主题
+    // === 第 3 步：加载主题（独立于语法，互不影响） ===
+    try {
+        // 使用标准 API 加载主题（ThemeRegistry.loadTheme 内部调用 themeModel.load(null)，
+        // tm4e 的 Theme.createFromRawTheme(rawTheme, null) 会自动创建内部 colorMap）
         ThemeRegistry.getInstance().loadTheme(
             ThemeModel(
                 IThemeSource.fromInputStream(
                     assets.open("textmate/themes/dark_default.json"),
-                    "dark_default",
+                    "dark_default.json",
                     null
                 ),
                 "dark_default"
@@ -291,15 +358,16 @@ private fun initTextMateRegistry(context: Context) {
             ThemeModel(
                 IThemeSource.fromInputStream(
                     assets.open("textmate/themes/light_default.json"),
-                    "light_default",
+                    "light_default.json",
                     null
                 ),
                 "light_default"
             )
         )
+        val currentTheme = ThemeRegistry.getInstance().currentThemeModel
+        android.util.Log.d("SoraCodeEditor", "[TM-Init] 主题加载完成, current=${currentTheme?.name}, loaded=${currentTheme?.isLoaded}")
     } catch (e: Exception) {
-        // 语法注册失败时降级为无高亮模式，保证编辑器基本可用
-        android.util.Log.w("SoraCodeEditor", "TextMate 注册表初始化失败，降级为无高亮模式: ${e.message}")
+        android.util.Log.e("SoraCodeEditor", "[TM-Init] 主题加载失败", e)
     }
 }
 
@@ -327,11 +395,16 @@ private fun buildSoraLanguage(language: SyntaxLanguage): Language? {
             SyntaxLanguage.GO,
             SyntaxLanguage.RUST,
             SyntaxLanguage.PROMPT,
-            SyntaxLanguage.PLAIN -> return null
+            SyntaxLanguage.PLAIN -> {
+                android.util.Log.d("SoraCodeEditor", "[TM-Lang] $language 无对应 grammar，降级为 EmptyLanguage")
+                return null
+            }
         }
-        TextMateLanguage.create(scopeName, true)
+        val lang = TextMateLanguage.create(scopeName, true)
+        android.util.Log.d("SoraCodeEditor", "[TM-Lang] 成功创建 TextMateLanguage: scope=$scopeName, class=${lang.javaClass.simpleName}")
+        lang
     } catch (e: Exception) {
-        android.util.Log.w("SoraCodeEditor", "语言 $language 构建失败: ${e.message}")
+        android.util.Log.e("SoraCodeEditor", "[TM-Lang] 语言 $language 构建失败", e)
         null
     }
 }
