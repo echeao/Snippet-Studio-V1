@@ -180,6 +180,7 @@ fun EditorMainContent(
                     fontSp = fontSp,
                     showLineNumbers = showLineNumbers,
                     isWordWrap = isWordWrap,
+                    selectionOffset = textFieldValue.selection.start,
                     modifier = Modifier.weight(1f)
                 )
             }

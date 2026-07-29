@@ -17,6 +17,7 @@ import com.feige.snippetstudio.ui.theme.ThemeColors
 import com.feige.snippetstudio.util.SyntaxLanguage
 import io.github.rosemoe.sora.lang.EmptyLanguage
 import io.github.rosemoe.sora.lang.Language
+import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
 import io.github.rosemoe.sora.langs.textmate.TextMateLanguage
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
@@ -62,6 +63,7 @@ fun SoraCodeEditor(
     fontSp: Float,
     showLineNumbers: Boolean = true,
     isWordWrap: Boolean = true,
+    selectionOffset: Int = -1,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -71,12 +73,14 @@ fun SoraCodeEditor(
     val latestOnCursorChange by rememberUpdatedState(onCursorChange)
     // 始终保持最新的外部文本引用，供事件回调与 LaunchedEffect 内部使用
     val latestText by rememberUpdatedState(text)
+    // 始终保持最新的光标偏移引用，供文本同步后恢复光标位置
+    val latestSelectionOffset by rememberUpdatedState(selectionOffset)
 
     // ===== 核心状态门控 =====
     // isExternalUpdate：标记当前内容变更是否由外部（Compose 侧）触发，防止循环回调
     var isExternalUpdate by remember { mutableStateOf(false) }
-    // isEditorReady：编辑器就绪门控。仅当语言初始化完成且内容稳定后才开放事件传播，
-    // 从根本上杜绝 TextMate 初始化/语言切换期间的异步清空事件泄漏到 ViewModel
+    // isEditorReady：仅当语言和初始文本都已写入编辑器后才开放用户输入事件。
+    // 设置 Sora 语言时会替换内部 Content；在此之前开放事件会把这次内部替换误写回 ViewModel。
     var isEditorReady by remember { mutableStateOf(false) }
 
     // TextMate 注册表初始化标记（仅在 Context 变化时执行一次）
@@ -87,7 +91,8 @@ fun SoraCodeEditor(
         CodeEditor(context).also { ed ->
             // 禁用自动补全弹窗（代码片段场景无需补全）
             ed.getComponent(EditorAutoCompletion::class.java).isEnabled = false
-            // 初始化同步填充首屏文本
+            // 首帧同步填充，避免等待 TextMate 注册期间以空白编辑器渲染一帧。
+            // Sora 的 setEditorLanguage() 会复用既有 Content 并据此启动语法分析。
             ed.setText(text)
         }
     }
@@ -103,21 +108,32 @@ fun SoraCodeEditor(
     }
 
     // ===== 主题切换：响应 isDark 或 themeColors 变化 =====
-    LaunchedEffect(isDark, themeColors) {
+    LaunchedEffect(isDark, themeColors, tmInitialized.value) {
         if (!tmInitialized.value) return@LaunchedEffect
-        withContext(Dispatchers.IO) {
+        val textMateColorScheme = withContext(Dispatchers.IO) {
             val themeName = if (isDark) "dark_default" else "light_default"
             try {
                 ThemeRegistry.getInstance().setTheme(themeName)
             } catch (e: Exception) {
                 // 主题切换失败时静默回退
             }
+            // TextMate 的 token 使用 255 以上的颜色槽位。普通 EditorColorScheme
+            // 无法解析这些槽位，会返回 0（透明），从而造成“内容还在但看不见”。
+            try {
+                TextMateColorScheme.create(ThemeRegistry.getInstance())
+            } catch (e: Exception) {
+                android.util.Log.w("SoraCodeEditor", "TextMate 配色初始化失败: ${e.message}")
+                null
+            }
         }
-        // 同步手动应用颜色方案
-        editor.colorScheme = buildColorScheme(editor.colorScheme, themeColors, isDark)
+        // 先使用能解析 TextMate token 颜色的 scheme，再覆盖应用专有 UI 颜色。
+        // 初始化异常时保留已有配色，避免以不完整的普通 scheme 覆盖编辑器。
+        if (textMateColorScheme != null) {
+            editor.colorScheme = buildColorScheme(textMateColorScheme, themeColors, isDark)
+        }
     }
 
-    // ===== 语言初始化与切换：关闭门控 → 设置语言 → 稳定后恢复内容 → 开放门控 =====
+    // ===== 语言初始化与切换：关闭门控 → 设置语言 → 必要时同步文本 → 开放门控 =====
     LaunchedEffect(language, tmInitialized.value) {
         if (!tmInitialized.value) return@LaunchedEffect
 
@@ -129,23 +145,17 @@ fun SoraCodeEditor(
             buildSoraLanguage(language) ?: EmptyLanguage()
         }
 
-        // 第三步：设置语言并立即重设文本（同一 isExternalUpdate 窗口内，不触发外部回调）
+        // 第三步：Sora 的 setEditorLanguage() 保留已有 Content，并对该 Content 调用
+        // AnalyzeManager.reset()。因此首屏文本可持续可见，同时 TextMate 能立即分析它。
+        // 仅当语言创建期间外部文本确实发生变化时才补一次同步，避免不必要的闪屏。
         isExternalUpdate = true
         editor.setEditorLanguage(lang)
-        editor.setText(latestText)
+        if (editor.text.toString() != latestText) {
+            editor.setText(latestText)
+        }
         isExternalUpdate = false
 
-        // 第四步：等待 Sora 内部异步操作完成（语言分析器初始化 + 可能的延迟内容清空）
-        kotlinx.coroutines.delay(350)
-
-        // 第五步：再次校验并恢复内容（捕获延迟异步清空）
-        if (editor.text.toString() != latestText) {
-            isExternalUpdate = true
-            editor.setText(latestText)
-            isExternalUpdate = false
-        }
-
-        // 第六步：开放门控，此后用户编辑事件可正常传播到 ViewModel
+        // 第四步：只有内容与外部状态一致后才接收用户编辑事件。
         isEditorReady = true
     }
 
@@ -167,25 +177,29 @@ fun SoraCodeEditor(
         if (currentEditorText != text) {
             isExternalUpdate = true
             editor.setText(text)
+            // 文本同步后恢复光标位置（符号插入等场景需要精确定位）
+            if (latestSelectionOffset >= 0) {
+                try {
+                    val pos = editor.text.indexer.getCharPosition(
+                        latestSelectionOffset.coerceIn(0, text.length)
+                    )
+                    editor.setSelection(pos.line, pos.column)
+                } catch (_: Exception) { /* 光标定位失败时静默忽略 */ }
+            }
             isExternalUpdate = false
         }
     }
 
     // ===== 注册编辑器内容与光标监听器（使用 Sora EventBus 订阅机制）=====
     DisposableEffect(editor) {
-        // 订阅文本内容变动事件：三层防护确保仅用户真实编辑传播到 ViewModel
+        // 订阅文本内容变动事件。外部同步产生的事件要么处于 isExternalUpdate
+        // 窗口内，要么文本已等于外部状态；两种情况都不能再回写 ViewModel。
         val contentSub = editor.subscribeEvent(io.github.rosemoe.sora.event.ContentChangeEvent::class.java) { _, _ ->
             if (isEditorReady && !isExternalUpdate) {
                 val newText = editor.text.toString()
-                // 第三层防护：编辑器未聚焦时，内容从非空突变为空必然是 Sora 内部操作（非用户编辑），
-                // 静默恢复内容并拦截事件。用户聚焦编辑时的清空操作不受影响。
-                if (newText.isEmpty() && latestText.isNotEmpty() && !editor.isFocused) {
-                    isExternalUpdate = true
-                    editor.setText(latestText)
-                    isExternalUpdate = false
-                    return@subscribeEvent
+                if (newText != latestText) {
+                    latestOnTextChange(newText)
                 }
-                latestOnTextChange(newText)
             }
         }
 

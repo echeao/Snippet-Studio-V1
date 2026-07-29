@@ -160,6 +160,7 @@ fun EditorScreen(
                         fontSp = uiState.fontSp,
                         showLineNumbers = uiState.showLineNumbers,
                         isWordWrap = uiState.isWordWrap,
+                        selectionOffset = uiState.textFieldValue.selection.start,
                         modifier = Modifier.weight(1f)
                     )
 

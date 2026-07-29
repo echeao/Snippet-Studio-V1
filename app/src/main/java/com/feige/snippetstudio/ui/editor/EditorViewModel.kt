@@ -313,30 +313,52 @@ class EditorViewModel(
     /**
      * Sora-Editor 文本变更回调（适配层）。
      * Sora-Editor 返回纯 String 而非 TextFieldValue，此方法适配到现有接口。
+     * 注意：保留当前 TextFieldValue 的 selection 不覆盖，光标位置由 onSoraCursorChange 独立维护。
      * @param newText Sora-Editor 发布的最新文本内容
      */
     fun onSoraTextChange(newText: String) {
         val currentTfv = _uiState.value.textFieldValue
         if (currentTfv.text != newText) {
-            onTextFieldValueChange(
-                TextFieldValue(text = newText, selection = androidx.compose.ui.text.TextRange(newText.length.coerceAtLeast(0)))
-            )
+            _uiState.update {
+                it.copy(
+                    textFieldValue = currentTfv.copy(text = newText),
+                    saveState = SaveState.UNSAVED,
+                    charCount = newText.length
+                )
+            }
+            triggerPromptVariableParse(newText)
+            triggerAutoSave()
         }
     }
 
     /**
      * Sora-Editor 光标位置变更回调（高效版）。
-     * 直接提供行列号，无需遍历全文，降低光标移动时的 CPU 开销。
+     * 直接提供行列号，同步更新状态栏显示与 TextFieldValue.selection（供符号插入使用）。
      * @param line 光标所在行号 (0-indexed)
      * @param column 光标所在列号 (0-indexed)
      */
     fun onSoraCursorChange(line: Int, column: Int) {
         val currentText = _uiState.value.textFieldValue.text
+        // 将行列号转换为绝对偏移量，保持 TextFieldValue.selection 与实际光标同步
+        var offset = 0
+        var curLine = 0
+        for (i in currentText.indices) {
+            if (curLine == line) {
+                offset = (i + column).coerceAtMost(currentText.length)
+                break
+            }
+            if (currentText[i] == '\n') curLine++
+        }
+        if (curLine < line) offset = currentText.length
+
         _uiState.update {
             it.copy(
                 currentLineIndex = line,
                 currentColumnIndex = column,
-                lineCount = currentText.count { c -> c == '\n' } + 1
+                lineCount = currentText.count { c -> c == '\n' } + 1,
+                textFieldValue = it.textFieldValue.copy(
+                    selection = androidx.compose.ui.text.TextRange(offset.coerceIn(0, currentText.length))
+                )
             )
         }
     }
@@ -346,13 +368,22 @@ class EditorViewModel(
     fun insertSymbol(symbol: String) {
         val currentTfv = _uiState.value.textFieldValue
         val text = currentTfv.text
+        // 使用 TextFieldValue.selection（已由 onSoraCursorChange 同步为实际光标位置）
         val start = currentTfv.selection.start.coerceIn(0, text.length)
         val end = currentTfv.selection.end.coerceIn(0, text.length)
 
         val newText = text.replaceRange(start, end, symbol)
         val newSelection = start + symbol.length
 
-        onTextFieldValueChange(TextFieldValue(newText, androidx.compose.ui.text.TextRange(newSelection)))
+        _uiState.update {
+            it.copy(
+                textFieldValue = TextFieldValue(newText, androidx.compose.ui.text.TextRange(newSelection)),
+                saveState = SaveState.UNSAVED,
+                charCount = newText.length
+            )
+        }
+        triggerPromptVariableParse(newText)
+        triggerAutoSave()
     }
 
     /** 切换代码编辑 / 实时预览选项卡 */
