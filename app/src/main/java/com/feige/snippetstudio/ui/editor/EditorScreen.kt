@@ -155,6 +155,7 @@ fun EditorScreen(
                         onValueChange = { viewModel.onTextFieldValueChange(it) },
                         fontSp = uiState.fontSp,
                         currentLineIndex = uiState.currentLineIndex,
+                        lineCount = uiState.lineCount,
                         snippetType = uiState.type,
                         syntaxLanguage = SyntaxLanguageDetector.fromSnippetType(uiState.type),
                         isWordWrap = uiState.isWordWrap,
@@ -230,45 +231,17 @@ fun EditorScreen(
                 )
             },
             bottomBar = {
-                // 底部专业代码编辑器状态栏 (行列号 / 行数 / 字符数 / 编码 / 换行符 / 语言)
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)))
-                        .height(36.dp)
-                        .border(1.dp, tc.line),
-                    color = tc.surface2
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = Spacing.S3),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "${uiState.currentLineIndex + 1}:${uiState.currentColumnIndex + 1}  ·  ${uiState.lineCount} 行  ·  ${uiState.charCount} 字符  ·  ${uiState.encoding}  ·  ${uiState.lineEnding}",
-                            style = CaptionStyle,
-                            color = tc.text2,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        Surface(
-                            color = tc.primarySoft,
-                            shape = RoundedCornerShape(R_SM),
-                            modifier = Modifier.clickable { showTypeDialog = true }
-                        ) {
-                            Text(
-                                text = uiState.type.displayName,
-                                style = BadgeStyle,
-                                color = tc.primary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
+                // 底部专业代码编辑器状态栏 (独立的组合节点，隔离频繁变化的行列号重组)
+                EditorBottomStatusBar(
+                    currentLineIndex = uiState.currentLineIndex,
+                    currentColumnIndex = uiState.currentColumnIndex,
+                    lineCount = uiState.lineCount,
+                    charCount = uiState.charCount,
+                    encoding = uiState.encoding,
+                    lineEnding = uiState.lineEnding,
+                    snippetType = uiState.type,
+                    onOpenTypeDialog = { showTypeDialog = true }
+                )
             },
             containerColor = tc.bg
         ) { innerPadding ->
@@ -279,6 +252,7 @@ fun EditorScreen(
                 fontSp = uiState.fontSp,
                 editorFont = editorFont,
                 currentLineIndex = uiState.currentLineIndex,
+                lineCount = uiState.lineCount,
                 isWordWrap = uiState.isWordWrap,
                 showLineNumbers = uiState.showLineNumbers,
                 highlightCurrentLine = uiState.highlightCurrentLine,
@@ -392,4 +366,72 @@ fun EditorScreen(
         onApply = { viewModel.applyVariableFill() },
         onDismiss = { viewModel.toggleVariablePanel() }
     )
+}
+
+/**
+ * [EditorBottomStatusBar] 独立封装的底部代码编辑器状态栏组件。
+ *
+ * 架构优化与重组隔离说明：
+ * 1. 单独接收频繁变动的行列号 (currentLineIndex, currentColumnIndex)、总行数与字符数参数。
+ * 2. 在 Compose 组合树中作为叶子节点隔离，光标移动或文本长短变化时只有该小组件发生 Recomposition，避免引发上层大界面重绘。
+ *
+ * @param currentLineIndex 当前光标行号 (0-based)
+ * @param currentColumnIndex 当前光标列号 (0-based)
+ * @param lineCount 片段总行数
+ * @param charCount 片段总字符数
+ * @param encoding 文件编码格式字符串 (如 "UTF-8")
+ * @param lineEnding 换行符类型 (如 "LF")
+ * @param snippetType 当前片段语言类型
+ * @param onOpenTypeDialog 点击切换类型 Badge 回调
+ */
+@Composable
+private fun EditorBottomStatusBar(
+    currentLineIndex: Int,
+    currentColumnIndex: Int,
+    lineCount: Int,
+    charCount: Int,
+    encoding: String,
+    lineEnding: String,
+    snippetType: SnippetType,
+    onOpenTypeDialog: () -> Unit
+) {
+    val tc = LocalThemeColors.current
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)))
+            .height(36.dp)
+            .border(1.dp, tc.line),
+        color = tc.surface2
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = Spacing.S3),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${currentLineIndex + 1}:${currentColumnIndex + 1}  ·  ${lineCount} 行  ·  ${charCount} 字符  ·  ${encoding}  ·  ${lineEnding}",
+                style = CaptionStyle,
+                color = tc.text2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+
+            Surface(
+                color = tc.primarySoft,
+                shape = RoundedCornerShape(R_SM),
+                modifier = Modifier.clickable { onOpenTypeDialog() }
+            ) {
+                Text(
+                    text = snippetType.displayName,
+                    style = BadgeStyle,
+                    color = tc.primary,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+    }
 }

@@ -111,6 +111,11 @@ class EditorViewModel(
 
     // 触发防抖自动保存的管道
     private val _autoSaveTrigger = MutableSharedFlow<Unit>(replay = 1)
+    // 触发 Prompt 变量解析的防抖管道
+    private val _varParseTrigger = MutableSharedFlow<String>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
 
     /** 标记当前是否为新建片段（用于返回时判断是否需要清理空文件） */
     private var isNewSnippet = false
@@ -197,6 +202,25 @@ class EditorViewModel(
                     performSave()
                 }
         }
+
+        // ===== 5. Prompt 变量 500ms 防抖解析管线 =====
+        viewModelScope.launch {
+            _varParseTrigger
+                .debounce(500)
+                .collect { text ->
+                    val state = _uiState.value
+                    if (state.type == SnippetType.PROMPT) {
+                        val variables = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                            PromptVariableParser.parse(text)
+                        }
+                        _uiState.update { it.copy(promptVariables = variables) }
+                    } else {
+                        if (_uiState.value.promptVariables.isNotEmpty()) {
+                            _uiState.update { it.copy(promptVariables = emptyList()) }
+                        }
+                    }
+                }
+        }
     }
 
     private fun initFromSnippet(snippet: Snippet) {
@@ -230,45 +254,58 @@ class EditorViewModel(
     }
 
     /**
-     * 文本编辑区输入内容变动：精准计算当前光标所在行号、列号与字符总数。
+     * 文本编辑区输入内容变动：同步更新 TextFieldValue 保证输入流畅，并将耗时的行列号与字符数统计移至后台协程执行。
      *
      * 算位逻辑解析：
-     * 1. `caret`: 获取 TextFieldValue 选区的起始光标偏移量，限制在 [0, text.length] 范围内。
-     * 2. `textBeforeCaret`: 截取光标之前的子字符串。
-     * 3. `currentLine`: 统计 `textBeforeCaret` 中换行符 `\n` 的个数，即为当前光标所在的 0-indexed 行索引。
-     * 4. `currentCol`: 查找 `textBeforeCaret` 中最后一个 `\n` 的位置，算得从该行起点到光标的距离作为列索引。
+     * 1. 主线程同步更新选区 TextFieldValue 与 UNSAVED 状态，消除输入法软键盘与打字时延。
+     * 2. 在 [Dispatchers.Default] 线程池遍历 `text` 字符数组，统计换行符 `\n` 并计算当前行、列与总行数。
+     * 3. 计算完毕切回主线程更新 `_uiState` 中的行列位置状态。
+     * 4. 触发异步防抖 Prompt 变量解析与防抖落盘保存。
+     *
+     * @param tfv 编辑框新的 TextFieldValue
      */
     fun onTextFieldValueChange(tfv: TextFieldValue) {
-        val text = tfv.text
-        val caret = tfv.selection.start.coerceIn(0, text.length)
-
-        // 单次遍历：同时计算换行符总数、光标前换行数、光标前最后一个换行符位置
-        var currentLine = 0
-        var lastNewlinePos = -1
-        var totalNewlines = 0
-        for (i in text.indices) {
-            if (text[i] == '\n') {
-                totalNewlines++
-                if (i < caret) {
-                    currentLine++
-                    lastNewlinePos = i
-                }
-            }
-        }
-        val currentCol = if (lastNewlinePos == -1) caret else caret - lastNewlinePos - 1
-        val lines = totalNewlines + 1
-
+        // 步骤 1：主线程同步更新 TextFieldValue 与保存状态，保证输入框光标无延迟
         _uiState.update {
             it.copy(
                 textFieldValue = tfv,
-                lineCount = lines,
-                charCount = text.length,
-                currentLineIndex = currentLine,
-                currentColumnIndex = currentCol,
                 saveState = SaveState.UNSAVED
             )
         }
-        parsePromptVariables(text)
+
+        // 步骤 2：后台协程异步计算行列号与字符统计
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val text = tfv.text
+            val caret = tfv.selection.start.coerceIn(0, text.length)
+
+            var currentLine = 0
+            var lastNewlinePos = -1
+            var totalNewlines = 0
+            for (i in text.indices) {
+                if (text[i] == '\n') {
+                    totalNewlines++
+                    if (i < caret) {
+                        currentLine++
+                        lastNewlinePos = i
+                    }
+                }
+            }
+            val currentCol = if (lastNewlinePos == -1) caret else caret - lastNewlinePos - 1
+            val lines = totalNewlines + 1
+
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                _uiState.update {
+                    it.copy(
+                        lineCount = lines,
+                        charCount = text.length,
+                        currentLineIndex = currentLine,
+                        currentColumnIndex = currentCol
+                    )
+                }
+            }
+        }
+
+        triggerPromptVariableParse(tfv.text)
         triggerAutoSave()
     }
 
@@ -384,14 +421,10 @@ class EditorViewModel(
 
     // ===== Prompt 变量填空功能 =====
 
-    /** 解析当前文本中的 Prompt 变量（当类型为 PROMPT 时自动触发） */
-    private fun parsePromptVariables(text: String) {
-        val state = _uiState.value
-        if (state.type == SnippetType.PROMPT) {
-            val variables = PromptVariableParser.parse(text)
-            _uiState.update { it.copy(promptVariables = variables) }
-        } else {
-            _uiState.update { it.copy(promptVariables = emptyList()) }
+    /** 触发 Prompt 变量的异步防抖解析管道 */
+    private fun triggerPromptVariableParse(text: String) {
+        viewModelScope.launch {
+            _varParseTrigger.emit(text)
         }
     }
 

@@ -60,6 +60,7 @@ fun CodeEditor(
     onValueChange: (TextFieldValue) -> Unit,
     fontSp: Float,
     currentLineIndex: Int,
+    lineCount: Int = 1,
     snippetType: SnippetType = SnippetType.HTML,
     syntaxLanguage: SyntaxLanguage? = null,
     isWordWrap: Boolean = true,
@@ -83,16 +84,29 @@ fun CodeEditor(
         SnippetType.GENERAL -> SyntaxLanguage.PLAIN
     }
 
-    // 记住并构建语法高亮转换器 VisualTransformation
-    val syntaxTransformation = remember(effectiveLanguage, isDark) {
-        var lastText = ""
-        var lastResult = AnnotatedString("")
+    // 记住语法高亮富文本结果，初始填充纯文本避免组件首次渲染空白
+    var highlightedAnnotated by remember(effectiveLanguage) {
+        mutableStateOf(AnnotatedString(textFieldValue.text))
+    }
+
+    // 异步计算语法高亮：在 Dispatchers.Default 协程后台线程处理正则匹配，配合 120ms 防抖避免打字频繁阻塞 UI 线程
+    LaunchedEffect(textFieldValue.text, effectiveLanguage, isDark) {
+        kotlinx.coroutines.delay(120)
+        val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            SyntaxHighlighter.highlightByLanguage(textFieldValue.text, effectiveLanguage, isDark)
+        }
+        highlightedAnnotated = result
+    }
+
+    // 构建 VisualTransformation 转换器：在防抖计算的 120ms 极短过渡期内，若高亮结果长度与文本长度不一致，安全降级使用原 text 文本，绝对防止选区与光标索引越界闪退
+    val syntaxTransformation = remember(highlightedAnnotated) {
         VisualTransformation { text ->
-            if (text.text != lastText) {
-                lastText = text.text
-                lastResult = SyntaxHighlighter.highlightByLanguage(text.text, effectiveLanguage, isDark)
+            val safeTransformed = if (highlightedAnnotated.length == text.length) {
+                highlightedAnnotated
+            } else {
+                text
             }
-            TransformedText(lastResult, OffsetMapping.Identity)
+            TransformedText(safeTransformed, OffsetMapping.Identity)
         }
     }
 
@@ -119,11 +133,8 @@ fun CodeEditor(
         onValueChange(newTfv)
     }
 
-    // 统计代码总行数（通过计算换行符 '\n' 数量加 1，最小值为 1 行）
-    val linesCount = remember(internalTfv.text) {
-        val count = internalTfv.text.count { it == '\n' } + 1
-        maxOf(1, count)
-    }
+    // 直接使用外部 ViewModel 计算好传进来的总行数，避免在 Compose 组合阶段频繁做字符扫描
+    val linesCount = lineCount.coerceAtLeast(1)
 
     val density = androidx.compose.ui.platform.LocalDensity.current
 
@@ -192,15 +203,28 @@ fun CodeEditor(
                     .background(tc.surface2)
                     .verticalScroll(verticalScrollState) // 与右侧代码区绑着同一个 verticalScrollState 共用垂直滚动
                     .onSizeChanged { gutterViewportHeightPx = it.height }
-                    .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3),
+                    .padding(top = Spacing.S3 + topContentPadding),
                 horizontalAlignment = Alignment.End
             ) {
-                // 只渲染当前可见区域内的行号，避免大文件时所有行号节点全部进入组合树
                 val lineHeightPx = with(density) { lineHeightDp.toPx() }
-                if (lineHeightPx > 0f && gutterViewportHeightPx > 0) {
-                    val scrollPx = verticalScrollState.value
-                    val visibleStart = (scrollPx / lineHeightPx).toInt().coerceIn(0, linesCount - 1)
-                    val visibleEnd = ((scrollPx + gutterViewportHeightPx) / lineHeightPx + 1).toInt().coerceAtMost(linesCount)
+
+                // 使用 derivedStateOf 状态派生拦截机制：仅当滚动产生的行索引范围真正变化时才引发重组，避免每一帧滚动都重绘所有行号
+                val visibleLineRange by remember(linesCount, lineHeightPx, gutterViewportHeightPx) {
+                    derivedStateOf {
+                        if (lineHeightPx > 0f && gutterViewportHeightPx > 0) {
+                            val scrollPx = verticalScrollState.value
+                            val start = (scrollPx / lineHeightPx).toInt().coerceIn(0, linesCount - 1)
+                            val end = ((scrollPx + gutterViewportHeightPx) / lineHeightPx + 1).toInt().coerceAtMost(linesCount)
+                            start until end
+                        } else {
+                            0 until 0
+                        }
+                    }
+                }
+
+                if (visibleLineRange.first < visibleLineRange.last) {
+                    val visibleStart = visibleLineRange.first
+                    val visibleEnd = visibleLineRange.last
 
                     // 顶部非可见区域用 Spacer 占位，保持正确的滚动高度
                     if (visibleStart > 0) {
@@ -225,74 +249,82 @@ fun CodeEditor(
                         }
                     }
                 }
+                
+                // 行号轨道末尾 120.dp 越过留白缓冲层，保证与右侧代码区高度同步对齐
+                Spacer(modifier = Modifier.height(120.dp))
             }
         }
 
         // ===== 2. 右侧主代码编辑区域 (Code Text Area) =====
-        Box(
+        Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
                 .verticalScroll(verticalScrollState) // 与左侧行号轨共用垂直滚动
-                .padding(top = Spacing.S3 + topContentPadding, bottom = Spacing.S3, start = Spacing.S3, end = Spacing.S3)
+                .padding(top = Spacing.S3 + topContentPadding, start = Spacing.S3, end = Spacing.S3)
         ) {
-            // 当前焦点行高亮背景绘制层（使用 TextLayoutResult 计算的真实物理坐标，解决 WordWrap 自动换行下的对齐错位）
-            if (highlightCurrentLine && currentLineIndex in 0 until linesCount) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .offset(y = currentLineTopDp)
-                        .height(currentLineHeightDp)
-                        .background(tc.primarySoft.copy(alpha = if (isDark) 0.15f else 0.5f))
-                )
-            }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                // 当前焦点行高亮背景绘制层（使用 TextLayoutResult 计算的真实物理坐标，解决 WordWrap 自动换行下的对齐错位）
+                if (highlightCurrentLine && currentLineIndex in 0 until linesCount) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = currentLineTopDp)
+                            .height(currentLineHeightDp)
+                            .background(tc.primarySoft.copy(alpha = if (isDark) 0.15f else 0.5f))
+                    )
+                }
 
-            // 基础无原生框架装饰的文本输入框 BasicTextField
-            if (isWordWrap) {
-                // 模式 A: 开启自动换行 (Word Wrap)
-                BasicTextField(
-                    value = internalTfv,
-                    onValueChange = handleValueChange,
-                    onTextLayout = { textLayoutResult = it },
-                    visualTransformation = syntaxTransformation,
-                    textStyle = TextStyle(
-                        fontFamily = FontFamily.Monospace, // 强制使用代码标准等宽字体
-                        fontSize = fontSp.sp,
-                        lineHeight = (fontSp * 1.6f).sp,
-                        color = tc.text
-                    ),
-                    cursorBrush = SolidColor(tc.primary),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = 300.dp)
-                        .testTag("code_editor_input")
-                )
-            } else {
-                // 模式 B: 禁用换行，开启横向自由滚动 (Horizontal Scrollable Box)
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .horizontalScroll(horizontalScrollState)
-                ) {
+                // 基础无原生框架装饰的文本输入框 BasicTextField
+                if (isWordWrap) {
+                    // 模式 A: 开启自动换行 (Word Wrap)
                     BasicTextField(
                         value = internalTfv,
                         onValueChange = handleValueChange,
                         onTextLayout = { textLayoutResult = it },
                         visualTransformation = syntaxTransformation,
                         textStyle = TextStyle(
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = FontFamily.Monospace, // 强制使用代码标准等宽字体
                             fontSize = fontSp.sp,
                             lineHeight = (fontSp * 1.6f).sp,
                             color = tc.text
                         ),
                         cursorBrush = SolidColor(tc.primary),
                         modifier = Modifier
-                            .widthIn(min = 1200.dp) // 给定最小 1200.dp 支撑宽文本横向拖拽
-                            .fillMaxHeight()
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 300.dp)
                             .testTag("code_editor_input")
                     )
+                } else {
+                    // 模式 B: 禁用换行，开启横向自由滚动 (Horizontal Scrollable Box)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .horizontalScroll(horizontalScrollState)
+                    ) {
+                        BasicTextField(
+                            value = internalTfv,
+                            onValueChange = handleValueChange,
+                            onTextLayout = { textLayoutResult = it },
+                            visualTransformation = syntaxTransformation,
+                            textStyle = TextStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = fontSp.sp,
+                                lineHeight = (fontSp * 1.6f).sp,
+                                color = tc.text
+                            ),
+                            cursorBrush = SolidColor(tc.primary),
+                            modifier = Modifier
+                                .widthIn(min = 1200.dp) // 给定最小 1200.dp 支撑宽文本横向拖拽
+                                .fillMaxHeight()
+                                .testTag("code_editor_input")
+                        )
+                    }
                 }
             }
+
+            // 代码区域末尾 120.dp 越过留白缓冲层 (Scroll Beyond Last Line)，确保最后一行代码能轻轻松松向上滑动到屏幕中央
+            Spacer(modifier = Modifier.height(120.dp))
         }
     }
 }
