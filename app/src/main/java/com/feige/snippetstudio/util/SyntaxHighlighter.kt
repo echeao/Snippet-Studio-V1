@@ -28,91 +28,91 @@ object SyntaxHighlighter {
     /** 全局富文本语法高亮分析 LRU 内存缓存（容量 512），彻底消除重复正则分词计算开销 */
     private val globalHighlightCache = LruCache<String, AnnotatedString>(512)
 
-    // ===== 词法单元色彩定义 (Token Styles) =====
+    // ===== 词法单元色彩定义 (Token Styles - 对齐 VSCode 官方 Dark+ / Light+ 标准) =====
 
     /** 获取关键字样式（如 JavaScript 的 const, let, function） */
     private fun getKeywordStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFFC792EA) else Color(0xFF7B1FA2),
+        color = if (isDark) Color(0xFFC586C0) else Color(0xFFAF00DB),
         fontWeight = FontWeight.Bold
     )
 
     /** 获取字符串文本样式 */
     private fun getStringStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFFC3E88D) else Color(0xFF2E7D32)
+        color = if (isDark) Color(0xFFCE9178) else Color(0xFFA31515)
     )
 
     /** 获取数字文本样式 */
     private fun getNumberStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFFF78C6C) else Color(0xFFE65100)
+        color = if (isDark) Color(0xFFB5CEA8) else Color(0xFF098658)
     )
 
-    /** 获取注释文本样式（斜体灰色） */
+    /** 获取注释文本样式（斜体绿色） */
     private fun getCommentStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFF78909C) else Color(0xFF757575),
+        color = if (isDark) Color(0xFF6A9955) else Color(0xFF008000),
         fontStyle = FontStyle.Italic
     )
 
-    /** 获取 HTML 标签样式 */
+    /** 获取 HTML 标签样式 (VSCode 经典明蓝/深酒红) */
     private fun getTagStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFF80CBC4) else Color(0xFF00796B),
+        color = if (isDark) Color(0xFF569CD6) else Color(0xFF800000),
         fontWeight = FontWeight.SemiBold
     )
 
-    /** 获取 HTML 属性名称样式 */
+    /** 获取 HTML 属性名称样式 (VSCode 经典天青浅蓝/橙红) */
     private fun getAttrStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFFFFCB6B) else Color(0xFFF57F17)
+        color = if (isDark) Color(0xFF9CDCFE) else Color(0xFFE50000)
     )
 
     /** 获取 Markdown 标题样式 */
     private fun getHeaderStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFF82AAFF) else Color(0xFF1565C0),
+        color = if (isDark) Color(0xFF569CD6) else Color(0xFF0000FF),
         fontWeight = FontWeight.Bold
     )
 
     /** 获取函数/方法调用样式（如 document.getElementById, console.log） */
     private fun getFunctionStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFF82AAFF) else Color(0xFF1565C0),
+        color = if (isDark) Color(0xFFDCDCAA) else Color(0xFF795E26),
         fontWeight = FontWeight.SemiBold
     )
 
     /** 获取 CSS 属性常用值/关键字样式 */
     private fun getCssValueStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFFC792EA) else Color(0xFF7B1FA2)
+        color = if (isDark) Color(0xFFCE9178) else Color(0xFF0000FF)
     )
 
     /** 获取 CSS 变量名与颜色值样式 (如 --bg, #101214) */
     private fun getCssVarStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFF80CBC4) else Color(0xFF00796B),
+        color = if (isDark) Color(0xFF9CDCFE) else Color(0xFF001080),
         fontWeight = FontWeight.Medium
     )
 
     /** 获取 Prompt 提示词变量样式（如 {var} 或 $var） */
     private fun getVariableStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFFFF5370) else Color(0xFFD81B60),
+        color = if (isDark) Color(0xFF9CDCFE) else Color(0xFF001080),
         fontWeight = FontWeight.Bold
     )
 
     /** 获取 CSS 选择器样式 */
     private fun getSelectorStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFF82AAFF) else Color(0xFF1565C0),
+        color = if (isDark) Color(0xFFD7BA7D) else Color(0xFF800000),
         fontWeight = FontWeight.SemiBold
     )
 
     /** 获取装饰器/注解样式 (Python @decorator) */
     private fun getDecoratorStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFFFFCB6B) else Color(0xFFF57F17),
+        color = if (isDark) Color(0xFF4EC9B0) else Color(0xFF267F99),
         fontStyle = FontStyle.Italic
     )
 
     /** 获取 YAML key 样式 */
     private fun getYamlKeyStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFF80CBC4) else Color(0xFF00796B),
+        color = if (isDark) Color(0xFF9CDCFE) else Color(0xFF0451A5),
         fontWeight = FontWeight.SemiBold
     )
 
     /** 获取 Shell 变量样式 ($var) */
     private fun getShellVarStyle(isDark: Boolean) = SpanStyle(
-        color = if (isDark) Color(0xFFFF5370) else Color(0xFFD81B60)
+        color = if (isDark) Color(0xFF9CDCFE) else Color(0xFF001080)
     )
 
     // ===== 语法匹配正则表达式模式 (Regex Patterns) =====
@@ -136,14 +136,20 @@ object SyntaxHighlighter {
         "//.*|/\\*[\\s\\S]*?\\*/"
     )
 
-    private val HTML_TAG_PATTERN = Pattern.compile(
-        "</?[a-zA-Z0-9\\-]+(?:\\s+[a-zA-Z0-9\\-]+(?:=(?:\"[^\"]*\"|'[^']*'|[^>\\s]+))?)*\\s*/?>"
+    private val HTML_TAG_NAME_PATTERN = Pattern.compile(
+        "(?<=</?)[a-zA-Z0-9_:-]+"
+    )
+    private val HTML_PUNCTUATION_PATTERN = Pattern.compile(
+        "</?|/?>"
     )
     private val HTML_COMMENT_PATTERN = Pattern.compile(
         "<!--[\\s\\S]*?-->"
     )
     private val HTML_ATTR_NAME_PATTERN = Pattern.compile(
-        "\\b[a-zA-Z0-9\\-]+(?=\\=)"
+        "(?<=\\s)[a-zA-Z0-9_:-]+(?=\\s*=)"
+    )
+    private val HTML_ENTITY_PATTERN = Pattern.compile(
+        "&([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);"
     )
 
     private val MD_HEADER_PATTERN = Pattern.compile(
@@ -436,8 +442,19 @@ object SyntaxHighlighter {
             return embeddedRanges.any { range -> start >= range.first && end <= (range.last + 1) }
         }
 
-        // 4. HTML 标签高亮（避开内嵌 script/style 内部代码）
-        val tagMatcher = HTML_TAG_PATTERN.matcher(text)
+        // 4. HTML 尖括号标点高亮（避开内嵌 script/style 内部代码）
+        val puncMatcher = HTML_PUNCTUATION_PATTERN.matcher(text)
+        val puncStyle = SpanStyle(color = if (isDark) Color(0xFF808080) else Color(0xFF800000))
+        while (puncMatcher.find()) {
+            val start = puncMatcher.start()
+            val end = puncMatcher.end()
+            if (!isInsideEmbeddedRange(start, end)) {
+                addStyle(puncStyle, start, end)
+            }
+        }
+
+        // 5. HTML 标签名高亮（仅匹配紧随 < 或 </ 后的标签标识，如 div, svg, h1 等）
+        val tagMatcher = HTML_TAG_NAME_PATTERN.matcher(text)
         val tagStyle = getTagStyle(isDark)
         while (tagMatcher.find()) {
             val start = tagMatcher.start()
@@ -447,7 +464,7 @@ object SyntaxHighlighter {
             }
         }
 
-        // 5. HTML 属性名高亮（避开内嵌 script/style 内部代码）
+        // 6. HTML 属性名高亮（匹配 class=, id=, xmlns= 等中的属性标识）
         val attrMatcher = HTML_ATTR_NAME_PATTERN.matcher(text)
         val attrStyle = getAttrStyle(isDark)
         while (attrMatcher.find()) {
@@ -458,7 +475,7 @@ object SyntaxHighlighter {
             }
         }
 
-        // 6. HTML 字符串高亮（避开内嵌 script/style 内部代码，防止覆盖内嵌 JS/CSS 字符串与结构）
+        // 7. HTML 字符串高亮（避开内嵌 script/style 内部代码，防止覆盖内嵌 JS/CSS 字符串与结构）
         val strMatcher = JS_STRING_PATTERN.matcher(text)
         val strStyle = getStringStyle(isDark)
         while (strMatcher.find()) {
@@ -469,7 +486,18 @@ object SyntaxHighlighter {
             }
         }
 
-        // 7. HTML 注释高亮（最高优先级覆盖，避开内嵌代码块）
+        // 8. HTML 实体符号高亮（如 &amp;, &lt;）
+        val entityMatcher = HTML_ENTITY_PATTERN.matcher(text)
+        val entityStyle = SpanStyle(color = if (isDark) Color(0xFFD7BA7D) else Color(0xFFEE0000))
+        while (entityMatcher.find()) {
+            val start = entityMatcher.start()
+            val end = entityMatcher.end()
+            if (!isInsideEmbeddedRange(start, end)) {
+                addStyle(entityStyle, start, end)
+            }
+        }
+
+        // 9. HTML 注释高亮（最高优先级覆盖，避开内嵌代码块）
         val cmtMatcher = HTML_COMMENT_PATTERN.matcher(text)
         val cmtStyle = getCommentStyle(isDark)
         while (cmtMatcher.find()) {
@@ -746,7 +774,13 @@ object SyntaxHighlighter {
      * 在指定偏移范围内应用 XML/HTML 语法高亮。
      */
     private fun AnnotatedString.Builder.applyXmlHighlightInRange(xmlText: String, offset: Int, isDark: Boolean) {
-        val tagMatcher = HTML_TAG_PATTERN.matcher(xmlText)
+        val puncMatcher = HTML_PUNCTUATION_PATTERN.matcher(xmlText)
+        val puncStyle = SpanStyle(color = if (isDark) Color(0xFF808080) else Color(0xFF800000))
+        while (puncMatcher.find()) {
+            addStyle(puncStyle, offset + puncMatcher.start(), offset + puncMatcher.end())
+        }
+
+        val tagMatcher = HTML_TAG_NAME_PATTERN.matcher(xmlText)
         val tagStyle = getTagStyle(isDark)
         while (tagMatcher.find()) {
             addStyle(tagStyle, offset + tagMatcher.start(), offset + tagMatcher.end())
@@ -1142,7 +1176,13 @@ object SyntaxHighlighter {
 
     /** XML 语法高亮（复用 HTML 逻辑） */
     private fun AnnotatedString.Builder.highlightXml(text: String, isDark: Boolean) {
-        val tagMatcher = HTML_TAG_PATTERN.matcher(text)
+        val puncMatcher = HTML_PUNCTUATION_PATTERN.matcher(text)
+        val puncStyle = SpanStyle(color = if (isDark) Color(0xFF808080) else Color(0xFF800000))
+        while (puncMatcher.find()) {
+            addStyle(puncStyle, puncMatcher.start(), puncMatcher.end())
+        }
+
+        val tagMatcher = HTML_TAG_NAME_PATTERN.matcher(text)
         val tagStyle = getTagStyle(isDark)
         while (tagMatcher.find()) {
             addStyle(tagStyle, tagMatcher.start(), tagMatcher.end())

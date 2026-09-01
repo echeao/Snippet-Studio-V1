@@ -11,49 +11,118 @@
     "comment": {
       "name": "comment.block.css",
       "begin": "/\\*",
-      "end": "\\*/"
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.comment.css" }
+      },
+      "end": "\\*/",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.comment.css" }
+      }
     },
     "at-rule": {
-      "name": "keyword.control.at-rule.css",
-      "match": "@[a-zA-Z-]+"
+      "begin": "(@[a-zA-Z-]+)",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.at-rule.css" }
+      },
+      "end": "(;)|(?=\\{)",
+      "endCaptures": {
+        "1": { "name": "punctuation.terminator.rule.css" }
+      },
+      "patterns": [
+        { "include": "#comment" },
+        { "include": "#string-double" },
+        { "include": "#string-single" },
+        { "include": "#number-unit" },
+        { "include": "#css-variable" },
+        { "name": "support.type.property-name.media.css", "match": "\\b(max-width|min-width|max-height|min-height|orientation|prefers-color-scheme)\\b" }
+      ]
     },
     "rule-set": {
-      "name": "meta.ruleset.css",
       "patterns": [
         { "include": "#selector" },
         { "include": "#block" }
       ]
     },
     "selector": {
-      "name": "entity.name.tag.css",
-      "match": "[.#]?[a-zA-Z][a-zA-Z0-9_-]*(?=[^{]*\\{)"
+      "patterns": [
+        {
+          "name": "entity.other.attribute-name.class.css",
+          "match": "(\\.)([a-zA-Z0-9_-]+)",
+          "captures": {
+            "1": { "name": "punctuation.definition.entity.css" },
+            "2": { "name": "entity.other.attribute-name.class.css" }
+          }
+        },
+        {
+          "name": "entity.other.attribute-name.id.css",
+          "match": "(#)([a-zA-Z0-9_-]+)",
+          "captures": {
+            "1": { "name": "punctuation.definition.entity.css" },
+            "2": { "name": "entity.other.attribute-name.id.css" }
+          }
+        },
+        {
+          "name": "entity.other.attribute-name.pseudo-class.css",
+          "match": "(:{1,2})([a-zA-Z-]+)",
+          "captures": {
+            "1": { "name": "punctuation.definition.entity.css" },
+            "2": { "name": "entity.other.attribute-name.pseudo-class.css" }
+          }
+        },
+        {
+          "name": "entity.name.tag.css",
+          "match": "\\b[a-zA-Z][a-zA-Z0-9_-]*\\b"
+        },
+        {
+          "name": "punctuation.separator.combinator.css",
+          "match": "[,>+~]"
+        }
+      ]
     },
     "block": {
       "begin": "\\{",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.property-list.begin.css" }
+      },
       "end": "\\}",
+      "endCaptures": {
+        "0": { "name": "punctuation.section.property-list.end.css" }
+      },
       "patterns": [
         { "include": "#comment" },
-        { "include": "#property" }
+        { "include": "#rule-set" },
+        { "include": "#declaration" }
       ]
     },
-    "property": {
+    "declaration": {
+      "begin": "([a-zA-Z_-][a-zA-Z0-9_-]*)(\\s*)(:)",
+      "beginCaptures": {
+        "1": { "name": "support.type.property-name.css" },
+        "3": { "name": "punctuation.separator.key-value.css" }
+      },
+      "end": "(;)|(?=\\})",
+      "endCaptures": {
+        "1": { "name": "punctuation.terminator.rule.css" }
+      },
       "patterns": [
-        { "include": "#property-name" },
-        { "include": "#property-value" },
+        { "include": "#comment" },
         { "include": "#color-hex" },
         { "include": "#number-unit" },
+        { "include": "#css-function" },
         { "include": "#css-variable" },
+        { "include": "#property-value" },
         { "include": "#string-double" },
-        { "include": "#string-single" }
+        { "include": "#string-single" },
+        { "name": "keyword.other.important.css", "match": "!important" }
       ]
     },
-    "property-name": {
-      "name": "support.type.property-name.css",
-      "match": "[a-zA-Z-]+(?=\\s*:)"
+    "css-function": {
+      "name": "support.function.misc.css",
+      "match": "\\b(var|calc|min|max|clamp|rgb|rgba|hsl|hsla|linear-gradient|radial-gradient|url)\\b(?=\\()"
     },
     "property-value": {
       "name": "support.constant.property-value.css",
-      "match": "\\b(none|block|flex|grid|inline|inline-block|relative|absolute|fixed|sticky|bold|normal|pointer|auto|solid|dashed|dotted|transparent|center|left|right|top|bottom|cover|contain|nowrap|wrap|column|row|space-between|space-around|inherit|initial|unset|revert|hidden|visible|scroll|clip)\\b"
+      "match": "\\b(none|block|flex|grid|inline|inline-block|inline-flex|inline-grid|relative|absolute|fixed|sticky|bold|normal|pointer|auto|solid|dashed|dotted|transparent|center|left|right|top|bottom|cover|contain|nowrap|wrap|column|row|space-between|space-around|space-evenly|inherit|initial|unset|revert|hidden|visible|scroll|clip|span|border-box|content-box|sans-serif|serif|monospace)\\b"
     },
     "color-hex": {
       "name": "constant.other.color.rgb-value.css",
@@ -61,11 +130,11 @@
     },
     "number-unit": {
       "name": "constant.numeric.css",
-      "match": "-?\\d+(\\.\\d+)?(px|em|rem|vh|vw|%|pt|pc|cm|mm|in|ex|ch|vmin|vmax|fr|deg|rad|turn|s|ms)?"
+      "match": "-?\\b\\d+(\\.\\d+)?(px|em|rem|vh|vw|%|pt|pc|cm|mm|in|ex|ch|vmin|vmax|fr|deg|rad|turn|s|ms)?\\b"
     },
     "css-variable": {
       "name": "variable.css",
-      "match": "--[a-zA-Z][a-zA-Z0-9_-]*|var\\(--[a-zA-Z][a-zA-Z0-9_-]*\\)"
+      "match": "--[a-zA-Z0-9_-]+"
     },
     "string-double": {
       "name": "string.quoted.double.css",
