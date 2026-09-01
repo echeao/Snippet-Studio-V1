@@ -81,7 +81,18 @@ class DetailViewModel(
         }
     }
 
-    /** 切换源代码卡片的展开与折叠状态 */
+    /** 切换星标收藏状态 */
+    fun toggleStar() {
+        val currentSnippet = _uiState.value.snippet ?: return
+        viewModelScope.launch {
+            val newStarred = !currentSnippet.starred
+            repository.toggleStar(currentSnippet.id, currentSnippet.starred)
+            val updated = currentSnippet.copy(starred = newStarred)
+            _uiState.update { it.copy(snippet = updated) }
+        }
+    }
+
+    /** 切换源代码卡片的展开与折叠状态 (保留兼容) */
     fun toggleSourceExpanded() {
         _uiState.update { it.copy(isSourceExpanded = !it.isSourceExpanded) }
     }
