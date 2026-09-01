@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,15 +13,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.feige.snippetstudio.R
@@ -32,13 +31,14 @@ import com.feige.snippetstudio.ui.editor.components.EditorTopAppBar
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.SyntaxLanguageDetector
 import com.feige.snippetstudio.util.SystemUiUtil
+import kotlin.math.roundToInt
 
 /**
  * [EditorScreen] 全功能专业代码编辑器主视图。
  *
  * 架构重构与组件设计亮点：
  * 1. **代码解耦模块化**：拆分为 [EditorTopAppBar]（顶部标题与操作栏）、[EditorMainContent]（编辑与预览核心容器）、[EditorSettingsSheet]（设置面板）。
- * 2. **全屏沉浸模式**：调用 [SystemUiUtil.setImmersiveFullscreen]，配合 [FloatingControlIsland] 控制岛与滑动手势自动隐显。
+ * 2. **全屏沉浸模式**：调用 [SystemUiUtil.setImmersiveFullscreen]，配合 [FloatingControlIsland] 控制岛折叠/展开与右上角自由拖拽。
  * 3. **底栏状态防护**：联合 IME 软键盘与 NavigationBars 安全区避让，防止键盘弹出后遮挡底部状态栏。
  * 4. **全量简体中文注释**：补充详细的架构职责与交互说明。
  *
@@ -74,7 +74,9 @@ fun EditorScreen(
     var showTypeDialog by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
 
-    var showFloatingIsland by remember { mutableStateOf(true) }
+    var isIslandExpanded by remember { mutableStateOf(false) }
+    var islandOffsetX by remember { mutableFloatStateOf(0f) }
+    var islandOffsetY by remember { mutableFloatStateOf(0f) }
     var showFullscreenSymbolBar by remember { mutableStateOf(true) }
 
     // ===== 全屏沉浸模式与系统 WindowInsets 的交互处理 =====
@@ -85,20 +87,6 @@ fun EditorScreen(
         }
         onDispose {
             SystemUiUtil.setImmersiveFullscreen(activity, false)
-        }
-    }
-
-    // 全屏模式下滚动手势隐显控制岛
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -15f) {
-                    showFloatingIsland = false
-                } else if (available.y > 15f) {
-                    showFloatingIsland = true
-                }
-                return Offset.Zero
-            }
         }
     }
 
@@ -134,22 +122,17 @@ fun EditorScreen(
 
     if (uiState.isFullscreen) {
         // ===== 模式 A：全屏沉浸沉浸视图容器 =====
-        val safeTopPadding = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(tc.bg)
-                .nestedScroll(nestedScrollConnection)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) {
-                    showFloatingIsland = !showFloatingIsland
-                }
         ) {
             if (uiState.selectedTab == 0) {
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                ) {
                     SoraCodeEditor(
                         text = uiState.textFieldValue.text,
                         onTextChange = { viewModel.onSoraTextChange(it) },
@@ -165,7 +148,7 @@ fun EditorScreen(
                     )
 
                     AnimatedVisibility(
-                        visible = showFullscreenSymbolBar && showFloatingIsland,
+                        visible = showFullscreenSymbolBar,
                         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                         modifier = Modifier
@@ -179,32 +162,42 @@ fun EditorScreen(
                     }
                 }
             } else {
-                RunPreview(
-                    type = uiState.type,
-                    content = uiState.textFieldValue.text,
-                    modifier = Modifier.fillMaxSize(),
-                    onToast = onShowSnackbar
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                ) {
+                    RunPreview(
+                        type = uiState.type,
+                        content = uiState.textFieldValue.text,
+                        modifier = Modifier.fillMaxSize(),
+                        onToast = onShowSnackbar
+                    )
+                }
             }
 
-            // 悬浮全屏控制岛 (顶部岛状按钮)
-            AnimatedVisibility(
-                visible = showFloatingIsland,
-                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            // 悬浮全屏控制岛 (停靠右上角 + 自由拖拽 + 支持展开/折叠微标态)
+            FloatingControlIsland(
+                selectedTab = uiState.selectedTab,
+                onSelectTab = { viewModel.selectTab(it) },
+                showSymbolBar = showFullscreenSymbolBar,
+                onToggleSymbolBar = { showFullscreenSymbolBar = !showFullscreenSymbolBar },
+                onExitFullscreen = { viewModel.setFullscreen(false) },
+                isExpanded = isIslandExpanded,
+                onToggleExpand = { isIslandExpanded = !isIslandExpanded },
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
+                    .align(Alignment.TopEnd)
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(top = 8.dp)
-            ) {
-                FloatingControlIsland(
-                    selectedTab = uiState.selectedTab,
-                    onSelectTab = { viewModel.selectTab(it) },
-                    showSymbolBar = showFullscreenSymbolBar,
-                    onToggleSymbolBar = { showFullscreenSymbolBar = !showFullscreenSymbolBar },
-                    onExitFullscreen = { viewModel.setFullscreen(false) }
-                )
-            }
+                    .padding(top = 8.dp, end = 12.dp)
+                    .offset { IntOffset(islandOffsetX.roundToInt(), islandOffsetY.roundToInt()) }
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            islandOffsetX += dragAmount.x
+                            islandOffsetY += dragAmount.y
+                        }
+                    }
+            )
         }
     } else {
         // ===== 模式 B：标准带有 TopBar 与 Status BottomBar 的编辑视图 =====
