@@ -5,8 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.feige.snippetstudio.data.repo.SettingsRepository
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISettingsRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import com.feige.snippetstudio.model.AppSettings
 import com.feige.snippetstudio.util.Exporter
 import kotlinx.coroutines.flow.StateFlow
@@ -24,8 +24,8 @@ import java.io.File
  * 3. 驱动全量数据 JSON 导出与 ZIP 压缩文件导出。
  */
 class SettingsViewModel(
-    private val settingsRepository: SettingsRepository,
-    private val snippetRepository: SnippetRepository
+    private val settingsRepository: ISettingsRepository,
+    private val snippetRepository: ISnippetRepository
 ) : ViewModel() {
 
     /** 暴露给界面层的单向 settings 数据流 */
@@ -193,8 +193,8 @@ class SettingsViewModel(
     companion object {
         /** ViewModelFactory 工厂构造器 */
         fun factory(
-            settingsRepository: SettingsRepository,
-            snippetRepository: SnippetRepository
+            settingsRepository: ISettingsRepository,
+            snippetRepository: ISnippetRepository
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {

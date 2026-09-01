@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.feige.snippetstudio.data.git.GitManager
-import com.feige.snippetstudio.data.repo.SettingsRepository
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISettingsRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import com.feige.snippetstudio.model.AppSettings
 import com.feige.snippetstudio.ui.subpage.vm.GitSubViewModel
 import com.feige.snippetstudio.ui.subpage.vm.SettingsSubViewModel
@@ -32,10 +32,6 @@ data class SubPageUiState(
 )
 
 /**
- * [SubPageViewModel] 设置子页面的轻量 Facade 协调器。
- *
- * 架构重构说明：
- * 原 558 行 God Object 已按业务域拆分为 4 个独立子 ViewModel：
  * - [GitSubViewModel]：Git 远程仓库连接/同步/预览/Diff/Log（~320 行）
  * - [TrashSubViewModel]：回收站恢复/永久删除（~30 行）
  * - [TagSubViewModel]：全局标签增删（~30 行）
@@ -53,8 +49,8 @@ data class SubPageUiState(
  */
 class SubPageViewModel(
     val key: String,
-    private val settingsRepository: SettingsRepository,
-    private val snippetRepository: SnippetRepository,
+    private val settingsRepository: ISettingsRepository,
+    private val snippetRepository: ISnippetRepository,
     private val gitManager: GitManager? = null
 ) : ViewModel() {
 
@@ -122,8 +118,8 @@ class SubPageViewModel(
          */
         fun factory(
             key: String,
-            settingsRepository: SettingsRepository,
-            snippetRepository: SnippetRepository,
+            settingsRepository: ISettingsRepository,
+            snippetRepository: ISnippetRepository,
             gitManager: GitManager? = null
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")

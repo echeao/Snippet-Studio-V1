@@ -4,15 +4,14 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISettingsRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import com.feige.snippetstudio.model.Snippet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-import com.feige.snippetstudio.data.repo.SettingsRepository
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
@@ -44,8 +43,8 @@ data class DetailUiState(
  */
 class DetailViewModel(
     private val snippetId: String,
-    private val repository: SnippetRepository,
-    private val settingsRepository: SettingsRepository
+    private val repository: ISnippetRepository,
+    private val settingsRepository: ISettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetailUiState(isLoading = true))
@@ -130,8 +129,8 @@ class DetailViewModel(
         /** ViewModelFactory 工厂构造器 */
         fun factory(
             snippetId: String,
-            repository: SnippetRepository,
-            settingsRepository: SettingsRepository
+            repository: ISnippetRepository,
+            settingsRepository: ISettingsRepository
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {

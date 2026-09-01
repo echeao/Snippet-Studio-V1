@@ -5,8 +5,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.feige.snippetstudio.data.repo.SettingsRepository
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISettingsRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import com.feige.snippetstudio.model.PromptVariable
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.model.SnippetType
@@ -104,8 +104,8 @@ data class EditorUiState(
 class EditorViewModel(
     private val snippetId: String,
     private val initialTypeStr: String?,
-    private val snippetRepository: SnippetRepository,
-    private val settingsRepository: SettingsRepository,
+    private val snippetRepository: ISnippetRepository,
+    private val settingsRepository: ISettingsRepository,
     private val sharedText: String? = null
 ) : ViewModel() {
 
@@ -620,8 +620,8 @@ class EditorViewModel(
         fun factory(
             snippetId: String,
             initialTypeStr: String?,
-            snippetRepository: SnippetRepository,
-            settingsRepository: SettingsRepository,
+            snippetRepository: ISnippetRepository,
+            settingsRepository: ISettingsRepository,
             sharedText: String? = null
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")

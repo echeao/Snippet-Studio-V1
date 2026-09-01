@@ -2,8 +2,8 @@ package com.feige.snippetstudio.ui.subpage.vm
 
 import com.feige.snippetstudio.data.git.GitManager
 import com.feige.snippetstudio.data.git.SyncEngine
-import com.feige.snippetstudio.data.repo.SettingsRepository
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISettingsRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import com.feige.snippetstudio.model.AppSettings
 import com.feige.snippetstudio.model.ConflictResolution
 import com.feige.snippetstudio.model.DiffLine
@@ -67,14 +67,14 @@ data class GitSubState(
  * Facade 在 onCleared() 时调用 [destroy] 取消协程作用域。
  *
  * @param scope 由 Facade 提供的协程作用域
- * @param settingsRepository 全局设置数据仓库
- * @param snippetRepository 代码片段数据仓库
+ * @param settingsRepository 全局设置数据仓库契约接口
+ * @param snippetRepository 代码片段数据仓库契约接口
  * @param gitManager JGit 管理器实例（可为 null 表示 Git 功能不可用）
  */
 class GitSubViewModel(
     private val scope: CoroutineScope,
-    private val settingsRepository: SettingsRepository,
-    private val snippetRepository: SnippetRepository,
+    private val settingsRepository: ISettingsRepository,
+    private val snippetRepository: ISnippetRepository,
     private val gitManager: GitManager?
 ) {
     // ===== 内部可变状态流 =====

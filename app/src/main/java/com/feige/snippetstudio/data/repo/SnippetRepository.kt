@@ -37,22 +37,22 @@ class SnippetRepository(
     private val folderDao: FolderDao? = null,
     private val context: Context? = null,
     private val gitManager: GitManager? = null
-) {
+) : ISnippetRepository {
 
     /** 暴露 SnippetDao 供 SyncEngine 等内部组件使用 */
-    fun getSnippetDao(): SnippetDao = snippetDao
+    override fun getSnippetDao(): SnippetDao = snippetDao
 
     /**
      * 将外部授权的 SAF 目录或本地私有存储中的物理文件与文件夹全量扫描并同步更新至 Room 数据库。
      */
-    suspend fun syncWithLocalRepository(context: Context, repoTreeUriStr: String) = withContext(Dispatchers.IO) {
+    override suspend fun syncWithLocalRepository(context: Context, repoTreeUriStr: String) = withContext(Dispatchers.IO) {
         LocalFileManager.syncRepositoryToDatabase(context, repoTreeUriStr, snippetDao, folderDao)
     }
 
     /**
      * 将外部授权的 SAF 目录或本地私有存储中的物理文件与文件夹全量扫描并同步更新至 Room 数据库（使用 Repository 内部持有的 Context）。
      */
-    suspend fun syncWithLocalRepository(repoTreeUriStr: String) = withContext(Dispatchers.IO) {
+    override suspend fun syncWithLocalRepository(repoTreeUriStr: String) = withContext(Dispatchers.IO) {
         val ctx = context ?: return@withContext
         LocalFileManager.syncRepositoryToDatabase(ctx, repoTreeUriStr, snippetDao, folderDao)
     }
@@ -60,7 +60,7 @@ class SnippetRepository(
     /**
      * 响应式观察全量已持久化的文件夹列表。
      */
-    fun observeFolders(): Flow<List<FolderEntity>> = folderDao?.observeAll() ?: flowOf(emptyList())
+    override fun observeFolders(): Flow<List<FolderEntity>> = folderDao?.observeAll() ?: flowOf(emptyList())
 
     /**
      * 显式创建新文件夹。
@@ -69,51 +69,53 @@ class SnippetRepository(
      * @param folderPath 相对文件夹路径 (如 "components/button")
      * @param repoTreeUriStr SAF 授权目录 URI 字符串
      */
-    suspend fun createFolder(folderPath: String, repoTreeUriStr: String = "") = withContext(Dispatchers.IO) {
-        val cleanPath = folderPath.trim().trim('/')
-        if (cleanPath.isBlank()) return@withContext
+    override suspend fun createFolder(folderPath: String, repoTreeUriStr: String) {
+        withContext(Dispatchers.IO) {
+            val cleanPath = folderPath.trim().trim('/')
+            if (cleanPath.isBlank()) return@withContext
 
-        val parentPath = if (cleanPath.contains("/")) cleanPath.substringBeforeLast("/") else ""
-        val entity = FolderEntity(path = cleanPath, parentPath = parentPath)
-        folderDao?.upsert(entity)
+            val parentPath = if (cleanPath.contains("/")) cleanPath.substringBeforeLast("/") else ""
+            val entity = FolderEntity(path = cleanPath, parentPath = parentPath)
+            folderDao?.upsert(entity)
 
-        context?.let { ctx ->
-            LocalFileManager.createPhysicalFolder(ctx, cleanPath, repoTreeUriStr)
+            context?.let { ctx ->
+                LocalFileManager.createPhysicalFolder(ctx, cleanPath, repoTreeUriStr)
+            }
         }
     }
 
     /**
      * 响应式观察未入回收站的活动代码片段列表 (数据库实体反解析为领域模型 [Snippet])。
      */
-    fun observeActive(): Flow<List<Snippet>> = snippetDao.observeActive().map { list ->
+    override fun observeActive(): Flow<List<Snippet>> = snippetDao.observeActive().map { list ->
         list.map { it.toDomain() }
     }
 
     /**
      * 响应式观察星标 (收藏) 的代码片段列表。
      */
-    fun observeStarred(): Flow<List<Snippet>> = snippetDao.observeStarred().map { list ->
+    override fun observeStarred(): Flow<List<Snippet>> = snippetDao.observeStarred().map { list ->
         list.map { it.toDomain() }
     }
 
     /**
      * 响应式观察回收站中的代码片段列表。
      */
-    fun observeTrashed(): Flow<List<Snippet>> = snippetDao.observeTrashed().map { list ->
+    override fun observeTrashed(): Flow<List<Snippet>> = snippetDao.observeTrashed().map { list ->
         list.map { it.toDomain() }
     }
 
     /**
      * 根据 [SnippetType] 类型（HTML, JS, Markdown, Prompt）过滤观察代码片段。
      */
-    fun observeByType(type: SnippetType): Flow<List<Snippet>> = snippetDao.observeByType(type.code).map { list ->
+    override fun observeByType(type: SnippetType): Flow<List<Snippet>> = snippetDao.observeByType(type.code).map { list ->
         list.map { it.toDomain() }
     }
 
     /**
      * 根据 ID 异步获取单个代码片段模型。
      */
-    suspend fun getById(id: String): Snippet? {
+    override suspend fun getById(id: String): Snippet? {
         return snippetDao.byId(id)?.toDomain()
     }
 
@@ -134,12 +136,12 @@ class SnippetRepository(
      * @param useBoilerplate 当 initialContent 为 null 时，是否自动注入 assets 中的默认样板代码
      * @return 构建并完成持久化的 [Snippet] 实例
      */
-    suspend fun create(
+    override suspend fun create(
         type: SnippetType,
-        initialContent: String? = null,
-        initialTitle: String? = null,
-        repoTreeUriStr: String = "",
-        useBoilerplate: Boolean = true
+        initialContent: String?,
+        initialTitle: String?,
+        repoTreeUriStr: String,
+        useBoilerplate: Boolean
     ): Snippet {
         val now = System.currentTimeMillis()
         val title = initialTitle ?: Snippet.generateDefaultTitle(type)
@@ -183,7 +185,7 @@ class SnippetRepository(
      *
      * 自动刷新 `updatedAt` 修改时间戳与 `sizeBytes` 字节长度，并同步更新 Room、SAF 文件与 Git 仓。
      */
-    suspend fun saveOrUpdate(snippet: Snippet, repoTreeUriStr: String = "") {
+    override suspend fun saveOrUpdate(snippet: Snippet, repoTreeUriStr: String) {
         val now = System.currentTimeMillis()
         val sizeBytes = snippet.content.toByteArray(Charsets.UTF_8).size
         val updated = snippet.copy(
@@ -207,19 +209,15 @@ class SnippetRepository(
     /**
      * 切换代码片段的星标收藏状态。
      */
-    suspend fun toggleStar(id: String, currentStarred: Boolean) {
+    override suspend fun toggleStar(id: String, currentStarred: Boolean) {
         snippetDao.setStar(id, !currentStarred)
     }
 
     /**
      * 将代码片段移入回收站 (软删除)。
-     * 同步将物理文件移入隐藏 `.trash/` 目录，避免用户在文件管理器中看到"已删除"文件。
-     */
-    /**
-     * 将代码片段移入回收站 (软删除)。
      * 同步将物理文件移入隐藏 `.trash/` 目录，并联动从 Git 沙盒中移除该文件。
      */
-    suspend fun trash(id: String, repoTreeUriStr: String = "") {
+    override suspend fun trash(id: String, repoTreeUriStr: String) {
         val snippet = getById(id)
         snippetDao.trash(id, System.currentTimeMillis())
         snippet?.let { s ->
@@ -236,7 +234,7 @@ class SnippetRepository(
      * 从回收站还原代码片段。
      * 同步将物理文件从 `.trash/` 恢复到原目录，并写回 Git 沙盒。
      */
-    suspend fun restore(id: String, repoTreeUriStr: String = "") {
+    override suspend fun restore(id: String, repoTreeUriStr: String) {
         val snippet = getById(id)
         snippetDao.restore(id)
         snippet?.let { s ->
@@ -252,7 +250,7 @@ class SnippetRepository(
     /**
      * 彻底物理删除代码片段（同步清理数据库、`.trash/` 中的物理文件与 Git 沙盒文件）。
      */
-    suspend fun purge(id: String, repoTreeUriStr: String = "") {
+    override suspend fun purge(id: String, repoTreeUriStr: String) {
         val snippet = getById(id)
         if (snippet != null) {
             context?.let { ctx ->
@@ -269,7 +267,7 @@ class SnippetRepository(
      * 清理回收站中停放天数超过 [days] 天的过期废弃代码片段。
      * 同步清理 `.trash/` 目录中对应的物理文件与 Git 沙盒残留文件。
      */
-    suspend fun purgeExpired(days: Int = 30, repoTreeUriStr: String = "") {
+    override suspend fun purgeExpired(days: Int, repoTreeUriStr: String) {
         val cutoff = System.currentTimeMillis() - (days * 24L * 3600L * 1000L)
         val expired = snippetDao.allTrashedSnapshot().filter {
             it.trashedAt != null && it.trashedAt < cutoff
@@ -289,21 +287,21 @@ class SnippetRepository(
     /**
      * 获取全量活动代码片段用于导出备份。
      */
-    suspend fun allForExport(): List<Snippet> {
+    override suspend fun allForExport(): List<Snippet> {
         return snippetDao.allActiveSnapshot().map { it.toDomain() }
     }
 
     /**
      * 获取活动代码片段总数。
      */
-    suspend fun activeCount(): Int {
+    override suspend fun activeCount(): Int {
         return snippetDao.activeCount()
     }
 
     /**
      * 将 Git 沙盒仓中的物理文件方向解析导入到数据库中。
      */
-    suspend fun syncGitFilesToDb() {
+    override suspend fun syncGitFilesToDb() {
         gitManager?.importGitDirToDatabase(snippetDao)
     }
 
@@ -311,7 +309,7 @@ class SnippetRepository(
      * 重命名代码片段的标题及文件名。
      * 若文件名发生变更，同步清理旧文件名在 Git 沙盒与 SAF 工作区中的残留物理文件。
      */
-    suspend fun updateRename(id: String, newTitle: String, newFileName: String, repoTreeUriStr: String = "") {
+    override suspend fun updateRename(id: String, newTitle: String, newFileName: String, repoTreeUriStr: String) {
         val snippet = getById(id) ?: return
         val updated = snippet.copy(
             title = newTitle,
@@ -336,7 +334,7 @@ class SnippetRepository(
      * 修改代码片段所属的文件夹分类路径。
      * 若文件夹发生变更，同步清理旧路径下的物理文件残留。
      */
-    suspend fun updateFolder(id: String, newFolder: String, repoTreeUriStr: String = "") {
+    override suspend fun updateFolder(id: String, newFolder: String, repoTreeUriStr: String) {
         val snippet = getById(id) ?: return
         val cleanFolder = newFolder.trim().trim('/')
         if (cleanFolder.isNotBlank()) {
@@ -369,7 +367,7 @@ class SnippetRepository(
      * 才允许触发 [cleanDeletedFiles] 镜像清理。
      * 当应用属于全新安装、数据库完全为空时，熔断物理擦除，防止误删刚从远端 Clone/Pull 下来的文件！
      */
-    suspend fun exportAllToGit() {
+    override suspend fun exportAllToGit() {
         val snippets = allForExport()
         gitManager?.exportAllSnippetsToDir(snippets)
 
@@ -394,9 +392,9 @@ class SnippetRepository(
      * @param repoTreeUriStr SAF 授权目录 URI 字符串
      * @param remoteDeletedPaths 本次 Pull 中被远端删除的文件相对路径集合
      */
-    suspend fun syncAllToPhysicalStorage(
+    override suspend fun syncAllToPhysicalStorage(
         repoTreeUriStr: String,
-        remoteDeletedPaths: Set<String> = emptySet()
+        remoteDeletedPaths: Set<String>
     ) = withContext(Dispatchers.IO) {
         val ctx = context ?: return@withContext
 

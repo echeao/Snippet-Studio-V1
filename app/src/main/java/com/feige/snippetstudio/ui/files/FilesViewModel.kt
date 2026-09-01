@@ -4,8 +4,8 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.feige.snippetstudio.data.repo.SettingsRepository
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISettingsRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.components.FilterOption
 import com.feige.snippetstudio.util.FuzzySearchUtil
@@ -100,12 +100,12 @@ private data class FilterParams(
  * 2. **O(N) 性能优化算法**：使用 Kotlin 的 `groupBy` 进行文件夹分组算子重构，替代以往的 O(N*M) 嵌套查找，大幅降低 CPU 开销。
  * 3. **完整数据生命周期**：管理星标状态、重命名、移动文件夹、创建文件夹、删除文件夹以及移入回收站与撤销恢复。
  *
- * @param repository 代码片段与文件数据仓库实例 [SnippetRepository]
- * @param settingsRepository 应用全局设置数据仓库实例（可选）[SettingsRepository]
+ * @param repository 代码片段与文件数据仓库契约接口 [ISnippetRepository]
+ * @param settingsRepository 应用全局设置数据仓库契约接口（可选）[ISettingsRepository]
  */
 class FilesViewModel(
-    private val repository: SnippetRepository,
-    private val settingsRepository: SettingsRepository? = null
+    private val repository: ISnippetRepository,
+    private val settingsRepository: ISettingsRepository? = null
 ) : ViewModel() {
 
     /** 搜索框内部关键词 Flow */
@@ -354,12 +354,12 @@ class FilesViewModel(
         /**
          * ViewModelFactory 工厂构造方法，注入 Repository 依赖。
          *
-         * @param repository 数据仓库实例 [SnippetRepository]
-         * @param settingsRepository 全局设置仓库 [SettingsRepository]
+         * @param repository 数据仓库契约接口 [ISnippetRepository]
+         * @param settingsRepository 全局设置仓库契约接口 [ISettingsRepository]
          */
         fun factory(
-            repository: SnippetRepository,
-            settingsRepository: SettingsRepository? = null
+            repository: ISnippetRepository,
+            settingsRepository: ISettingsRepository? = null
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {

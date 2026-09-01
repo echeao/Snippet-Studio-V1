@@ -7,7 +7,7 @@ import com.feige.snippetstudio.model.SyncChangeType
 import com.feige.snippetstudio.model.SyncConflict
 import com.feige.snippetstudio.model.SyncDirection
 import com.feige.snippetstudio.model.SyncPreview
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -20,12 +20,12 @@ import kotlinx.coroutines.withContext
  * 3. 执行同步：在用户确认预览并解决冲突后，安全地执行 Pull/Push 操作。
  *
  * @param gitManager Git 版本控制管理器
- * @param snippetRepository 代码片段数据仓库
+ * @param snippetRepository 代码片段数据仓库契约接口
  * @param snippetDao 代码片段数据库 DAO
  */
 class SyncEngine(
     private val gitManager: GitManager,
-    private val snippetRepository: SnippetRepository,
+    private val snippetRepository: ISnippetRepository,
     private val snippetDao: SnippetDao
 ) {
 

@@ -13,20 +13,20 @@ import kotlinx.coroutines.flow.Flow
  *
  * @param settingsDataStore 注入的底层数据源 [SettingsDataStore]
  */
-class SettingsRepository(private val settingsDataStore: SettingsDataStore) {
+class SettingsRepository(private val settingsDataStore: SettingsDataStore) : ISettingsRepository {
 
     /**
      * 实时可观察的全局应用设置 Flow 数据流。
      * 直接透传 DataStore 的映射流，供 UI / ViewModel 无缝订阅。
      */
-    val settingsFlow: Flow<AppSettings> = settingsDataStore.settingsFlow
+    override val settingsFlow: Flow<AppSettings> = settingsDataStore.settingsFlow
 
     /**
      * 挂起函数：更新应用偏好设置。
      *
      * @param transform 偏好设置修改高阶闭包：传入旧 AppSettings 对象，返回期望保存的新对象
      */
-    suspend fun updateSettings(transform: (AppSettings) -> AppSettings) {
+    override suspend fun updateSettings(transform: (AppSettings) -> AppSettings) {
         settingsDataStore.update(transform)
     }
 }

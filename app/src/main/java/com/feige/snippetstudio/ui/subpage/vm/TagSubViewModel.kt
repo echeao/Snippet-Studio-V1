@@ -1,7 +1,7 @@
 package com.feige.snippetstudio.ui.subpage.vm
 
-import com.feige.snippetstudio.data.repo.SettingsRepository
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISettingsRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -26,13 +26,13 @@ data class TagSubState(
  * 生命周期由 [com.feige.snippetstudio.ui.subpage.SubPageViewModel] Facade 托管。
  *
  * @param scope 由 Facade 提供的协程作用域
- * @param settingsRepository 全局设置数据仓库
- * @param snippetRepository 代码片段数据仓库
+ * @param settingsRepository 全局设置数据仓库契约接口
+ * @param snippetRepository 代码片段数据仓库契约接口
  */
 class TagSubViewModel(
     private val scope: CoroutineScope,
-    private val settingsRepository: SettingsRepository,
-    private val snippetRepository: SnippetRepository
+    private val settingsRepository: ISettingsRepository,
+    private val snippetRepository: ISnippetRepository
 ) {
     /**
      * 对外暴露的标签管理响应式 UI 状态。

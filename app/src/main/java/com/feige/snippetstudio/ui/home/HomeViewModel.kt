@@ -5,8 +5,8 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.feige.snippetstudio.data.repo.SettingsRepository
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISettingsRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.util.ClipboardDetector
 import com.feige.snippetstudio.util.DetectedClip
@@ -57,8 +57,8 @@ data class HomeUiState(
  * @param settingsRepository 应用全局配置仓储依赖接口（可选）
  */
 class HomeViewModel(
-    private val repository: SnippetRepository,
-    private val settingsRepository: SettingsRepository? = null
+    private val repository: ISnippetRepository,
+    private val settingsRepository: ISettingsRepository? = null
 ) : ViewModel() {
 
     /** 内存搜索文本关键字数据流 */
@@ -240,8 +240,8 @@ class HomeViewModel(
          * @return 初始化 ViewModel 的工厂实例
          */
         fun factory(
-            repository: SnippetRepository,
-            settingsRepository: SettingsRepository? = null
+            repository: ISnippetRepository,
+            settingsRepository: ISettingsRepository? = null
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {

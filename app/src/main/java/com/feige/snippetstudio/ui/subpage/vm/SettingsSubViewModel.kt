@@ -1,8 +1,8 @@
 package com.feige.snippetstudio.ui.subpage.vm
 
 import android.content.Context
-import com.feige.snippetstudio.data.repo.SettingsRepository
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISettingsRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import com.feige.snippetstudio.model.AppSettings
 import com.feige.snippetstudio.util.LocaleHelper
 import kotlinx.coroutines.CoroutineScope
@@ -29,13 +29,13 @@ data class SettingsSubState(
  * 生命周期由 [com.feige.snippetstudio.ui.subpage.SubPageViewModel] Facade 托管。
  *
  * @param scope 由 Facade 提供的协程作用域
- * @param settingsRepository 全局设置数据仓库
- * @param snippetRepository 代码片段数据仓库（用于工作区同步）
+ * @param settingsRepository 全局设置数据仓库契约接口
+ * @param snippetRepository 代码片段数据仓库契约接口（用于工作区同步）
  */
 class SettingsSubViewModel(
     private val scope: CoroutineScope,
-    private val settingsRepository: SettingsRepository,
-    private val snippetRepository: SnippetRepository
+    private val settingsRepository: ISettingsRepository,
+    private val snippetRepository: ISnippetRepository
 ) {
     /**
      * 对外暴露的设置响应式 UI 状态。

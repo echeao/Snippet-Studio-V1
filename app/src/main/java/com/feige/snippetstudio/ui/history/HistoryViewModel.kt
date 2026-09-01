@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.feige.snippetstudio.data.git.GitManager
-import com.feige.snippetstudio.data.repo.SnippetRepository
+import com.feige.snippetstudio.data.repo.ISnippetRepository
 import com.feige.snippetstudio.model.DiffLine
 import com.feige.snippetstudio.model.GitCommitInfo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,12 +51,12 @@ data class HistoryUiState(
  * 3. 策略保证：在执行版本回滚 [restoreToVersion] 时，自动将当前工作区的最新代码提交快照留存，避免回滚导致当前更改丢失。
  *
  * @param snippetId 片段唯一 ID
- * @param snippetRepository 数据仓库服务
+ * @param snippetRepository 数据仓库契约接口
  * @param gitManager JGit 交互引擎
  */
 class HistoryViewModel(
     private val snippetId: String,
-    private val snippetRepository: SnippetRepository,
+    private val snippetRepository: ISnippetRepository,
     private val gitManager: GitManager
 ) : ViewModel() {
 
@@ -235,7 +235,7 @@ class HistoryViewModel(
     companion object {
         fun factory(
             snippetId: String,
-            snippetRepository: SnippetRepository,
+            snippetRepository: ISnippetRepository,
             gitManager: GitManager
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
