@@ -46,7 +46,7 @@ fun HomeStatsBar(
         modifier = modifier
             .fillMaxWidth()
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, tc.line, RoundedCornerShape(R_MD)),
+            .border(1.dp, tc.line.copy(alpha = 0.8f), RoundedCornerShape(R_MD)),
         shape = RoundedCornerShape(R_MD),
         color = tc.surface
     ) {
@@ -56,7 +56,7 @@ fun HomeStatsBar(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            tc.primarySoft.copy(alpha = 0.25f),
+                            tc.primarySoft.copy(alpha = if (tc.isDark) 0.12f else 0.35f),
                             tc.surface
                         )
                     )
@@ -80,30 +80,30 @@ fun HomeStatsBar(
                 Box(
                     modifier = Modifier
                         .width(1.dp)
-                        .height(24.dp)
-                        .background(tc.line)
+                        .height(26.dp)
+                        .background(tc.line.copy(alpha = 0.7f))
                 )
 
                 // ===== 2. 星标收藏数统计列 =====
                 StatItem(
                     label = "已收藏",
                     value = animatedStarred,
-                    valueColor = tc.primary
+                    valueColor = StarOn
                 )
 
                 // 垂直分割线
                 Box(
                     modifier = Modifier
                         .width(1.dp)
-                        .height(24.dp)
-                        .background(tc.line)
+                        .height(26.dp)
+                        .background(tc.line.copy(alpha = 0.7f))
                 )
 
                 // ===== 3. 文件夹分类数统计列 =====
                 StatItem(
                     label = "文件夹数",
                     value = animatedFolder,
-                    valueColor = tc.text2
+                    valueColor = tc.primary
                 )
             }
         }

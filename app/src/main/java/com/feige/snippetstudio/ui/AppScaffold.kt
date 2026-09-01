@@ -110,7 +110,7 @@ fun AppScaffold(
             }
         }
 
-        // ===== 点击底部嵌入新建按钮弹出的代码片段类型选择 BottomSheet (2x2 网格) =====
+        // ===== 点击底部嵌入新建按钮弹出的代码片段类型选择 BottomSheet =====
         if (showNewSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showNewSheet = false },
@@ -121,22 +121,52 @@ fun AppScaffold(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(Spacing.S5)
+                        .padding(horizontal = Spacing.S5, vertical = Spacing.S3)
                 ) {
-                    Text(
-                        text = stringResource(R.string.sheet_new_title),
-                        style = SectionTitleStyle,
-                        color = tc.text
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.sheet_new_title),
+                                style = SectionTitleStyle,
+                                color = tc.text
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "选择模版或直接创建纯代码片段",
+                                style = CaptionStyle.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
+                                color = tc.text3
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                scope.launch { sheetState.hide() }.invokeOnCompletion { showNewSheet = false }
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_close),
+                                contentDescription = "Close",
+                                tint = tc.text2,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(Spacing.S4))
 
+                    // 2x2 网格第 1 行: HTML & JS
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.S3)
                     ) {
                         NewSheetTypeItem(
                             type = SnippetType.HTML,
+                            subtitle = "网页与模版",
                             onClick = {
                                 scope.launch { sheetState.hide() }.invokeOnCompletion {
                                     showNewSheet = false
@@ -147,6 +177,7 @@ fun AppScaffold(
                         )
                         NewSheetTypeItem(
                             type = SnippetType.JS,
+                            subtitle = "脚本与逻辑",
                             onClick = {
                                 scope.launch { sheetState.hide() }.invokeOnCompletion {
                                     showNewSheet = false
@@ -159,12 +190,14 @@ fun AppScaffold(
 
                     Spacer(modifier = Modifier.height(Spacing.S3))
 
+                    // 2x2 网格第 2 行: Markdown & Prompt
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.S3)
                     ) {
                         NewSheetTypeItem(
                             type = SnippetType.MARKDOWN,
+                            subtitle = "排版与文档",
                             onClick = {
                                 scope.launch { sheetState.hide() }.invokeOnCompletion {
                                     showNewSheet = false
@@ -175,6 +208,7 @@ fun AppScaffold(
                         )
                         NewSheetTypeItem(
                             type = SnippetType.PROMPT,
+                            subtitle = "AI 提示词",
                             onClick = {
                                 scope.launch { sheetState.hide() }.invokeOnCompletion {
                                     showNewSheet = false
@@ -185,55 +219,91 @@ fun AppScaffold(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(Spacing.S4))
+                    Spacer(modifier = Modifier.height(Spacing.S3))
 
-                    OutlinedButton(
+                    // 底部通栏：常规通用片段快捷卡片
+                    NewSheetTypeItem(
+                        type = SnippetType.GENERAL,
+                        subtitle = "自由备忘与纯代码片段",
                         onClick = {
-                            scope.launch { sheetState.hide() }.invokeOnCompletion { showNewSheet = false }
+                            scope.launch { sheetState.hide() }.invokeOnCompletion {
+                                showNewSheet = false
+                                navController.navigate(Screen.Editor.new(SnippetType.GENERAL.code))
+                            }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = AppShapes.medium
-                    ) {
-                        Text(stringResource(R.string.common_cancel))
-                    }
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(Spacing.S4))
                 }
             }
         }
     }
 }
 
-
-
 /**
  * [NewSheetTypeItem] 底栏弹出窗中单个新建类型的选择卡片项组件。
+ *
+ * @param type 语言类型 [SnippetType]
+ * @param subtitle 辅助副标题描述
+ * @param onClick 点击回调
+ * @param modifier 外部修饰符
  */
 @Composable
 fun NewSheetTypeItem(
     type: SnippetType,
+    subtitle: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tc = LocalThemeColors.current
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1.0f,
+        animationSpec = spring(stiffness = 500f, dampingRatio = 0.6f),
+        label = "sheet_type_scale"
+    )
 
     Surface(
         modifier = modifier
-            .shadow(AppElevation.Sm, RoundedCornerShape(R_MD))
-            .clickable(onClick = onClick)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .border(1.dp, tc.line.copy(alpha = 0.8f), RoundedCornerShape(R_MD))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
             .testTag("sheet_type_${type.code}"),
         shape = RoundedCornerShape(R_MD),
         color = tc.surface2
     ) {
         Row(
-            modifier = Modifier.padding(Spacing.S4),
+            modifier = Modifier.padding(horizontal = Spacing.S3 + 2.dp, vertical = Spacing.S3),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TypeIcon(type = type, size = 40.dp)
+            TypeIcon(type = type, size = 36.dp)
             Spacer(modifier = Modifier.width(Spacing.S3))
-            Text(
-                text = type.displayName,
-                style = ListTitleStyle,
-                color = tc.text
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = type.displayName,
+                    style = ListTitleStyle,
+                    color = tc.text
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = CaptionStyle.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
+                        color = tc.text3,
+                        maxLines = 1
+                    )
+                }
+            }
         }
     }
 }

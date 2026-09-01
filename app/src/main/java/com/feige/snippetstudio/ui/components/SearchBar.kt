@@ -30,9 +30,9 @@ fun SearchBar(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp)
+            .height(52.dp)
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, tc.line, RoundedCornerShape(R_MD)),
+            .border(1.dp, tc.line.copy(alpha = 0.85f), RoundedCornerShape(R_MD)),
         shape = RoundedCornerShape(R_MD),
         color = tc.surface
     ) {
@@ -45,7 +45,7 @@ fun SearchBar(
             Icon(
                 painter = painterResource(id = R.drawable.ic_search),
                 contentDescription = "Search",
-                tint = tc.text2,
+                tint = if (value.isNotEmpty()) tc.primary else tc.text2,
                 modifier = Modifier.size(20.dp)
             )
 
@@ -58,7 +58,7 @@ fun SearchBar(
                 if (value.isEmpty()) {
                     Text(
                         text = placeholder,
-                        style = TextStyle(fontSize = 15.sp, color = tc.text2)
+                        style = TextStyle(fontSize = 15.sp, color = tc.text3)
                     )
                 }
 
@@ -66,7 +66,7 @@ fun SearchBar(
                     value = value,
                     onValueChange = onValueChange,
                     textStyle = TextStyle(
-                        fontSize = 16.sp,
+                        fontSize = 15.5.sp,
                         color = tc.text
                     ),
                     singleLine = true,

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -51,7 +52,6 @@ fun FilterChipsRow(
     onSelect: (FilterOption) -> Unit,
     modifier: Modifier = Modifier
 ) {
-
     val tc = LocalThemeColors.current
 
     LazyRow(
@@ -64,14 +64,26 @@ fun FilterChipsRow(
             FilterChip(
                 selected = isSelected,
                 onClick = { onSelect(option) },
-                label = { Text(stringResource(id = option.labelRes)) },
+                label = {
+                    Text(
+                        text = stringResource(id = option.labelRes),
+                        style = CaptionStyle.copy(fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium)
+                    )
+                },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = tc.primary,
                     selectedLabelColor = Color.White,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    containerColor = tc.surface2,
+                    labelColor = tc.text2
                 ),
-                shape = AppShapes.small,
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
+                    borderColor = tc.line.copy(alpha = 0.6f),
+                    selectedBorderColor = tc.primary,
+                    borderWidth = 1.dp
+                ),
+                shape = RoundedCornerShape(R_SM),
                 modifier = Modifier.testTag("filter_chip_${option.labelRes}")
             )
         }

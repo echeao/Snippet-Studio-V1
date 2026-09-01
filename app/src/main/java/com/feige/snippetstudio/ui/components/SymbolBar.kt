@@ -3,6 +3,7 @@ package com.feige.snippetstudio.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -263,26 +265,61 @@ fun SymbolBar(
             modifier = Modifier.fillMaxHeight()
         ) {
             items(symbols) { symbol ->
-                Box(
-                    modifier = Modifier
-                        .height(32.dp)
-                        .padding(vertical = 1.dp)
-                        .background(tc.surface, RoundedCornerShape(R_SM))
-                        .border(1.dp, tc.line, RoundedCornerShape(R_SM))
-                        .clickable { onInsertSymbol(symbol) }
-                        .padding(horizontal = Spacing.S3)
-                        .testTag("symbol_btn_$symbol"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = symbol,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.W600,
-                        color = tc.text
-                    )
-                }
+                SymbolButton(
+                    symbol = symbol,
+                    onClick = { onInsertSymbol(symbol) }
+                )
             }
         }
+    }
+}
+
+/**
+ * [SymbolButton] 单个快捷符号交互按键组件（带按压微缩与柔和微光边框）。
+ */
+@Composable
+private fun SymbolButton(
+    symbol: String,
+    onClick: () -> Unit
+) {
+    val tc = LocalThemeColors.current
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1.0f,
+        animationSpec = androidx.compose.animation.core.spring(
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow,
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy
+        ),
+        label = "symbol_press_scale"
+    )
+
+    Box(
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .height(32.dp)
+            .padding(vertical = 1.dp)
+            .background(tc.surface, RoundedCornerShape(R_SM))
+            .border(1.dp, tc.line.copy(alpha = 0.8f), RoundedCornerShape(R_SM))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = Spacing.S3)
+            .testTag("symbol_btn_$symbol"),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = symbol,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.W600,
+            color = tc.text
+        )
     }
 }

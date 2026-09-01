@@ -199,7 +199,7 @@ fun CodeEditor(
                             .padding(start = gutterWidth)
                             .offset(y = contentTopPadding + currentLineTop)
                             .height(currentLineHeight)
-                            .background(colors.primarySoft.copy(alpha = if (colors.isDark) 0.15f else 0.5f))
+                            .background(colors.primary.copy(alpha = if (colors.isDark) 0.12f else 0.06f))
                     )
                 }
 

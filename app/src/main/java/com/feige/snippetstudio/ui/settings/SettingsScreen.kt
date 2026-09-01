@@ -129,8 +129,8 @@ fun SettingsScreen(
                     iconRes = R.drawable.ic_folder,
                     title = stringResource(R.string.set_repo_cur),
                     subTitle = settings.repoPath,
-                    iconColor = Color(0xFF2e7d32),
-                    iconBgColor = adaptiveIconBg(Color(0xFFe8f5e9), tc.isDark),
+                    iconColor = C_Store,
+                    iconBgColor = adaptiveIconBg(C_StoreBg, tc.isDark),
                     onClick = { onNavigateToSubPage("repo") }
                 )
             }
@@ -142,18 +142,18 @@ fun SettingsScreen(
                     iconRes = R.drawable.ic_git,
                     title = stringResource(R.string.set_git),
                     subTitle = gitSubTitle,
-                    iconColor = Color(0xFF0277bd),
-                    iconBgColor = adaptiveIconBg(Color(0xFFe1f5fe), tc.isDark),
+                    iconColor = C_Sync,
+                    iconBgColor = adaptiveIconBg(C_SyncBg, tc.isDark),
                     trailingContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
-                                color = if (settings.gitConnected) Color(0xFFe8f5e9) else tc.line.copy(alpha = 0.3f),
+                                color = if (settings.gitConnected) tc.primarySoft else tc.line.copy(alpha = 0.3f),
                                 shape = RoundedCornerShape(R_SM)
                             ) {
                                 Text(
                                     text = if (settings.gitConnected) "已就绪" else "未连通",
                                     fontSize = 11.sp,
-                                    color = if (settings.gitConnected) Color(0xFF2e7d32) else tc.text2,
+                                    color = if (settings.gitConnected) tc.primary else tc.text2,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
@@ -177,17 +177,17 @@ fun SettingsScreen(
                     iconRes = R.drawable.ic_folder_details,
                     title = stringResource(R.string.set_cat),
                     subTitle = "查看各语言代码片段数量分布",
-                    iconColor = Color(0xFF6a1b9a),
-                    iconBgColor = adaptiveIconBg(Color(0xFFf3e5f5), tc.isDark),
+                    iconColor = C_Org,
+                    iconBgColor = adaptiveIconBg(C_OrgBg, tc.isDark),
                     onClick = { onNavigateToSubPage("cat") }
                 )
-                HorizontalDivider(color = tc.line)
+                HorizontalDivider(color = tc.line.copy(alpha = 0.6f))
                 AppSettingTile(
                     iconRes = R.drawable.ic_tag,
                     title = stringResource(R.string.set_tags),
                     subTitle = "自定义常用标签列表 (${settings.customTags.size} 个)",
-                    iconColor = Color(0xFFad1457),
-                    iconBgColor = adaptiveIconBg(Color(0xFFfce4ec), tc.isDark),
+                    iconColor = C_Tag,
+                    iconBgColor = adaptiveIconBg(C_TagBg, tc.isDark),
                     onClick = { onNavigateToSubPage("tags") }
                 )
             }
@@ -229,31 +229,31 @@ fun SettingsScreen(
                     iconRes = R.drawable.ic_settings,
                     title = "应用版本号",
                     subTitle = "Snippet Studio v1.2.0 (Build 20260728)",
-                    iconColor = Color(0xFF424242),
-                    iconBgColor = adaptiveIconBg(Color(0xFFf5f5f5), tc.isDark),
+                    iconColor = C_Look,
+                    iconBgColor = adaptiveIconBg(C_LookBg, tc.isDark),
                     trailingContent = {
                         Text(text = "v1.2.0", style = CaptionStyle, color = tc.text2)
                     },
                     onClick = { onShowSnackbar(context.getString(R.string.toast_latest_version)) }
                 )
-                HorizontalDivider(color = tc.line)
+                HorizontalDivider(color = tc.line.copy(alpha = 0.6f))
 
                 AppSettingTile(
                     iconRes = R.drawable.ic_spark,
                     title = "版本更新日志",
                     subTitle = "查看本次更新特性与重大优化",
-                    iconColor = Color(0xFFf57c00),
-                    iconBgColor = Color(0xFFfff3e0),
+                    iconColor = Warning,
+                    iconBgColor = adaptiveIconBg(WarningSoft, tc.isDark),
                     onClick = { showChangelogDialog = true }
                 )
-                HorizontalDivider(color = tc.line)
+                HorizontalDivider(color = tc.line.copy(alpha = 0.6f))
 
                 AppSettingTile(
                     iconRes = R.drawable.ic_warning,
                     title = "重置为默认偏好",
                     subTitle = "将所有外观、编辑器及交互选项恢复为初始默认值",
                     iconColor = Danger,
-                    iconBgColor = Danger.copy(alpha = 0.12f),
+                    iconBgColor = adaptiveIconBg(DangerSoft, tc.isDark),
                     onClick = { showResetConfirmDialog = true }
                 )
             }

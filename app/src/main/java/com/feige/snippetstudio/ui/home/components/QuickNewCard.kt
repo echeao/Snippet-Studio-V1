@@ -31,16 +31,19 @@ import com.feige.snippetstudio.ui.theme.*
  * [QuickNewCard] 首页快捷创建指定语言类型代码片段的交互卡片组件。
  *
  * 交互与视效增强：
- * 1. 按压物理反馈：使用 [animateFloatAsState] 实现真实的弹性按压（Scale 0.96x）微动效。
- * 2. 材质与光影：采用柔和表面阴影与 Subtle 微光边框 [tc.line]，提升精美度。
+ * 1. 按压物理反馈：使用 [animateFloatAsState] 实现真实的弹性按压（Scale 0.97x）微动效。
+ * 2. 材质与光影：采用柔和表面环境光阴影与 Subtle 微光边框 [tc.line.copy(alpha = 0.7f)]。
+ * 3. 信息层次：提供标题 + 浅色一句话副标题，强化工具专业感。
  *
  * @param type 待创建的代码片段类型 [SnippetType]
+ * @param subtitle 辅助副标题描述文字
  * @param onClick 点击触发的回调函数
  * @param modifier 外部修饰符 Modifier
  */
 @Composable
 fun QuickNewCard(
     type: SnippetType,
+    subtitle: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -50,7 +53,7 @@ fun QuickNewCard(
 
     // 点击按压时的物理弹簧缩放动画
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1.0f,
+        targetValue = if (isPressed) 0.97f else 1.0f,
         animationSpec = spring(stiffness = 500f, dampingRatio = 0.6f),
         label = "quick_card_scale"
     )
@@ -59,7 +62,7 @@ fun QuickNewCard(
         modifier = modifier
             .scale(scale)
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, tc.line, RoundedCornerShape(R_MD))
+            .border(1.dp, tc.line.copy(alpha = 0.8f), RoundedCornerShape(R_MD))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // 自定义弹性缩放代替标准水波纹
@@ -70,16 +73,27 @@ fun QuickNewCard(
         color = tc.surface
     ) {
         Row(
-            modifier = Modifier.padding(Spacing.S3),
+            modifier = Modifier.padding(horizontal = Spacing.S3 + 2.dp, vertical = Spacing.S3),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TypeIcon(type = type, size = 36.dp)
             Spacer(modifier = Modifier.width(Spacing.S3))
-            Text(
-                text = type.displayName,
-                style = ListTitleStyle,
-                color = tc.text
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = type.displayName,
+                    style = ListTitleStyle,
+                    color = tc.text
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = CaptionStyle.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
+                        color = tc.text3,
+                        maxLines = 1
+                    )
+                }
+            }
         }
     }
 }
@@ -129,11 +143,13 @@ fun QuickNewSection(
         ) {
             QuickNewCard(
                 type = SnippetType.HTML,
+                subtitle = "网页与模版",
                 onClick = { onNavigateToNewEditor(SnippetType.HTML.code) },
                 modifier = Modifier.weight(1f)
             )
             QuickNewCard(
                 type = SnippetType.JS,
+                subtitle = "脚本与逻辑",
                 onClick = { onNavigateToNewEditor(SnippetType.JS.code) },
                 modifier = Modifier.weight(1f)
             )
@@ -148,11 +164,13 @@ fun QuickNewSection(
         ) {
             QuickNewCard(
                 type = SnippetType.MARKDOWN,
+                subtitle = "排版与文档",
                 onClick = { onNavigateToNewEditor(SnippetType.MARKDOWN.code) },
                 modifier = Modifier.weight(1f)
             )
             QuickNewCard(
                 type = SnippetType.PROMPT,
+                subtitle = "AI 提示词",
                 onClick = { onNavigateToNewEditor(SnippetType.PROMPT.code) },
                 modifier = Modifier.weight(1f)
             )
@@ -163,6 +181,7 @@ fun QuickNewSection(
         // 底部通栏：常规通用片段快捷卡片
         QuickNewCard(
             type = SnippetType.GENERAL,
+            subtitle = "自由备忘与纯代码片段",
             onClick = { onNavigateToNewEditor(SnippetType.GENERAL.code) },
             modifier = Modifier.fillMaxWidth()
         )
