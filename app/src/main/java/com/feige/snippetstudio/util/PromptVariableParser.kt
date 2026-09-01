@@ -63,7 +63,7 @@ object PromptVariableParser {
         return VARIABLE_PATTERN.replace(text) { match ->
             val name = match.groupValues[1]
             val defaultValue = match.groupValues.getOrNull(2) ?: ""
-            values[name]?.ifBlank { defaultValue } ?: defaultValue.ifBlank { match.value }
+            values[name]?.ifBlank { defaultValue }?.ifBlank { match.value } ?: defaultValue.ifBlank { match.value }
         }
     }
 
