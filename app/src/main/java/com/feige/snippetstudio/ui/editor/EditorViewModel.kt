@@ -1,5 +1,6 @@
 package com.feige.snippetstudio.ui.editor
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -57,6 +58,7 @@ enum class SaveState {
  * @param showVariablePanel 是否显示变量填充面板
  * @param variableValues 变量填充值映射
  */
+@Immutable
 data class EditorUiState(
     val id: String = "",
     val snippet: Snippet? = null,
@@ -319,11 +321,13 @@ class EditorViewModel(
     fun onSoraTextChange(newText: String) {
         val currentTfv = _uiState.value.textFieldValue
         if (currentTfv.text != newText) {
+            val lines = newText.count { c -> c == '\n' } + 1
             _uiState.update {
                 it.copy(
                     textFieldValue = currentTfv.copy(text = newText),
                     saveState = SaveState.UNSAVED,
-                    charCount = newText.length
+                    charCount = newText.length,
+                    lineCount = lines
                 )
             }
             triggerPromptVariableParse(newText)
@@ -332,13 +336,19 @@ class EditorViewModel(
     }
 
     /**
-     * Sora-Editor 光标位置变更回调（高效版）。
+     * Sora-Editor 光标位置变更回调（极速防抖与零 GC 优化版）。
      * 直接提供行列号，同步更新状态栏显示与 TextFieldValue.selection（供符号插入使用）。
+     * 优化：行列未变动时直接熔断；移除重复的全文换行统计，显著提升拖拽与输入帧率。
      * @param line 光标所在行号 (0-indexed)
      * @param column 光标所在列号 (0-indexed)
      */
     fun onSoraCursorChange(line: Int, column: Int) {
-        val currentText = _uiState.value.textFieldValue.text
+        val currentState = _uiState.value
+        if (currentState.currentLineIndex == line && currentState.currentColumnIndex == column) {
+            return
+        }
+
+        val currentText = currentState.textFieldValue.text
         // 将行列号转换为绝对偏移量，保持 TextFieldValue.selection 与实际光标同步
         var offset = 0
         var curLine = 0
@@ -355,7 +365,6 @@ class EditorViewModel(
             it.copy(
                 currentLineIndex = line,
                 currentColumnIndex = column,
-                lineCount = currentText.count { c -> c == '\n' } + 1,
                 textFieldValue = it.textFieldValue.copy(
                     selection = androidx.compose.ui.text.TextRange(offset.coerceIn(0, currentText.length))
                 )

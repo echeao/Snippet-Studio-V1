@@ -86,7 +86,9 @@ fun FilesComfortList(
                 onMore = { onTrash(snippet) },
                 showFullDateTime = true,
                 searchQuery = searchQuery,
-                modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
+                modifier = Modifier
+                    .animateItem()
+                    .padding(horizontal = Spacing.S4, vertical = Spacing.S2)
             )
         }
     }

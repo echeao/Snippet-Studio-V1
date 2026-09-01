@@ -1,5 +1,6 @@
 package com.feige.snippetstudio.util
 
+import androidx.collection.LruCache
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -23,6 +24,9 @@ import java.util.regex.Pattern
     replaceWith = ReplaceWith("SoraCodeEditor", "com.feige.snippetstudio.ui.components.SoraCodeEditor")
 )
 object SyntaxHighlighter {
+
+    /** 全局富文本语法高亮分析 LRU 内存缓存（容量 512），彻底消除重复正则分词计算开销 */
+    private val globalHighlightCache = LruCache<String, AnnotatedString>(512)
 
     // ===== 词法单元色彩定义 (Token Styles) =====
 
@@ -268,7 +272,7 @@ object SyntaxHighlighter {
     )
 
     /**
-     * 对给定的文本按照指定片段类型进行语法高亮分析。
+     * 对给定的文本按照指定片段类型进行语法高亮分析（集成全局 LRU 缓存）。
      *
      * @param text 纯代码文本
      * @param type 片段类型 (JS, HTML, Markdown, Prompt)
@@ -277,8 +281,10 @@ object SyntaxHighlighter {
      */
     fun highlight(text: String, type: SnippetType, isDark: Boolean): AnnotatedString {
         if (text.isEmpty()) return AnnotatedString("")
+        val cacheKey = "T_${type.code}_${isDark}_${text.hashCode()}_${text.length}"
+        globalHighlightCache.get(cacheKey)?.let { return it }
 
-        return buildAnnotatedString {
+        val result = buildAnnotatedString {
             append(text)
             when (type) {
                 SnippetType.JS -> highlightJs(text, isDark)
@@ -289,10 +295,12 @@ object SyntaxHighlighter {
                 SnippetType.GENERAL -> highlightPrompt(text, isDark)
             }
         }
+        globalHighlightCache.put(cacheKey, result)
+        return result
     }
 
     /**
-     * 根据 [SyntaxLanguage] 进行语法高亮（支持 11 种语言）。
+     * 根据 [SyntaxLanguage] 进行语法高亮（支持 11 种语言，集成全局 LRU 缓存）。
      * 对超大文本进行截断保护，支持最高 150000 字符（约 150KB），避免撕裂语法块。
      *
      * @param text 待解析的高亮代码全文
@@ -302,11 +310,13 @@ object SyntaxHighlighter {
      */
     fun highlightByLanguage(text: String, language: SyntaxLanguage, isDark: Boolean): AnnotatedString {
         if (text.isEmpty()) return AnnotatedString("")
+        val cacheKey = "L_${language.name}_${isDark}_${text.hashCode()}_${text.length}"
+        globalHighlightCache.get(cacheKey)?.let { return it }
 
         // 性能保护上限提升至 150,000 字符 (150KB)，足以保障绝大多数复杂网页代码不被截断
         val effectiveText = if (text.length > 150000) text.substring(0, 150000) else text
 
-        return buildAnnotatedString {
+        val result = buildAnnotatedString {
             append(text)
             when (language) {
                 SyntaxLanguage.HTML -> highlightHtml(effectiveText, isDark)
@@ -326,6 +336,8 @@ object SyntaxHighlighter {
                 SyntaxLanguage.PLAIN -> { /* 无高亮 */ }
             }
         }
+        globalHighlightCache.put(cacheKey, result)
+        return result
     }
 
     /** JavaScript / TypeScript 语法高亮分词算法（包含内置对象与函数调用识别） */

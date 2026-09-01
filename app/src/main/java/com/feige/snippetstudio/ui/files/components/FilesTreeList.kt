@@ -95,6 +95,7 @@ fun FilesTreeList(
 
                 Surface(
                     modifier = Modifier
+                        .animateItem()
                         .fillMaxWidth()
                         .padding(horizontal = Spacing.S4, vertical = Spacing.S1)
                         .clip(RoundedCornerShape(R_SM))
@@ -216,7 +217,9 @@ fun FilesTreeList(
                                 onToggleStar = { onToggleStar(snippet) },
                                 onMore = { onTrash(snippet) },
                                 showFullDateTime = true,
-                                modifier = Modifier.padding(start = 28.dp, end = Spacing.S4, top = Spacing.S1, bottom = Spacing.S2)
+                                modifier = Modifier
+                                    .animateItem()
+                                    .padding(start = 28.dp, end = Spacing.S4, top = Spacing.S1, bottom = Spacing.S2)
                             )
                         }
                     } else {
@@ -233,6 +236,7 @@ fun FilesTreeList(
                             }
                             Surface(
                                 modifier = Modifier
+                                    .animateItem()
                                     .fillMaxWidth()
                                     .padding(start = 28.dp, end = Spacing.S4, top = Spacing.S1, bottom = Spacing.S2)
                                     .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)

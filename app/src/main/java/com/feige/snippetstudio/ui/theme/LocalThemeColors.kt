@@ -1,5 +1,6 @@
 package com.feige.snippetstudio.ui.theme
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.Color
  * @property codeText 代码预览区文字色（随明暗模式自动切换）
  * @property isDark 当前主题是否运行在深色模式
  */
+@Immutable
 data class ThemeColors(
     val primary: Color,
     val primary2: Color,

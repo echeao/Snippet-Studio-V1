@@ -182,7 +182,9 @@ fun HomeScreen(
                             onToggleStar = { viewModel.toggleStar(snippet.id, snippet.starred) },
                             onMore = { pendingTrashId = snippet.id },
                             showFullDateTime = true,
-                            modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S2)
+                            modifier = Modifier
+                                .animateItem()
+                                .padding(horizontal = Spacing.S4, vertical = Spacing.S2)
                         )
                     }
                 }

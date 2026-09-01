@@ -59,7 +59,7 @@ fun DetailSourcePanel(
     val tc = LocalThemeColors.current
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-    val isDark = isSystemInDarkTheme()
+    val isDark = tc.isDark
 
     // 1. 自动检测推断语法高亮语言类型
     val language = remember(snippet.fileName, snippet.type) {
@@ -75,10 +75,15 @@ fun DetailSourcePanel(
         }
     }
 
-    // 3. 动态生成带行号对齐的编号列文本
+    // 3. 动态生成带行号对齐的编号列文本（优化：通过 StringBuilder 直接构建，消除临时 List 分配）
     val lineNumbersText = remember(displayedContent) {
-        val lineCount = displayedContent.lines().size
-        (1..lineCount).joinToString("\n")
+        val lineCount = displayedContent.count { it == '\n' } + 1
+        buildString {
+            for (i in 1..lineCount) {
+                append(i)
+                if (i < lineCount) append('\n')
+            }
+        }
     }
 
     // 4. 使用 SyntaxHighlighter 缓存生成高亮 AnnotatedString

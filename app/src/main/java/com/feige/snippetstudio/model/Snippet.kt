@@ -1,5 +1,6 @@
 package com.feige.snippetstudio.model
 
+import androidx.compose.runtime.Immutable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -11,6 +12,7 @@ import java.util.Locale
  * @param displayName 在 UI 界面上展示给用户的类型名称 (如 "JavaScript")
  * @param extension 对应的默认文件扩展名 (如 ".html", ".js", ".md")
  */
+@Immutable
 enum class SnippetType(val code: String, val displayName: String, val extension: String) {
     HTML("html", "HTML", ".html"),
     JS("js", "JavaScript", ".js"),
@@ -76,6 +78,7 @@ enum class SnippetType(val code: String, val displayName: String, val extension:
  * @param trashed 是否处于回收站中（软删除机制，非直接删除数据库记录）
  * @param trashedAt 移入回收站的时间戳
  */
+@Immutable
 data class Snippet(
     val id: String,
     val type: SnippetType,

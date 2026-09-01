@@ -84,6 +84,7 @@ fun TrashSubPage(
                 items(trashItems, key = { it.id }) { item ->
                     Surface(
                         modifier = Modifier
+                            .animateItem()
                             .fillMaxWidth()
                             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD))
                             .border(1.dp, tc.line, RoundedCornerShape(R_MD)),

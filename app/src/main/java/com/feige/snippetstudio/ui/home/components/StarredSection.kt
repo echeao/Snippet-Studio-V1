@@ -74,7 +74,8 @@ fun StarredSection(
             items(starredSnippets, key = { it.id }) { snippet ->
                 StarredCard(
                     snippet = snippet,
-                    onClick = { onSnippetClick(snippet.id) }
+                    onClick = { onSnippetClick(snippet.id) },
+                    modifier = Modifier.animateItem()
                 )
             }
         }
@@ -91,7 +92,8 @@ fun StarredSection(
 @Composable
 private fun StarredCard(
     snippet: Snippet,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val tc = LocalThemeColors.current
     val style = LocalColorThemeStyle.current
@@ -106,7 +108,7 @@ private fun StarredCard(
     }
 
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .width(140.dp)
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD))
             .clickable(onClick = onClick),

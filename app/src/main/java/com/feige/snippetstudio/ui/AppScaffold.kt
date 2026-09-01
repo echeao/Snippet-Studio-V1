@@ -24,6 +24,10 @@ import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.components.TypeIcon
 import com.feige.snippetstudio.ui.nav.Screen
 import com.feige.snippetstudio.ui.theme.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.launch
@@ -334,7 +338,23 @@ fun DockNavItem(
     modifier: Modifier = Modifier
 ) {
     val tc = LocalThemeColors.current
-    val contentColor = if (selected) tc.primary else tc.text2.copy(alpha = 0.7f)
+
+    // 平滑色彩过渡动画（220ms 缓动）
+    val animatedBgColor by animateColorAsState(
+        targetValue = if (selected) tc.primarySoft else Color.Transparent,
+        animationSpec = tween(220),
+        label = "dockNavBg"
+    )
+    val animatedIconColor by animateColorAsState(
+        targetValue = if (selected) tc.primary else tc.text2.copy(alpha = 0.7f),
+        animationSpec = tween(220),
+        label = "dockNavIcon"
+    )
+    val animatedScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (selected) 1.05f else 1.0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioLowBouncy),
+        label = "dockNavScale"
+    )
 
     Box(
         modifier = modifier
@@ -344,8 +364,13 @@ fun DockNavItem(
     ) {
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = if (selected) tc.primarySoft else Color.Transparent,
-            modifier = Modifier.size(width = 52.dp, height = 44.dp)
+            color = animatedBgColor,
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = animatedScale
+                    scaleY = animatedScale
+                }
+                .size(width = 52.dp, height = 44.dp)
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -354,7 +379,7 @@ fun DockNavItem(
                 Icon(
                     painter = painterResource(id = iconRes),
                     contentDescription = label,
-                    tint = contentColor,
+                    tint = animatedIconColor,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -377,9 +402,10 @@ fun DockNewButton(
     val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // 点击按压时的微缩物理弹性动画 (0.92f 缩放)
+    // 点击按压时的物理弹簧微缩动效 (0.90f 弹性缩放)
     val scale by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1.0f,
+        targetValue = if (isPressed) 0.90f else 1.0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "dockNewPressScale"
     )
 

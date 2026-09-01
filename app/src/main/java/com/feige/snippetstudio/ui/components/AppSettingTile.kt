@@ -1,6 +1,8 @@
 package com.feige.snippetstudio.ui.components
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -98,7 +100,7 @@ fun AppSettingTile(
     // 点击时的物理弹簧微缩动效动画 (按压时轻微缩小至 98%)
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1.0f,
-        animationSpec = tween(durationMillis = 100),
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
         label = "setting_tile_press_scale"
     )
 

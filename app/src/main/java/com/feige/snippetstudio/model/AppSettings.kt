@@ -1,5 +1,7 @@
 package com.feige.snippetstudio.model
 
+import androidx.compose.runtime.Immutable
+
 /**
  * [AppSettings] 是应用的全局配置与偏好设置数据模型 (Immutable Data Class)。
  *
@@ -32,6 +34,7 @@ package com.feige.snippetstudio.model
  * @param shareAction 系统分享剪藏接收后的行为模式 ("panel": 弹出快速编辑面板, "silent": 静默直接保存)
  * @param editorFontFamily 编辑器字体族 ("monospace", "sans-serif", "serif")
  */
+@Immutable
 data class AppSettings(
     val lang: String = "zh",
     val theme: String = "system",

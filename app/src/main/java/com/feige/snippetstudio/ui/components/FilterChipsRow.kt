@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Immutable
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.theme.*
@@ -22,6 +23,7 @@ import com.feige.snippetstudio.ui.theme.*
  * @param type 指定匹配的 [SnippetType] 类型（为空表示全部类型）
  * @param isFav 是否仅过滤标记为收藏的片段
  */
+@Immutable
 sealed class FilterOption(val labelRes: Int, val type: SnippetType? = null, val isFav: Boolean = false) {
     object All : FilterOption(R.string.filter_all)
     object Html : FilterOption(R.string.type_html, SnippetType.HTML)

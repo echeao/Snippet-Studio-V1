@@ -83,6 +83,8 @@ fun SoraCodeEditor(
     // isEditorReady：仅当语言和初始文本都已写入编辑器后才开放用户输入事件。
     // 设置 Sora 语言时会替换内部 Content；在此之前开放事件会把这次内部替换误写回 ViewModel。
     var isEditorReady by remember { mutableStateOf(false) }
+    // 记忆最近一次由 Sora 内部输入主动派发的文本快照，用于消除 LaunchedEffect 中的二次冗余 Rope 转 String 序列化
+    var lastEmittedText by remember { mutableStateOf<String?>(null) }
 
     // TextMate 注册表初始化标记（仅在 Context 变化时执行一次）
     val tmInitialized = remember(context) { mutableStateOf(false) }
@@ -222,6 +224,14 @@ fun SoraCodeEditor(
     // ===== 外部 text 变化同步到编辑器（门控开放后或门控状态变化时触发同步）=====
     LaunchedEffect(text, isEditorReady) {
         if (!isEditorReady) return@LaunchedEffect
+
+        // 优化：若当前 text 变化正是刚才由 Sora 本身输入派发至 ViewModel 的，直接跳过，消除主线程 Rope 转 String 序列化
+        if (text == lastEmittedText) {
+            lastEmittedText = null
+            return@LaunchedEffect
+        }
+        lastEmittedText = null
+
         val currentEditorText = editor.text.toString()
         if (currentEditorText != text) {
             isExternalUpdate = true
@@ -247,6 +257,7 @@ fun SoraCodeEditor(
             if (isEditorReady && !isExternalUpdate) {
                 val newText = editor.text.toString()
                 if (newText != latestText) {
+                    lastEmittedText = newText
                     latestOnTextChange(newText)
                 }
             }

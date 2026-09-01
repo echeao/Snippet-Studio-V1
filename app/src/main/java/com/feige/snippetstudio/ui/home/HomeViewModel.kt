@@ -1,6 +1,7 @@
 package com.feige.snippetstudio.ui.home
 
 import android.content.Context
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -29,6 +30,7 @@ import kotlinx.coroutines.withContext
  * @param isLoading 界面数据加载中状态标识
  * @param error 异常错误提示信息文本
  */
+@Immutable
 data class HomeUiState(
     val recentSnippets: List<Snippet> = emptyList(),
     val starredSnippets: List<Snippet> = emptyList(),
@@ -69,12 +71,14 @@ class HomeViewModel(
      * 暴露给 HomeScreen 订阅的响应式 UI 状态流 [StateFlow]。
      *
      * 优化亮点：
-     * 1. 使用 `withContext(Dispatchers.Default)` 将大量数据的模糊匹配过滤与分类统计推入 CPU 后台线程计算，避免阻塞主线程。
-     * 2. `SharingStarted.WhileSubscribed(5000)` 在屏幕旋转或短时间离开时保持缓存，后台超过 5s 自动停止订阅，节省电力开销。
+     * 1. 搜索流添加 100ms 轻量防抖，消除高速敲键时的瞬态拥堵。
+     * 2. 使用 `withContext(Dispatchers.Default)` 将大量数据的模糊匹配过滤与分类统计推入 CPU 后台线程计算，避免阻塞主线程。
+     * 3. `SharingStarted.WhileSubscribed(5000)` 在屏幕旋转或短时间离开时保持缓存，后台超过 5s 自动停止订阅，节省电力开销。
      */
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
     val uiState: StateFlow<HomeUiState> = combine(
         repository.observeActive(),
-        _searchQuery,
+        _searchQuery.debounce(100L),
         _detectedClip,
         settingsRepository?.settingsFlow ?: flowOf(com.feige.snippetstudio.model.AppSettings())
     ) { snippets, query, clip, settings ->

@@ -10,6 +10,7 @@ import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.components.FilterOption
 import com.feige.snippetstudio.util.FuzzySearchUtil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -118,8 +119,9 @@ class FilesViewModel(
     /** 显示密度内部 Flow (大卡片/高密度) */
     private val _densityMode = MutableStateFlow(DensityMode.COMFORT)
 
-    /** 聚合控制参数 Flow */
-    private val _filterParams = combine(_searchQuery, _filterOption, _sortMode, _viewMode, _densityMode) { query, filter, sort, viewMode, densityMode ->
+    /** 聚合控制参数 Flow (添加 100ms 防抖，消除高速敲键瞬态拥堵) */
+    @OptIn(FlowPreview::class)
+    private val _filterParams = combine(_searchQuery.debounce(100L), _filterOption, _sortMode, _viewMode, _densityMode) { query, filter, sort, viewMode, densityMode ->
         FilterParams(query, filter, sort, viewMode, densityMode)
     }
 

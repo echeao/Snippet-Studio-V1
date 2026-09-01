@@ -1,5 +1,6 @@
 package com.feige.snippetstudio.ui.detail
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.first
  * @param existingFolders 全局所有存在的文件夹列表
  * @param isLoading 页面加载中状态
  */
+@Immutable
 data class DetailUiState(
     val snippet: Snippet? = null,
     val isSourceExpanded: Boolean = false,

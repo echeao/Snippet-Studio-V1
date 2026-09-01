@@ -10,6 +10,9 @@ package com.feige.snippetstudio.util
  */
 object FuzzySearchUtil {
 
+    /** 预编译空格分词正则表达式，避免高频搜索时重复创建 Regex 实例 */
+    private val WHITESPACE_REGEX = Regex("\\s+")
+
     /**
      * 检验目标文本 [text] 是否匹配搜索查询 [query]。
      *
@@ -19,7 +22,7 @@ object FuzzySearchUtil {
      */
     fun match(text: String, query: String): Boolean {
         if (query.isBlank()) return true
-        val keywords = query.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        val keywords = query.trim().split(WHITESPACE_REGEX).filter { it.isNotBlank() }
         return keywords.all { keyword ->
             containsSubsequence(text, keyword)
         }

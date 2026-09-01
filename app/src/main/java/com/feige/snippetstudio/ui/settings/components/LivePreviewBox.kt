@@ -16,6 +16,13 @@ import com.feige.snippetstudio.ui.theme.CaptionStyle
 import com.feige.snippetstudio.ui.theme.LocalThemeColors
 import com.feige.snippetstudio.ui.theme.R_MD
 
+/** 设置界面 Live 预览静态示例代码行集合 */
+private val SAMPLE_CODE_LINES = listOf(
+    "fun main() {",
+    "    println(\"Hello Snippet Studio!\")",
+    "}"
+)
+
 /**
  * [LivePreviewBox] 设置页中的代码编辑器效果实时 Live 预览卡片。
  *
@@ -61,12 +68,7 @@ fun LivePreviewBox(
                     .padding(vertical = 4.dp)
             ) {
                 Column(modifier = Modifier.padding(10.dp)) {
-                    val codeLines = listOf(
-                        "fun main() {",
-                        "    println(\"Hello Snippet Studio!\")",
-                        "}"
-                    )
-                    codeLines.forEachIndexed { index, line ->
+                    SAMPLE_CODE_LINES.forEachIndexed { index, line ->
                         Row {
                             if (showLineNumbers) {
                                 Text(

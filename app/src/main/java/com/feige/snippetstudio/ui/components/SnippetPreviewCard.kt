@@ -24,6 +24,13 @@ import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.SyntaxHighlighter
 import com.feige.snippetstudio.util.SearchHighlighter
 import com.feige.snippetstudio.util.TimeUtil
+import androidx.collection.LruCache
+
+/**
+ * 列表预览卡片语法高亮富文本微型 LRU 内存缓存 (最大 256 条)。
+ * 缓存 key 结构: `${type.code}_${isDark}_${text.hashCode()}`，避免快速滑动时重复执行正则词法分词。
+ */
+private val previewHighlightCache = LruCache<String, AnnotatedString>(256)
 
 /**
  * [SnippetPreviewCard] 大卡片预览模式组件（舒适低密度视图）。
@@ -59,23 +66,30 @@ fun SnippetPreviewCard(
     }
 
     /**
-     * 【代码高亮预览】利用 [SyntaxHighlighter] 对截取的 4 行代码预览文本进行语法高亮分析，
+     * 【代码高亮预览】利用 [SyntaxHighlighter] 与全局 LRU 缓存对截取的 4 行代码预览文本进行语法高亮分析，
      * 生成包含特定语言关键字、字符串、数字及注释等富文本色彩的 [AnnotatedString]。
-     * 根据内容、代码片段类型以及当前深浅色主题动态缓存结果，避免重绘与列表滑动卡顿。
+     * 优先命中内存缓存，避免列表快速滑动时反复触发正则匹配。
      */
     val highlightedPreviewCode = remember(previewCode, snippet.type, tc.isDark) {
         if (previewCode.isBlank()) {
             AnnotatedString("// 空内容")
         } else {
-            SyntaxHighlighter.highlight(text = previewCode, type = snippet.type, isDark = tc.isDark)
+            val cacheKey = "${snippet.type.code}_${tc.isDark}_${previewCode.hashCode()}"
+            previewHighlightCache.get(cacheKey) ?: run {
+                val highlighted = SyntaxHighlighter.highlight(text = previewCode, type = snippet.type, isDark = tc.isDark)
+                previewHighlightCache.put(cacheKey, highlighted)
+                highlighted
+            }
         }
     }
 
+    // 优化：计算行数直接遍历换行符，避免 lines() 产生多余 List 与 String 分配
     val totalLines = remember(snippet.content) {
-        snippet.content.lines().size
+        snippet.content.count { it == '\n' } + 1
     }
-    val byteSize = remember(snippet.content) {
-        snippet.content.toByteArray().size
+    // 优化：优先使用模型中记录的 sizeBytes，避免重复调用 toByteArray()
+    val byteSize = remember(snippet.content, snippet.sizeBytes) {
+        if (snippet.sizeBytes > 0) snippet.sizeBytes else snippet.content.length
     }
 
     Surface(

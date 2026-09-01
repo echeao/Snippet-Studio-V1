@@ -99,15 +99,15 @@ fun FilesScreen(
                 offset - previousScrollOffset
             }
 
-            // 平滑防抖判定：下滑位移超过 40px 且不在顶端时收起，上滑位移超过 30px 时展开
-            if (delta > 40 && showSearchBar && (index > 0 || offset > 20)) {
+            // 平滑防抖判定：下滑位移超过 60px 且不在顶端时收起，上滑位移超过 50px 时展开，消除小幅度颤动
+            if (delta > 60 && showSearchBar && (index > 0 || offset > 30)) {
                 showSearchBar = false
-            } else if (delta < -30 && !showSearchBar) {
+            } else if (delta < -50 && !showSearchBar) {
                 showSearchBar = true
             }
 
-            // 滚动回到最顶部时重置为显示状态
-            if (index == 0 && offset == 0) {
+            // 滚动回到最顶部附近时自动展开搜索栏
+            if (index == 0 && offset < 10) {
                 showSearchBar = true
             }
 

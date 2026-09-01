@@ -66,6 +66,7 @@ fun FilesCompactList(
             }
             Surface(
                 modifier = Modifier
+                    .animateItem()
                     .fillMaxWidth()
                     .padding(horizontal = Spacing.S4, vertical = Spacing.S1)
                     .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
