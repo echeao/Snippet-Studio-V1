@@ -83,7 +83,7 @@ fun FilterChipsRow(
                     selectedBorderColor = tc.primary,
                     borderWidth = 1.dp
                 ),
-                shape = RoundedCornerShape(R_SM),
+                shape = RoundedCornerShape(999.dp),
                 modifier = Modifier.testTag("filter_chip_${option.labelRes}")
             )
         }

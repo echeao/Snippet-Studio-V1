@@ -155,6 +155,7 @@ fun HomeScreen(
                             onNewSnippet = { onNavigateToNewEditor(SnippetType.HTML.code) }
                         )
                     }
+                } else {
                     // ===== 最近 5 条代码片段（利用 key 与 contentType 保障 LazyColumn 节点精准复用与过渡效率）=====
                     items(
                         items = uiState.recentSnippets,

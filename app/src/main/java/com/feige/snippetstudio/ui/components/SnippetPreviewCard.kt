@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.theme.*
@@ -128,15 +129,15 @@ fun SnippetPreviewCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, tc.line, RoundedCornerShape(R_MD))
+            .shadow(AppElevation.Sm, RoundedCornerShape(R_LG), ambientColor = AppElevation.SmColor)
+            .border(1.dp, tc.line.copy(alpha = if (tc.isDark) 0.15f else 0.08f), RoundedCornerShape(R_LG))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // 自定义物理弹簧动效
                 onClick = onOpen
             )
             .testTag("snippet_preview_card_${snippet.id}"),
-        shape = RoundedCornerShape(R_MD),
+        shape = RoundedCornerShape(R_LG),
         color = tc.surface
     ) {
         Column(
@@ -174,8 +175,8 @@ fun SnippetPreviewCard(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = if (showFullDateTime) TimeUtil.formatFullDateTime(snippet.updatedAt) else TimeUtil.formatRelativeTime(context, snippet.updatedAt),
-                        style = CaptionStyle,
-                        color = tc.text2
+                        style = CaptionStyle.copy(fontSize = 11.5.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
+                        color = tc.text3
                     )
                 }
 
@@ -204,7 +205,7 @@ fun SnippetPreviewCard(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_star),
                             contentDescription = stringResource(R.string.filter_fav),
-                            tint = if (snippet.starred) StarOn else tc.text2,
+                            tint = if (snippet.starred) StarOn else tc.text3,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -267,17 +268,19 @@ fun SnippetPreviewCard(
 
             // ===== 2. 代码片段微型预览框 =====
             Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(R_SM),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, tc.line.copy(alpha = if (tc.isDark) 0.12f else 0.05f), RoundedCornerShape(R_MD)),
+                shape = RoundedCornerShape(R_MD),
                 color = codeBgColor
             ) {
                 Text(
                     text = highlightedPreviewCode,
-                    style = CodeTextStyle,
+                    style = CodeTextStyle.copy(fontSize = 12.sp, lineHeight = 18.sp),
                     color = codeTextColor,
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = Spacing.S3, vertical = Spacing.S2)
+                    modifier = Modifier.padding(horizontal = Spacing.S3, vertical = 10.dp)
                 )
             }
 
@@ -295,7 +298,7 @@ fun SnippetPreviewCard(
                 ) {
                     if (snippet.folder.isNotBlank()) {
                         Surface(
-                            color = tc.primarySoft,
+                            color = tc.primarySoft.copy(alpha = if (tc.isDark) 0.3f else 0.8f),
                             shape = RoundedCornerShape(R_SM)
                         ) {
                             Row(
@@ -326,7 +329,7 @@ fun SnippetPreviewCard(
                         ) {
                             snippet.tags.take(2).forEach { tag ->
                                 Surface(
-                                    color = C_TagBg,
+                                    color = C_TagBg.copy(alpha = if (tc.isDark) 0.25f else 0.8f),
                                     shape = RoundedCornerShape(R_SM)
                                 ) {
                                     Text(
@@ -344,8 +347,11 @@ fun SnippetPreviewCard(
                 // 右下角：行数与字节数
                 Text(
                     text = "$totalLines 行 · ${byteSize} B",
-                    style = CaptionStyle,
-                    color = tc.text2
+                    style = CaptionStyle.copy(
+                        fontSize = 11.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Normal
+                    ),
+                    color = tc.text3
                 )
             }
         }

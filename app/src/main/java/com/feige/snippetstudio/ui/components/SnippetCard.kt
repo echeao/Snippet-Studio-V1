@@ -59,15 +59,15 @@ fun SnippetCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, tc.line, RoundedCornerShape(R_MD))
+            .shadow(AppElevation.Sm, RoundedCornerShape(R_LG), ambientColor = AppElevation.SmColor)
+            .border(1.dp, tc.line.copy(alpha = if (tc.isDark) 0.15f else 0.08f), RoundedCornerShape(R_LG))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // 自定义物理弹簧动效
                 onClick = onOpen
             )
             .testTag("snippet_card_${snippet.id}"),
-        shape = RoundedCornerShape(R_MD),
+        shape = RoundedCornerShape(R_LG),
         color = tc.surface
     ) {
         Row(

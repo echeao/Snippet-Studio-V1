@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snippet Studio - 现代高级感 UI 重构视觉交互效果演示</title>
+  <!-- Google Fonts for Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Theme 1: Forest Slate (Default) */
+      --primary: #4B635A;
+      --primary-light: #6E887E;
+      --primary-soft: rgba(75, 99, 90, 0.12);
+      --primary-glow: rgba(75, 99, 90, 0.25);
+      
+      /* Light Mode */
+      --bg-base: #F8F9FA;
+      --bg-surface: #FFFFFF;
+      --bg-surface-elevated: #FFFFFF;
+      --bg-container: #F1F4F2;
+      --border-subtle: rgba(0, 0, 0, 0.06);
+      --border-strong: rgba(0, 0, 0, 0.12);
+      --text-main: #141A17;
+      --text-muted: #5A6560;
+      --text-faint: #8C9993;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+      --shadow-md: 0 8px 24px -4px rgba(20, 26, 23, 0.08), 0 2px 6px -1px rgba(20, 26, 23, 0.04);
+      --shadow-lg: 0 20px 40px -8px rgba(20, 26, 23, 0.12);
+      --dock-bg: rgba(255, 255, 255, 0.85);
+
+      /* Language Tags */
+      --c-html: #E44D26;
+      --c-html-bg: rgba(228, 77, 38, 0.1);
+      --c-js: #F5A623;
+      --c-js-bg: rgba(245, 166, 35, 0.1);
+      --c-md: #007ACC;
+      --c-md-bg: rgba(0, 122, 204, 0.1);
+      --c-prompt: #10B981;
+      --c-prompt-bg: rgba(16, 185, 129, 0.1);
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --radius-full: 9999px;
+    }
+
+    [data-theme="ocean"] {
+      --primary: #2B6CB0;
+      --primary-light: #4299E1;
+      --primary-soft: rgba(43, 108, 176, 0.12);
+      --primary-glow: rgba(43, 108, 176, 0.25);
+    }
+    [data-theme="sunset"] {
+      --primary: #DD6B20;
+      --primary-light: #ED8936;
+      --primary-soft: rgba(221, 107, 32, 0.12);
+      --primary-glow: rgba(221, 107, 32, 0.25);
+    }
+    [data-theme="lavender"] {
+      --primary: #7058A6;
+      --primary-light: #9F7AEA;
+      --primary-soft: rgba(112, 88, 166, 0.12);
+      --primary-glow: rgba(112, 88, 166, 0.25);
+    }
+
+    [data-mode="dark"] {
+      --bg-base: #0D1110;
+      --bg-surface: #151A18;
+      --bg-surface-elevated: #1D2421;
+      --bg-container: #222B27;
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --text-main: #F2F5F3;
+      --text-muted: #9BA6A1;
+      --text-faint: #626F69;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+      --shadow-md: 0 10px 30px rgba(0,0,0,0.4), 0 0 1px 1px rgba(255,255,255,0.06);
+      --shadow-lg: 0 24px 48px rgba(0,0,0,0.6);
+      --dock-bg: rgba(21, 26, 24, 0.85);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans SC', -apple-system, sans-serif;
+      background: #0B0E14;
+      color: #E2E8F0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 60px;
+    }
+
+    /* Top Showcase Banner */
+    .showcase-header {
+      text-align: center;
+      max-width: 900px;
+      margin-bottom: 28px;
+    }
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      background: rgba(75, 99, 90, 0.25);
+      border: 1px solid rgba(110, 136, 126, 0.3);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #93E0C6;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+    .showcase-title {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #FFFFFF 0%, #A0AEC0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .showcase-desc {
+      font-size: 14px;
+      color: #94A3B8;
+      line-height: 1.6;
+    }
+
+    /* Top Control Bar */
+    .controls-panel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 10px 18px;
+      border-radius: 16px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    .control-label {
+      font-size: 13px;
+      color: #94A3B8;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .theme-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.05);
+      color: #CBD5E1;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .theme-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #FFFFFF;
+    }
+    .theme-btn.active {
+      background: #4B635A;
+      color: #FFFFFF;
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 12px rgba(75, 99, 90, 0.5);
+    }
+    .divider-v {
+      width: 1px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Main Showcase Stage */
+    .stage-container {
+      display: flex;
+      gap: 36px;
+      align-items: flex-start;
+      justify-content: center;
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    /* Phone Mockup Frame */
+    .phone-wrapper {
+      position: relative;
+      width: 380px;
+      height: 780px;
+      background: #000;
+      border-radius: 48px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7),
+                  0 0 0 12px #1E242B,
+                  0 0 0 14px rgba(255, 255, 255, 0.15);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    /* Phone Dynamic Island & Status Bar */
+    .phone-status-bar {
+      height: 44px;
+      padding: 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      background: var(--bg-base);
+      z-index: 100;
+      transition: background 0.3s;
+    }
+    .dynamic-island {
+      width: 90px;
+      height: 24px;
+      background: #000;
+      border-radius: 12px;
+    }
+
+    /* Phone Screen Inner */
+    .phone-screen {
+      flex: 1;
+      background: var(--bg-base);
+      color: var(--text-main);
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s, color 0.3s;
+      padding-bottom: 90px; /* Space for floating dock */
+    }
+    .phone-screen::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Screen View Container */
+    .screen-view {
+      display: none;
+      padding: 16px 20px;
+      animation: fadeIn 0.25s ease forwards;
+    }
+    .screen-view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Floating Dock / Bottom Nav */
+    .floating-dock-container {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 90;
+    }
+    .floating-dock {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      background: var(--dock-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-strong);
+      border-radius: 32px;
+      box-shadow: var(--shadow-md);
+    }
+    .dock-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: none;
+      background: none;
+    }
+    .dock-tab svg {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.2s;
+    }
+    .dock-tab:hover {
+      color: var(--text-main);
+    }
+    .dock-tab.active {
+      color: var(--primary);
+      background: var(--primary-soft);
+    }
+    .dock-tab.active svg {
+      transform: scale(1.1);
+    }
+
+    .fab-add {
+      width: 44px;
+      height: 44px;
+      border-radius: 22px;
+      background: var(--primary);
+      color: #FFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 4px;
+      box-shadow: 0 6px 16px var(--primary-glow);
+      cursor: pointer;
+      transition: transform 0.2s;
+      border: none;
+    }
+    .fab-add:hover {
+      transform: scale(1.06);
+    }
+    .fab-add:active {
+      transform: scale(0.94);
+    }
+
+    /* Modern UI Components in Phone */
+    /* 1. Header with greeting and avatar */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .app-greeting h2 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      color: var(--text-main);
+    }
+    .app-greeting p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .avatar-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--bg-container);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-main);
+    }
+
+    /* 2. Modern Stats Island */
+    .stats-card-modern {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stats-card-modern::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 120px;
+      height: 120px;
+      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .stats-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .stats-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stats-sync-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(16, 185, 129, 0.12);
+      color: #10B981;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 8px 4px;
+      background: var(--bg-container);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-main);
+      font-family: 'Fira Code', monospace;
+    }
+    .stat-name {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* 3. Search & Filter Bar */
+    .search-modern {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-sm);
+    }
+    .search-modern input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 13px;
+      color: var(--text-main);
+      width: 100%;
+      font-family: inherit;
+    }
+    .search-modern input::placeholder {
+      color: var(--text-faint);
+    }
+
+    /* 4. Filter Chips Pill Row */
+    .chips-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 18px;
+    }
+    .chips-row::-webkit-scrollbar { display: none; }
+    .chip {
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .chip.active {
+      background: var(--primary);
+      color: #FFFFFF;
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    /* 5. Modern Snippet Card (The Core Element) */
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .section-title a {
+      font-size: 12px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .snippet-card-modern {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      position: relative;
+    }
+    .snippet-card-modern:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--border-strong);
+    }
+    .snippet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .snippet-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .tag-html { background: var(--c-html-bg); color: var(--c-html); }
+    .tag-js { background: var(--c-js-bg); color: var(--c-js); }
+    .tag-md { background: var(--c-md-bg); color: var(--c-md); }
+    .tag-prompt { background: var(--c-prompt-bg); color: var(--c-prompt); }
+
+    .snippet-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .star-icon {
+      color: #E2E8F0;
+      transition: color 0.2s;
+    }
+    .star-icon.starred {
+      color: #F59E0B;
+    }
+
+    /* Mini Code Window in Card */
+    .snippet-code-box {
+      background: var(--bg-container);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      margin: 10px 0;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      white-space: pre;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .code-hl-tag { color: #E44D26; }
+    .code-hl-attr { color: #8F752C; }
+    .code-hl-str { color: #3B6B78; }
+    .code-hl-func { color: #7058A6; }
+
+    .snippet-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+    .snippet-folder {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Editor Screen Styles */
+    .editor-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .editor-code-area {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      font-family: 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      height: 380px;
+      overflow-y: auto;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.02);
+    }
+    .editor-line {
+      display: flex;
+      gap: 12px;
+    }
+    .line-no {
+      color: var(--text-faint);
+      width: 24px;
+      text-align: right;
+      user-select: none;
+    }
+    .symbol-bar {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 8px 0;
+      margin-top: 10px;
+    }
+    .symbol-btn {
+      padding: 6px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      font-family: 'Fira Code', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    /* Files Screen View */
+    .view-toggle {
+      display: flex;
+      background: var(--bg-container);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 4px;
+    }
+    .view-toggle-btn {
+      padding: 5px 10px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .view-toggle-btn.active {
+      background: var(--bg-surface);
+      color: var(--text-main);
+      box-shadow: var(--shadow-sm);
+    }
+    .tree-folder {
+      padding: 10px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    /* Detail Screen */
+    .detail-hero-card {
+      background: linear-gradient(135deg, var(--primary-soft) 0%, var(--bg-surface) 100%);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .action-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    /* Design Specs & Comparison Sidebar */
+    .specs-sidebar {
+      flex: 1;
+      max-width: 540px;
+      background: rgba(26, 32, 44, 0.8);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 24px;
+      height: 780px;
+      overflow-y: auto;
+    }
+    .specs-sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .specs-sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.15);
+      border-radius: 3px;
+    }
+    .spec-section {
+      margin-bottom: 24px;
+    }
+    .spec-section h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #93E0C6;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .spec-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .spec-card h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #F1F5F9;
+      margin-bottom: 6px;
+    }
+    .spec-card p {
+      font-size: 12px;
+      color: #94A3B8;
+      line-height: 1.5;
+    }
+    .diff-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-right: 4px;
+    }
+    .diff-before { background: rgba(239, 68, 68, 0.2); color: #FCA5A5; }
+    .diff-after { background: rgba(16, 185, 129, 0.2); color: #6EE7B7; }
+  </style>
+</head>
+<body data-theme="forest" data-mode="light">
+
+  <!-- Header Section -->
+  <header class="showcase-header">
+    <div class="badge-pill">
+      <span>✨</span> SNIPPET STUDIO 2.0 DESIGN SYSTEM
+    </div>
+    <h1 class="showcase-title">现代高级感 UI 重构视觉与交互演示</h1>
+    <p class="showcase-desc">针对整体应用进行全景式设计语言升级：引入多层次 Surface、磨砂玻璃浮岛、等宽代码微视窗与极客级排版节奏。</p>
+  </header>
+
+  <!-- Interactive Controls Bar -->
+  <div class="controls-panel">
+    <span class="control-label">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+      外观模式:
+    </span>
+    <button class="theme-btn active" id="btn-mode-light" onclick="setMode('light')">☀️ 极简柔白</button>
+    <button class="theme-btn" id="btn-mode-dark" onclick="setMode('dark')">🌙 沉浸深灰</button>
+
+    <div class="divider-v"></div>
+
+    <span class="control-label">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a7 7 0 000 14 7 7 0 000-14z"></path></svg>
+      主题色系:
+    </span>
+    <button class="theme-btn active" id="theme-forest" onclick="setTheme('forest')">🌲 森林石板</button>
+    <button class="theme-btn" id="theme-ocean" onclick="setTheme('ocean')">🌊 深蓝海洋</button>
+    <button class="theme-btn" id="theme-sunset" onclick="setTheme('sunset')">🌅 琥珀夕阳</button>
+    <button class="theme-btn" id="theme-lavender" onclick="setTheme('lavender')">🔮 极客薰衣草</button>
+
+    <div class="divider-v"></div>
+
+    <span class="control-label">切换页面:</span>
+    <button class="theme-btn active" onclick="switchPage('home')">首页</button>
+    <button class="theme-btn" onclick="switchPage('files')">文件库</button>
+    <button class="theme-btn" onclick="switchPage('editor')">编辑器</button>
+    <button class="theme-btn" onclick="switchPage('detail')">详情</button>
+    <button class="theme-btn" onclick="switchPage('settings')">设置</button>
+  </div>
+
+  <!-- Stage Container (Phone + Specs) -->
+  <div class="stage-container">
+    
+    <!-- Phone Mockup -->
+    <div class="phone-wrapper">
+      <!-- Status Bar -->
+      <div class="phone-status-bar">
+        <span>09:41</span>
+        <div class="dynamic-island"></div>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z"/></svg>
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+        </div>
+      </div>
+
+      <!-- Phone Screen Viewport -->
+      <div class="phone-screen">
+        
+        <!-- ================= PAGE 1: HOME ================= -->
+        <div id="page-home" class="screen-view active">
+          <!-- App Header -->
+          <div class="app-header">
+            <div class="app-greeting">
+              <h2>Snippet Studio</h2>
+              <p>共收录 24 个灵感片段 · 已连接 Git</p>
+            </div>
+            <div class="avatar-btn">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+          </div>
+
+          <!-- Modern Stats Card -->
+          <div class="stats-card-modern">
+            <div class="stats-header">
+              <span class="stats-title">代码库概览</span>
+              <span class="stats-sync-badge">
+                <span style="width:6px; height:6px; border-radius:50%; background:#10B981;"></span>
+                Git 同步正常
+              </span>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-value">24</div>
+                <div class="stat-name">全部片段</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" style="color:var(--c-html);">8</div>
+                <div class="stat-name">HTML/CSS</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" style="color:var(--c-js);">10</div>
+                <div class="stat-name">JavaScript</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" style="color:var(--c-prompt);">6</div>
+                <div class="stat-name">Prompts</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modern Search -->
+          <div class="search-modern">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--text-faint);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" placeholder="模糊搜索代码片段、变量或标签...">
+          </div>
+
+          <!-- Chips Row -->
+          <div class="chips-row">
+            <div class="chip active">🌟 全部 (24)</div>
+            <div class="chip">⭐ 已收藏 (6)</div>
+            <div class="chip">⚡ HTML 交互</div>
+            <div class="chip">📜 工具函数</div>
+            <div class="chip">🤖 AI 提示词</div>
+          </div>
+
+          <!-- Snippet List -->
+          <div class="section-title">
+            <span>常用收藏</span>
+            <a href="#" onclick="switchPage('files')">查看全部</a>
+          </div>
+
+          <!-- Card 1 -->
+          <div class="snippet-card-modern" onclick="switchPage('detail')">
+            <div class="snippet-header">
+              <div class="snippet-title-row">
+                <span class="tag-badge tag-html">HTML</span>
+                <span class="snippet-title">Glassmorphism Card UI</span>
+              </div>
+              <span class="star-icon starred">★</span>
+            </div>
+            <div class="snippet-code-box"><span class="code-hl-tag">&lt;div</span> <span class="code-hl-attr">class=</span><span class="code-hl-str">"glass-card"</span><span class="code-hl-tag">&gt;</span>
+  <span class="code-hl-tag">&lt;h3&gt;</span>Modern Card<span class="code-hl-tag">&lt;/h3&gt;</span>
+<span class="code-hl-tag">&lt;/div&gt;</span></div>
+            <div class="snippet-footer">
+              <div class="snippet-folder">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                <span>/Web/Components</span>
+              </div>
+              <span>2 小时前修改</span>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="snippet-card-modern" onclick="switchPage('detail')">
+            <div class="snippet-header">
+              <div class="snippet-title-row">
+                <span class="tag-badge tag-js">JS</span>
+                <span class="snippet-title">Debounce 防抖函数</span>
+              </div>
+              <span class="star-icon starred">★</span>
+            </div>
+            <div class="snippet-code-box"><span class="code-hl-func">function</span> <span class="code-hl-attr">debounce</span>(fn, delay) {
+  <span class="code-hl-func">let</span> timer = null;
+  <span class="code-hl-func">return</span> (...args) =&gt; { ... }
+}</div>
+            <div class="snippet-footer">
+              <div class="snippet-folder">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                <span>/Utilities</span>
+              </div>
+              <span>昨天</span>
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="snippet-card-modern" onclick="switchPage('detail')">
+            <div class="snippet-header">
+              <div class="snippet-title-row">
+                <span class="tag-badge tag-prompt">PROMPT</span>
+                <span class="snippet-title">代码评审专家 (Code Reviewer)</span>
+              </div>
+              <span class="star-icon">☆</span>
+            </div>
+            <div class="snippet-code-box">你是一位资深资深架构师。请评估以下代码的复杂度：
+{{code_input}} 并指出 3 点性能瓶颈。</div>
+            <div class="snippet-footer">
+              <div class="snippet-folder">
+                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                <span>/AI-Prompts</span>
+              </div>
+              <span>3 天前</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= PAGE 2: FILES ================= -->
+        <div id="page-files" class="screen-view">
+          <div class="app-header">
+            <div class="app-greeting">
+              <h2>代码库与目录</h2>
+              <p>Git: main · 保持同步</p>
+            </div>
+            <div class="view-toggle">
+              <button class="view-toggle-btn active">舒适</button>
+              <button class="view-toggle-btn">紧凑</button>
+              <button class="view-toggle-btn">树状</button>
+            </div>
+          </div>
+
+          <!-- Folder Tree Items -->
+          <div class="tree-folder">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <svg width="18" height="18" fill="var(--primary)" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+              <div>
+                <div style="font-size:13px; font-weight:700; color:var(--text-main);">/Web Components</div>
+                <div style="font-size:11px; color:var(--text-muted);">8 个片段 · HTML / CSS</div>
+              </div>
+            </div>
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="color:var(--text-faint);"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+          </div>
+
+          <div class="tree-folder">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <svg width="18" height="18" fill="var(--c-js)" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+              <div>
+                <div style="font-size:13px; font-weight:700; color:var(--text-main);">/Utilities & Algorithms</div>
+                <div style="font-size:11px; color:var(--text-muted);">10 个片段 · JavaScript</div>
+              </div>
+            </div>
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="color:var(--text-faint);"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+          </div>
+
+          <div class="tree-folder">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <svg width="18" height="18" fill="var(--c-prompt)" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+              <div>
+                <div style="font-size:13px; font-weight:700; color:var(--text-main);">/AI-Prompts</div>
+                <div style="font-size:11px; color:var(--text-muted);">6 个片段 · Markdown / Prompt</div>
+              </div>
+            </div>
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="color:var(--text-faint);"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+          </div>
+
+          <!-- Bottom Actions -->
+          <div style="margin-top:20px; display:flex; gap:10px;">
+            <button class="action-item" style="flex:1;">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+              <span>新建文件夹</span>
+            </button>
+            <button class="action-item" style="flex:1;">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              <span>导入 Git 仓库</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ================= PAGE 3: EDITOR ================= -->
+        <div id="page-editor" class="screen-view">
+          <div class="editor-toolbar">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="tag-badge tag-js">JS</span>
+              <span style="font-size:14px; font-weight:700; color:var(--text-main);">debounce.js</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button style="padding:6px 12px; border-radius:8px; background:var(--primary); color:#FFF; border:none; font-size:12px; font-weight:600; cursor:pointer;">▶ 运行</button>
+              <button style="padding:6px 10px; border-radius:8px; background:var(--bg-container); border:1px solid var(--border-subtle); color:var(--text-main); font-size:12px; cursor:pointer;">保存</button>
+            </div>
+          </div>
+
+          <!-- Modern Code Editor -->
+          <div class="editor-code-area">
+            <div class="editor-line"><span class="line-no">1</span><span><span class="code-hl-func">import</span> { useEffect, useRef } <span class="code-hl-func">from</span> <span class="code-hl-str">'react'</span>;</span></div>
+            <div class="editor-line"><span class="line-no">2</span><span></span></div>
+            <div class="editor-line"><span class="line-no">3</span><span><span class="code-hl-func">export function</span> <span class="code-hl-attr">useDebounce</span>(fn, delay) {</span></div>
+            <div class="editor-line"><span class="line-no">4</span><span>  <span class="code-hl-func">const</span> ref = <span class="code-hl-attr">useRef</span>(fn);</span></div>
+            <div class="editor-line"><span class="line-no">5</span><span>  <span class="code-hl-attr">useEffect</span>(() =&gt; {</span></div>
+            <div class="editor-line"><span class="line-no">6</span><span>    ref.current = fn;</span></div>
+            <div class="editor-line"><span class="line-no">7</span><span>  }, [fn]);</span></div>
+            <div class="editor-line"><span class="line-no">8</span><span></span></div>
+            <div class="editor-line"><span class="line-no">9</span><span>  <span class="code-hl-func">return</span> (...args) =&gt; {</span></div>
+            <div class="editor-line"><span class="line-no">10</span><span>    <span class="code-hl-attr">clearTimeout</span>(ref.timer);</span></div>
+            <div class="editor-line"><span class="line-no">11</span><span>    ref.timer = <span class="code-hl-attr">setTimeout</span>(() =&gt; {</span></div>
+            <div class="editor-line"><span class="line-no">12</span><span>      ref.current(...args);</span></div>
+            <div class="editor-line"><span class="line-no">13</span><span>    }, delay);</span></div>
+            <div class="editor-line"><span class="line-no">14</span><span>  };</span></div>
+            <div class="editor-line"><span class="line-no">15</span><span>}</span></div>
+          </div>
+
+          <!-- Symbol Bar -->
+          <div class="symbol-bar">
+            <button class="symbol-btn">{ }</button>
+            <button class="symbol-btn">( )</button>
+            <button class="symbol-btn">[ ]</button>
+            <button class="symbol-btn">=&gt;</button>
+            <button class="symbol-btn">;</button>
+            <button class="symbol-btn">&quot;&quot;</button>
+            <button class="symbol-btn">===</button>
+          </div>
+        </div>
+
+        <!-- ================= PAGE 4: DETAIL ================= -->
+        <div id="page-detail" class="screen-view">
+          <div class="detail-hero-card">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+              <span class="tag-badge tag-html" style="font-size:12px; padding:4px 10px;">HTML & CSS</span>
+              <span style="font-size:12px; color:var(--text-muted);">v1.2 · 2.4 KB</span>
+            </div>
+            <h2 style="font-size:18px; font-weight:800; color:var(--text-main); margin-bottom:6px;">Glassmorphism Card UI</h2>
+            <p style="font-size:12px; color:var(--text-muted); line-height:1.5;">现代毛玻璃质感卡片组件，支持多层阴影、边缘微光高斯模糊。</p>
+          </div>
+
+          <!-- Action Grid -->
+          <div class="action-grid">
+            <div class="action-item" onclick="switchPage('editor')">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              <span>编辑代码</span>
+            </div>
+            <div class="action-item">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>实时运行</span>
+            </div>
+            <div class="action-item">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+              <span>一键复制</span>
+            </div>
+            <div class="action-item">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+              <span>导出分享</span>
+            </div>
+          </div>
+
+          <!-- Code View -->
+          <div class="snippet-card-modern">
+            <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">代码预览</div>
+            <div class="snippet-code-box" style="margin:0;"><span class="code-hl-tag">&lt;div</span> <span class="code-hl-attr">class=</span><span class="code-hl-str">"backdrop-blur"</span><span class="code-hl-tag">&gt;</span>
+  <span class="code-hl-tag">&lt;h1&gt;</span>Hello Dynamic Island<span class="code-hl-tag">&lt;/h1&gt;</span>
+<span class="code-hl-tag">&lt;/div&gt;</span></div>
+          </div>
+        </div>
+
+        <!-- ================= PAGE 5: SETTINGS ================= -->
+        <div id="page-settings" class="screen-view">
+          <div class="app-header">
+            <div class="app-greeting">
+              <h2>系统与偏好设置</h2>
+              <p>版本 1.1.0 · Sora-Editor 原生引擎</p>
+            </div>
+          </div>
+
+          <!-- Setting Groups -->
+          <div class="snippet-card-modern">
+            <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:12px; text-transform:uppercase;">Git 同步与备份</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border-subtle);">
+              <div>
+                <div style="font-size:13px; font-weight:600; color:var(--text-main);">远程仓库</div>
+                <div style="font-size:11px; color:var(--text-muted);">github.com/echeao/snippets</div>
+              </div>
+              <span style="font-size:12px; color:var(--primary); font-weight:600; cursor:pointer;">配置</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
+              <div>
+                <div style="font-size:13px; font-weight:600; color:var(--text-main);">自动 Pull / Push</div>
+                <div style="font-size:11px; color:var(--text-muted);">启动时自动拉取最新变更</div>
+              </div>
+              <span style="font-size:12px; color:#10B981; font-weight:600;">已开启</span>
+            </div>
+          </div>
+
+          <div class="snippet-card-modern">
+            <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:12px; text-transform:uppercase;">编辑器偏好</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border-subtle);">
+              <div>
+                <div style="font-size:13px; font-weight:600; color:var(--text-main);">字体大小 (Font Size)</div>
+                <div style="font-size:11px; color:var(--text-muted);">14 sp · Fira Code</div>
+              </div>
+              <span style="font-size:12px; color:var(--text-muted);">14 sp</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
+              <div>
+                <div style="font-size:13px; font-weight:600; color:var(--text-main);">自动换行 (Word Wrap)</div>
+                <div style="font-size:11px; color:var(--text-muted);">根据屏幕宽度折行</div>
+              </div>
+              <span style="font-size:12px; color:var(--primary); font-weight:600;">开启</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Floating Dock Bottom Bar -->
+      <div class="floating-dock-container">
+        <div class="floating-dock">
+          <button class="dock-tab active" id="dock-home" onclick="switchPage('home')">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            <span>首页</span>
+          </button>
+          <button class="dock-tab" id="dock-files" onclick="switchPage('files')">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+            <span>仓库</span>
+          </button>
+          
+          <button class="fab-add" onclick="switchPage('editor')">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+          </button>
+
+          <button class="dock-tab" id="dock-detail" onclick="switchPage('detail')">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            <span>片段</span>
+          </button>
+          <button class="dock-tab" id="dock-settings" onclick="switchPage('settings')">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            <span>设置</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Specs & Design System Breakdown -->
+    <div class="specs-sidebar">
+      
+      <div class="spec-section">
+        <h3>🎯 现代高级感重构核心原则 (Design Tokens)</h3>
+        
+        <div class="spec-card">
+          <h4>1. 表面系统分层 (Layered Surfaces)</h4>
+          <p><span class="diff-tag diff-before">原设计</span> 纯白/纯黑粗暴底色，卡片缺乏厚度与进深感。<br>
+             <span class="diff-tag diff-after">新设计</span> 引入 3 级 Surface（Base, Surface, Elevated）结合 1px 精细弱描边（`rgba(0,0,0,0.06)` / `rgba(255,255,255,0.08)`），营造多维空间感。</p>
+        </div>
+
+        <div class="spec-card">
+          <h4>2. 悬浮磨砂胶囊底栏 (Glassmorphic Dock)</h4>
+          <p><span class="diff-tag diff-before">原设计</span> 传统贴底 NavigationBar，占用视口且略显笨重。<br>
+             <span class="diff-tag diff-after">新设计</span> 悬浮 32dp 圆角磨砂胶囊，背景高斯模糊（Backdrop Blur），内容直通底部（Edge-to-Edge）。</p>
+        </div>
+
+        <div class="spec-card">
+          <h4>3. 极客等宽代码微视窗 (Monospace Preview Box)</h4>
+          <p><span class="diff-tag diff-before">原设计</span> 卡片内仅展示普通文本，开发工具质感弱。<br>
+             <span class="diff-tag diff-after">新设计</span> 卡片内嵌 Fira Code / JetBrains Mono 风格微视窗，具备精巧的行距、语法微高亮与圆角边框。</p>
+        </div>
+
+        <div class="spec-card">
+          <h4>4. 信息密度与微排版 (Typography & Micro-icons)</h4>
+          <p><span class="diff-tag diff-before">原设计</span> 字重单一，标题与标签区分度不足。<br>
+             <span class="diff-tag diff-after">新设计</span> Plus Jakarta Sans + Noto Sans SC 粗字重大标题，搭配胶囊状态标签（Badge）与点阵微隔断。</p>
+        </div>
+      </div>
+
+      <div class="spec-section">
+        <h3>📱 六大核心页面优化实施方案</h3>
+        
+        <div class="spec-card">
+          <h4>① 首页 (HomeScreen)</h4>
+          <p>• 统计栏升级为带有状态呼吸灯与 Git 实时连接指示的现代化仪表盘。<br>
+             • 常用片段卡片采用带内嵌代码微窗的卡片容器，按压微缩放（0.98x）。</p>
+        </div>
+
+        <div class="spec-card">
+          <h4>② 文件与仓库 (FilesScreen)</h4>
+          <p>• 文件夹采用流线平滑圆角，带有专属类型图标配色与片段数量胶囊。<br>
+             • 舒适 / 紧凑 / 树状视图一键无缝切换。</p>
+        </div>
+
+        <div class="spec-card">
+          <h4>③ 编辑器 (EditorScreen)</h4>
+          <p>• Sora-Editor 原生全屏沉浸式代码画布，配有顶部操作轻量条。<br>
+             • 底部提供常用编程符号辅助条（Symbol Bar）与变量快速填充抽屉。</p>
+        </div>
+
+        <div class="spec-card">
+          <h4>④ 代码详情 (DetailScreen)</h4>
+          <p>• 渐变微光 Hero Card 呈现语言类型、代码行数与文件大小。<br>
+             • 4 列 Action Grid（运行、编辑、复制、分享）一触即发。</p>
+        </div>
+
+        <div class="spec-card">
+          <h4>⑤ 设置与管理 (SettingsScreen)</h4>
+          <p>• 分组式卡片设计（Git 同步、编辑器偏好、主题调色板、数据备份）。<br>
+             • 实时主题预览盒子，切换即时生效。</p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    function setMode(mode) {
+      document.body.setAttribute('data-mode', mode);
+      document.getElementById('btn-mode-light').classList.toggle('active', mode === 'light');
+      document.getElementById('btn-mode-dark').classList.toggle('active', mode === 'dark');
+    }
+
+    function setTheme(theme) {
+      document.body.setAttribute('data-theme', theme);
+      const themes = ['forest', 'ocean', 'sunset', 'lavender'];
+      themes.forEach(t => {
+        const btn = document.getElementById('theme-' + t);
+        if (btn) btn.classList.toggle('active', t === theme);
+      });
+    }
+
+    function switchPage(pageId) {
+      document.querySelectorAll('.screen-view').forEach(el => el.classList.remove('active'));
+      const targetPage = document.getElementById('page-' + pageId);
+      if (targetPage) targetPage.classList.add('active');
+
+      document.querySelectorAll('.dock-tab').forEach(el => el.classList.remove('active'));
+      const activeDock = document.getElementById('dock-' + pageId);
+      if (activeDock) activeDock.classList.add('active');
+    }
+  </script>
+</body>
+</html>

@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.ui.theme.*
 
@@ -40,13 +41,13 @@ fun HomeTopBar(
                 Spacer(modifier = Modifier.width(Spacing.S2))
                 Surface(
                     color = tc.primarySoft,
-                    shape = RoundedCornerShape(R_SM)
+                    shape = RoundedCornerShape(999.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.home_subtitle),
-                        style = BadgeStyle,
+                        style = BadgeStyle.copy(fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
                         color = tc.primary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                     )
                 }
             }
