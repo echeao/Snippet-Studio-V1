@@ -56,7 +56,11 @@ fun FilesCompactList(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
-        items(snippets, key = { it.id }) { snippet ->
+        items(
+            items = snippets,
+            key = { it.id },
+            contentType = { "compact_snippet_row" }
+        ) { snippet ->
             val onOpen = {
                 if (cardClickAction == "editor") {
                     onNavigateToEditor(snippet.id)

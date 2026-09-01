@@ -91,6 +91,15 @@ fun RunPreview(
                         }
                         webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
                     },
+                    onRelease = { webView ->
+                        try {
+                            webView.stopLoading()
+                            webView.loadUrl("about:blank")
+                            webView.clearHistory()
+                            webView.removeAllViews()
+                            webView.destroy()
+                        } catch (_: Exception) {}
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -147,6 +156,16 @@ fun RunPreview(
                             """.trimIndent()
                             webView.loadDataWithBaseURL(null, wrappedJs, "text/html", "UTF-8", null)
                         },
+                        onRelease = { webView ->
+                            try {
+                                webView.removeJavascriptInterface("AndroidConsole")
+                                webView.stopLoading()
+                                webView.loadUrl("about:blank")
+                                webView.clearHistory()
+                                webView.removeAllViews()
+                                webView.destroy()
+                            } catch (_: Exception) {}
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -185,7 +204,10 @@ fun RunPreview(
                                 .fillMaxSize()
                                 .padding(Spacing.S2)
                         ) {
-                            items(consoleLogs) { log ->
+                            items(
+                                items = consoleLogs,
+                                contentType = { "console_log" }
+                            ) { log ->
                                 val color = when (log.level) {
                                     "error" -> Danger
                                     "warn" -> Warning
@@ -218,6 +240,15 @@ fun RunPreview(
                     },
                     update = { webView ->
                         webView.loadDataWithBaseURL(null, renderedHtml, "text/html", "UTF-8", null)
+                    },
+                    onRelease = { webView ->
+                        try {
+                            webView.stopLoading()
+                            webView.loadUrl("about:blank")
+                            webView.clearHistory()
+                            webView.removeAllViews()
+                            webView.destroy()
+                        } catch (_: Exception) {}
                     },
                     modifier = Modifier
                         .fillMaxWidth()

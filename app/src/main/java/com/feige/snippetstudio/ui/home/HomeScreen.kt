@@ -155,11 +155,11 @@ fun HomeScreen(
                             onNewSnippet = { onNavigateToNewEditor(SnippetType.HTML.code) }
                         )
                     }
-                } else {
-                    // ===== 最近 5 条代码片段（利用 key 机制保障 LazyColumn 的重组与过渡效率）=====
+                    // ===== 最近 5 条代码片段（利用 key 与 contentType 保障 LazyColumn 节点精准复用与过渡效率）=====
                     items(
                         items = uiState.recentSnippets,
-                        key = { it.id }
+                        key = { it.id },
+                        contentType = { "recent_snippet_preview" }
                     ) { snippet ->
                         val onOpen = {
                             if (uiState.cardClickAction == "editor") {

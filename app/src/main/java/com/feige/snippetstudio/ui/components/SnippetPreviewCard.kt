@@ -26,6 +26,11 @@ import com.feige.snippetstudio.util.SearchHighlighter
 import com.feige.snippetstudio.util.TimeUtil
 import androidx.collection.LruCache
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
+
 /**
  * 列表预览卡片语法高亮富文本微型 LRU 内存缓存 (最大 256 条)。
  * 缓存 key 结构: `${type.code}_${isDark}_${text.hashCode()}`，避免快速滑动时重复执行正则词法分词。
@@ -37,8 +42,9 @@ private val previewHighlightCache = LruCache<String, AnnotatedString>(256)
  *
  * 特色：
  * 1. 块状大卡片布局，头部包含完整标题与识别图标。
- * 2. 具备【代码片段微型预览框】：截取前 4 行正文内容，采用 monospace 格式展现代码风貌。
+ * 2. 具备【代码片段微型预览框】：高性能扫描截取前 4 行正文内容，采用 monospace 格式展现代码风貌。
  * 3. 底部包含文件统计元数据（字符数、行数）、文件夹路径胶囊以及完整 Tag 标签。
+ * 4. 基于 [MotionTokens] 与 [graphicsLayer] 隔离的物理按压微动效。
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -61,8 +67,31 @@ fun SnippetPreviewCard(
     val codeBgColor = tc.codeBg
     val codeTextColor = tc.codeText
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // 接入全局物理弹簧缩放微动效 (纯 Draw 阶段渲染)
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) MotionTokens.PRESSED_SCALE_CARD else 1.0f,
+        animationSpec = MotionTokens.springSnappy(),
+        label = "snippet_preview_press_scale"
+    )
+
+    // 极致优化：直接索引扫描前 4 行换行符，彻底消除 lines() 产生几千个 String 与 List 分配
     val previewCode = remember(snippet.content) {
-        snippet.content.lines().take(4).joinToString("\n")
+        val text = snippet.content
+        var newlineCount = 0
+        var endIndex = text.length
+        for (i in text.indices) {
+            if (text[i] == '\n') {
+                newlineCount++
+                if (newlineCount >= 4) {
+                    endIndex = i
+                    break
+                }
+            }
+        }
+        if (endIndex < text.length) text.substring(0, endIndex) else text
     }
 
     /**
@@ -95,9 +124,17 @@ fun SnippetPreviewCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
             .border(1.dp, tc.line, RoundedCornerShape(R_MD))
-            .clickable(onClick = onOpen)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null, // 自定义物理弹簧动效
+                onClick = onOpen
+            )
             .testTag("snippet_preview_card_${snippet.id}"),
         shape = RoundedCornerShape(R_MD),
         color = tc.surface

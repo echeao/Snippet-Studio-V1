@@ -31,32 +31,29 @@ import com.feige.snippetstudio.ui.subpage.SubPageViewModel
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 
-// ===== 全局页面转场动画常量与辅助函数 =====
+import com.feige.snippetstudio.ui.theme.MotionTokens
 
-/** 转场动画时长（进入 300ms，层叠平缓就位） */
-private const val ENTER_DURATION = 300
-/** 转场动画时长（退出 220ms，干净利落退出） */
-private const val EXIT_DURATION = 220
+// ===== 全局页面转场动画辅助函数 (基于 MotionTokens 物理缓动) =====
 
-/** 默认进入转场：Material 3 物理减速淡入 + 从右侧轻柔滑入 */
+/** 默认进入转场：物理减速淡入 + 从右侧轻柔视差滑入 */
 private fun defaultEnterTransition(): EnterTransition =
-    fadeIn(animationSpec = tween(ENTER_DURATION, easing = FastOutSlowInEasing)) +
-            slideInHorizontally(animationSpec = tween(ENTER_DURATION, easing = FastOutSlowInEasing)) { (it * 0.12f).toInt() }
+    fadeIn(animationSpec = tween(MotionTokens.DURATION_ENTER, easing = MotionTokens.DecelEasing)) +
+            slideInHorizontally(animationSpec = tween(MotionTokens.DURATION_ENTER, easing = MotionTokens.DecelEasing)) { (it * 0.08f).toInt() }
 
-/** 默认退出转场：Material 3 线性加速淡出 + 向左侧微幅滑出 */
+/** 默认退出转场：加速淡出 + 向左侧微幅滑出 */
 private fun defaultExitTransition(): ExitTransition =
-    fadeOut(animationSpec = tween(EXIT_DURATION, easing = FastOutLinearInEasing)) +
-            slideOutHorizontally(animationSpec = tween(EXIT_DURATION, easing = FastOutLinearInEasing)) { -(it * 0.12f).toInt() }
+    fadeOut(animationSpec = tween(MotionTokens.DURATION_EXIT, easing = MotionTokens.AccelEasing)) +
+            slideOutHorizontally(animationSpec = tween(MotionTokens.DURATION_EXIT, easing = MotionTokens.AccelEasing)) { -(it * 0.08f).toInt() }
 
-/** 默认 Pop 进入转场：淡入 + 从左侧轻柔滑入 */
+/** 默认 Pop 进入转场：物理减速淡入 + 从左侧轻柔滑入 */
 private fun defaultPopEnterTransition(): EnterTransition =
-    fadeIn(animationSpec = tween(ENTER_DURATION, easing = FastOutSlowInEasing)) +
-            slideInHorizontally(animationSpec = tween(ENTER_DURATION, easing = FastOutSlowInEasing)) { -(it * 0.12f).toInt() }
+    fadeIn(animationSpec = tween(MotionTokens.DURATION_ENTER, easing = MotionTokens.DecelEasing)) +
+            slideInHorizontally(animationSpec = tween(MotionTokens.DURATION_ENTER, easing = MotionTokens.DecelEasing)) { -(it * 0.08f).toInt() }
 
-/** 默认 Pop 退出转场：淡出 + 向右侧轻柔滑出 */
+/** 默认 Pop 退出转场：加速淡出 + 向右侧轻柔滑出 */
 private fun defaultPopExitTransition(): ExitTransition =
-    fadeOut(animationSpec = tween(EXIT_DURATION, easing = FastOutLinearInEasing)) +
-            slideOutHorizontally(animationSpec = tween(EXIT_DURATION, easing = FastOutLinearInEasing)) { (it * 0.12f).toInt() }
+    fadeOut(animationSpec = tween(MotionTokens.DURATION_EXIT, easing = MotionTokens.AccelEasing)) +
+            slideOutHorizontally(animationSpec = tween(MotionTokens.DURATION_EXIT, easing = MotionTokens.AccelEasing)) { (it * 0.08f).toInt() }
 
 /**
  * [AppNavGraph] 应用程序的中心导航路由图 (Navigation Host Graph)。

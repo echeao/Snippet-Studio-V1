@@ -1,7 +1,11 @@
 package com.feige.snippetstudio.ui.home.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -9,10 +13,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -27,9 +32,9 @@ import com.feige.snippetstudio.ui.theme.*
  *
  * 架构职责：
  * 1. 以 LazyRow 横向滑动卡片列表展示用户已星标收藏的代码片段（最多 8 条）。
- * 2. 每张紧凑小卡片展示：语言类型色条 + 标题 + 类型图标。
- * 3. 点击卡片直接跳转至对应片段详情/编辑页面。
- * 4. 仅当收藏列表非空时渲染（由调用方控制可见性）。
+ * 2. 具备 contentType 节点复用与高效重组优化。
+ * 3. 每张紧凑小卡片展示：语言类型色条 + 标题 + 类型图标 + 物理弹簧按压微动效。
+ * 4. 点击卡片直接跳转至对应片段详情/编辑页面。
  *
  * @param starredSnippets 已收藏的代码片段列表
  * @param onSnippetClick 点击收藏卡片的回调（传入片段 ID）
@@ -65,13 +70,17 @@ fun StarredSection(
             )
         }
 
-        // 横向滑动卡片区
+        // 横向滑动卡片区（添加 contentType 保障 Compose 节点精准复用）
         LazyRow(
             contentPadding = PaddingValues(horizontal = Spacing.S4),
             horizontalArrangement = Arrangement.spacedBy(Spacing.S3),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(starredSnippets, key = { it.id }) { snippet ->
+            items(
+                items = starredSnippets,
+                key = { it.id },
+                contentType = { "starred_card" }
+            ) { snippet ->
                 StarredCard(
                     snippet = snippet,
                     onClick = { onSnippetClick(snippet.id) },
@@ -84,10 +93,11 @@ fun StarredSection(
 
 /**
  * [StarredCard] 收藏片段紧凑小卡片。
- * 展示语言类型色条 + 标题文本 + 类型图标。
+ * 展示语言类型色条 + 标题文本 + 类型图标，并提供基于 [MotionTokens] 的高级物理弹性触感。
  *
  * @param snippet 代码片段数据
  * @param onClick 点击回调
+ * @param modifier 外部修饰符
  */
 @Composable
 private fun StarredCard(
@@ -97,21 +107,42 @@ private fun StarredCard(
 ) {
     val tc = LocalThemeColors.current
     val style = LocalColorThemeStyle.current
-    val palette = ColorThemeRegistry.paletteOf(style)
-    val typeColor = when (snippet.type) {
-        SnippetType.HTML -> palette.typeIcons.html
-        SnippetType.JS -> palette.typeIcons.js
-        SnippetType.MARKDOWN -> palette.typeIcons.md
-        SnippetType.PROMPT -> palette.typeIcons.prompt
-        SnippetType.JAVA -> palette.typeIcons.html
-        SnippetType.GENERAL -> palette.typeIcons.prompt
+    val typeColor = remember(style, snippet.type) {
+        val palette = ColorThemeRegistry.paletteOf(style)
+        when (snippet.type) {
+            SnippetType.HTML -> palette.typeIcons.html
+            SnippetType.JS -> palette.typeIcons.js
+            SnippetType.MARKDOWN -> palette.typeIcons.md
+            SnippetType.PROMPT -> palette.typeIcons.prompt
+            SnippetType.JAVA -> palette.typeIcons.html
+            SnippetType.GENERAL -> palette.typeIcons.prompt
+        }
     }
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // 接入全局物理弹簧缩放微动效 (纯 Draw 阶段渲染)
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) MotionTokens.PRESSED_SCALE_MEDIUM_CARD else 1.0f,
+        animationSpec = MotionTokens.springBouncy(),
+        label = "starred_card_scale"
+    )
 
     Surface(
         modifier = modifier
             .width(140.dp)
-            .shadow(AppElevation.Sm, RoundedCornerShape(R_MD))
-            .clickable(onClick = onClick),
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
+            .border(1.dp, tc.line.copy(alpha = 0.8f), RoundedCornerShape(R_MD))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null, // 自定义物理弹簧动效代替普通水波纹
+                onClick = onClick
+            ),
         shape = RoundedCornerShape(R_MD),
         color = tc.surface
     ) {
@@ -152,3 +183,4 @@ private fun StarredCard(
         }
     }
 }
+

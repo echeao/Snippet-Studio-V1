@@ -16,8 +16,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -51,16 +51,19 @@ fun QuickNewCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // 点击按压时的物理弹簧缩放动画
+    // 点击按压时的物理弹簧缩放动画 (接入全局 Bouncy 弹簧规约)
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1.0f,
-        animationSpec = spring(stiffness = 500f, dampingRatio = 0.6f),
+        targetValue = if (isPressed) MotionTokens.PRESSED_SCALE_MEDIUM_CARD else 1.0f,
+        animationSpec = MotionTokens.springBouncy(),
         label = "quick_card_scale"
     )
 
     Surface(
         modifier = modifier
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
             .border(1.dp, tc.line.copy(alpha = 0.8f), RoundedCornerShape(R_MD))
             .clickable(

@@ -86,9 +86,13 @@ fun FilesTreeList(
             val isRootFolder = (folderName == "根目录" || folderName.isBlank())
 
             // ===== 1. 文件夹头部 Title 行 =====
-            item(key = "folder_header_$folderName") {
+            item(
+                key = "folder_header_$folderName",
+                contentType = "tree_folder_header"
+            ) {
                 val arrowRotation by animateFloatAsState(
                     targetValue = if (isExpanded) 90f else 0f,
+                    animationSpec = MotionTokens.springSnappy(),
                     label = "arrowRotation"
                 )
                 var showFolderMenu by remember { mutableStateOf(false) }
@@ -194,7 +198,8 @@ fun FilesTreeList(
                     if (densityMode == DensityMode.COMFORT) {
                         items(
                             items = folderSnippets,
-                            key = { it.id }
+                            key = { it.id },
+                            contentType = { "tree_comfort_preview" }
                         ) { snippet ->
                             val onOpen = {
                                 if (cardClickAction == "editor") {
@@ -225,7 +230,8 @@ fun FilesTreeList(
                     } else {
                         items(
                             items = folderSnippets,
-                            key = { it.id }
+                            key = { it.id },
+                            contentType = { "tree_compact_row" }
                         ) { snippet ->
                             val onOpen = {
                                 if (cardClickAction == "editor") {

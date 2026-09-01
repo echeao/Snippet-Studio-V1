@@ -20,6 +20,11 @@ import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.theme.*
 import com.feige.snippetstudio.util.TimeUtil
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SnippetCard(
@@ -37,12 +42,30 @@ fun SnippetCard(
     val tc = LocalThemeColors.current
     var showMenu by remember { mutableStateOf(false) }
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // 接入全局物理弹簧缩放微动效 (纯 Draw 阶段渲染)
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) MotionTokens.PRESSED_SCALE_CARD else 1.0f,
+        animationSpec = MotionTokens.springSnappy(),
+        label = "snippet_card_press_scale"
+    )
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
             .border(1.dp, tc.line, RoundedCornerShape(R_MD))
-            .clickable(onClick = onOpen)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null, // 自定义物理弹簧动效
+                onClick = onOpen
+            )
             .testTag("snippet_card_${snippet.id}"),
         shape = RoundedCornerShape(R_MD),
         color = tc.surface

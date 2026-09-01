@@ -62,7 +62,8 @@ fun FilesComfortList(
     ) {
         items(
             items = snippets,
-            key = { it.id }
+            key = { it.id },
+            contentType = { "comfort_snippet_preview" }
         ) { snippet ->
             val onOpen = {
                 if (cardClickAction == "editor") {
