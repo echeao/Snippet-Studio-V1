@@ -17,11 +17,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
 import com.feige.snippetstudio.ui.components.TypeIcon
@@ -58,40 +60,72 @@ fun QuickNewCard(
         label = "quick_card_scale"
     )
 
+    val style = LocalColorThemeStyle.current
+    val palette = ColorThemeRegistry.paletteOf(style)
+    val typeColor = when (type) {
+        SnippetType.HTML -> palette.typeIcons.html
+        SnippetType.JS -> palette.typeIcons.js
+        SnippetType.MARKDOWN -> palette.typeIcons.md
+        SnippetType.PROMPT -> palette.typeIcons.prompt
+        SnippetType.JAVA -> palette.typeIcons.html
+        SnippetType.GENERAL -> palette.typeIcons.prompt
+    }
+
+    val cardBg = if (tc.isDark) {
+        tc.surface
+    } else {
+        when (type) {
+            SnippetType.HTML -> Color(0xFFFFFBF8)
+            SnippetType.JS -> Color(0xFFFFFFF8)
+            SnippetType.MARKDOWN -> Color(0xFFF8FCFF)
+            SnippetType.PROMPT -> Color(0xFFFAF8FF)
+            SnippetType.JAVA -> Color(0xFFFFFBF8)
+            SnippetType.GENERAL -> Color(0xFFF9FBFA)
+        }
+    }
+
     Surface(
         modifier = modifier
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, tc.line.copy(alpha = 0.8f), RoundedCornerShape(R_MD))
+            .shadow(AppElevation.Sm, RoundedCornerShape(R_LG), ambientColor = AppElevation.SmColor)
+            .border(
+                1.dp,
+                if (tc.isDark) tc.line.copy(alpha = 0.15f) else typeColor.copy(alpha = 0.12f),
+                RoundedCornerShape(R_LG)
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // 自定义弹性缩放代替标准水波纹
                 onClick = onClick
             )
             .testTag("quick_new_${type.code}"),
-        shape = RoundedCornerShape(R_MD),
-        color = tc.surface
+        shape = RoundedCornerShape(R_LG),
+        color = cardBg
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = Spacing.S3 + 2.dp, vertical = Spacing.S3),
+            modifier = Modifier.padding(horizontal = Spacing.S4, vertical = Spacing.S3 + 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TypeIcon(type = type, size = 36.dp)
+            TypeIcon(type = type, size = 40.dp)
             Spacer(modifier = Modifier.width(Spacing.S3))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = type.displayName,
                     style = ListTitleStyle,
-                    color = tc.text
+                    color = tc.text,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
                 if (!subtitle.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = subtitle,
-                        style = CaptionStyle.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
+                        style = CaptionStyle.copy(
+                            fontSize = 11.5.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Normal
+                        ),
                         color = tc.text3,
                         maxLines = 1
                     )

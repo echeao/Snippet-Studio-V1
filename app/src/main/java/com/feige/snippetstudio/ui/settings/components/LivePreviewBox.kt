@@ -3,25 +3,26 @@ package com.feige.snippetstudio.ui.settings.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.ui.theme.CaptionStyle
 import com.feige.snippetstudio.ui.theme.LocalThemeColors
+import com.feige.snippetstudio.ui.theme.R_LG
 import com.feige.snippetstudio.ui.theme.R_MD
-
-/** 设置界面 Live 预览静态示例代码行集合 */
-private val SAMPLE_CODE_LINES = listOf(
-    "fun main() {",
-    "    println(\"Hello Snippet Studio!\")",
-    "}"
-)
 
 /**
  * [LivePreviewBox] 设置页中的代码编辑器效果实时 Live 预览卡片。
@@ -44,46 +45,93 @@ fun LivePreviewBox(
 ) {
     val tc = LocalThemeColors.current
 
+    val line1 = buildAnnotatedString {
+        withStyle(SpanStyle(color = tc.primary, fontWeight = FontWeight.Bold)) {
+            append("fun ")
+        }
+        withStyle(SpanStyle(color = tc.text)) {
+            append("main() {")
+        }
+    }
+    val line2 = buildAnnotatedString {
+        append("    ")
+        withStyle(SpanStyle(color = tc.primary)) {
+            append("println")
+        }
+        withStyle(SpanStyle(color = tc.text)) {
+            append("(")
+        }
+        withStyle(SpanStyle(color = Color(0xFF2E7D32))) {
+            append("\"Hello Snippet Studio!\"")
+        }
+        withStyle(SpanStyle(color = tc.text)) {
+            append(")")
+        }
+    }
+    val line3 = buildAnnotatedString {
+        withStyle(SpanStyle(color = tc.text)) {
+            append("}")
+        }
+    }
+    val sampleLines = listOf(line1, line2, line3)
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, tc.line, RoundedCornerShape(R_MD)),
-        shape = RoundedCornerShape(R_MD),
+            .border(1.dp, tc.line.copy(alpha = if (tc.isDark) 0.15f else 0.08f), RoundedCornerShape(R_LG)),
+        shape = RoundedCornerShape(R_LG),
         color = tc.surface2
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "实时效果预览 (Live Preview)",
-                style = CaptionStyle,
-                color = tc.primary,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Window Header Bar with 3 dots and title
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.size(9.dp).background(Color(0xFFFF5F56), CircleShape))
+                    Box(modifier = Modifier.size(9.dp).background(Color(0xFFFFBD2E), CircleShape))
+                    Box(modifier = Modifier.size(9.dp).background(Color(0xFF27C93F), CircleShape))
+                }
+
+                Text(
+                    text = "Live Sandbox · ${fontSp.toInt()}sp",
+                    style = CaptionStyle.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                    color = tc.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             Surface(
-                color = tc.bg,
-                shape = RoundedCornerShape(8.dp),
+                color = tc.codeBg,
+                shape = RoundedCornerShape(R_MD),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
+                    .border(1.dp, tc.line.copy(alpha = if (tc.isDark) 0.12f else 0.05f), RoundedCornerShape(R_MD))
             ) {
-                Column(modifier = Modifier.padding(10.dp)) {
-                    SAMPLE_CODE_LINES.forEachIndexed { index, line ->
-                        Row {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    sampleLines.forEachIndexed { index, line ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             if (showLineNumbers) {
                                 Text(
-                                    text = "${index + 1} ",
+                                    text = "${index + 1}",
                                     fontSize = fontSp.sp,
                                     fontFamily = FontFamily.Monospace,
-                                    color = tc.text2.copy(alpha = 0.5f)
+                                    color = tc.text3.copy(alpha = 0.6f),
+                                    modifier = Modifier.width(24.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
                             }
                             Text(
                                 text = line,
                                 fontSize = fontSp.sp,
+                                lineHeight = (fontSp * 1.5f).sp,
                                 fontFamily = FontFamily.Monospace,
-                                color = tc.text,
+                                color = tc.codeText,
                                 maxLines = if (isWordWrap) Int.MAX_VALUE else 1
                             )
                         }
@@ -93,3 +141,4 @@ fun LivePreviewBox(
         }
     }
 }
+
