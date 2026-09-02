@@ -1,6 +1,7 @@
 package com.feige.snippetstudio.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -11,8 +12,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.Snippet
 import com.feige.snippetstudio.ui.theme.*
@@ -43,22 +46,26 @@ fun SnippetCompactRow(
     val tc = LocalThemeColors.current
     var showMenu by remember { mutableStateOf(false) }
 
-    val dividerColor = tc.line.copy(alpha = 0.6f)
+    val dividerColor = tc.line.copy(alpha = if (tc.isDark) 0.12f else 0.06f)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpen)
+            .clickable(
+                indication = ripple(color = tc.primary.copy(alpha = 0.08f)),
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onOpen
+            )
             .testTag("snippet_compact_row_${snippet.id}")
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Spacing.S3, vertical = 9.dp),
+                .padding(horizontal = Spacing.S4, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. 复用原生 TypeIcon (微缩至 32dp，完全保持品牌一致性)
-            TypeIcon(type = snippet.type, size = 32.dp)
+            // 1. 复用原生 TypeIcon (微缩至 34dp，完全保持品牌一致性)
+            TypeIcon(type = snippet.type, size = 34.dp)
 
             Spacer(modifier = Modifier.width(Spacing.S3))
 
@@ -68,7 +75,7 @@ fun SnippetCompactRow(
             ) {
                 Text(
                     text = snippet.displayTitle,
-                    style = ListTitleStyle,
+                    style = ListTitleStyle.copy(fontWeight = FontWeight.Medium),
                     color = tc.text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -81,20 +88,20 @@ fun SnippetCompactRow(
                 ) {
                     Text(
                         text = if (showFullDateTime) TimeUtil.formatFullDateTime(snippet.updatedAt) else TimeUtil.formatRelativeTime(context, snippet.updatedAt),
-                        style = CaptionStyle,
-                        color = tc.text2,
+                        style = CaptionStyle.copy(fontSize = 11.5.sp),
+                        color = tc.text3,
                         maxLines = 1
                     )
 
                     if (snippet.folder.isNotBlank()) {
                         Spacer(modifier = Modifier.width(Spacing.S2))
                         Surface(
-                            color = tc.primarySoft,
+                            color = tc.primarySoft.copy(alpha = if (tc.isDark) 0.3f else 0.8f),
                             shape = RoundedCornerShape(R_SM)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 1.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.5.dp)
                             ) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_folder),

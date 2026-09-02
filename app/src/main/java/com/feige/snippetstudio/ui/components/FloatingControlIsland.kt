@@ -57,10 +57,10 @@ fun FloatingControlIsland(
     Surface(
         modifier = modifier
             .shadow(AppElevation.Md, RoundedCornerShape(R_XL), ambientColor = AppElevation.MdColor)
-            .border(1.dp, tc.line, RoundedCornerShape(R_XL))
+            .border(1.dp, tc.line.copy(alpha = if (tc.isDark) 0.2f else 0.12f), RoundedCornerShape(R_XL))
             .testTag("floating_control_island"),
         shape = RoundedCornerShape(R_XL),
-        color = tc.surface.copy(alpha = 0.94f)
+        color = tc.surface.copy(alpha = if (tc.isDark) 0.92f else 0.96f)
     ) {
         AnimatedContent(
             targetState = isExpanded,

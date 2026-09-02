@@ -340,9 +340,9 @@ fun FloatingDock(
     ) {
         Surface(
             shape = RoundedCornerShape(32.dp),
-            color = tc.surface.copy(alpha = 0.95f),
-            shadowElevation = 10.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, tc.line.copy(alpha = 0.5f)),
+            color = tc.surface.copy(alpha = if (tc.isDark) 0.90f else 0.95f),
+            shadowElevation = AppElevation.Md,
+            border = androidx.compose.foundation.BorderStroke(1.dp, tc.line.copy(alpha = if (tc.isDark) 0.18f else 0.08f)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(

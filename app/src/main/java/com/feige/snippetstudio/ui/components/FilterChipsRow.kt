@@ -11,7 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Immutable
 import com.feige.snippetstudio.R
 import com.feige.snippetstudio.model.SnippetType
@@ -67,19 +69,22 @@ fun FilterChipsRow(
                 label = {
                     Text(
                         text = stringResource(id = option.labelRes),
-                        style = CaptionStyle.copy(fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Medium)
+                        style = CaptionStyle.copy(
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+                        )
                     )
                 },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = tc.primary,
                     selectedLabelColor = Color.White,
-                    containerColor = tc.surface2,
+                    containerColor = tc.surface,
                     labelColor = tc.text2
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = isSelected,
-                    borderColor = tc.line.copy(alpha = 0.6f),
+                    borderColor = tc.line.copy(alpha = if (tc.isDark) 0.15f else 0.08f),
                     selectedBorderColor = tc.primary,
                     borderWidth = 1.dp
                 ),

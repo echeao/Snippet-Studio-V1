@@ -30,23 +30,27 @@ fun SearchBar(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp)
-            .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, tc.line.copy(alpha = 0.85f), RoundedCornerShape(R_MD)),
-        shape = RoundedCornerShape(R_MD),
+            .height(48.dp)
+            .shadow(AppElevation.Sm, RoundedCornerShape(R_LG), ambientColor = AppElevation.SmColor)
+            .border(
+                1.dp,
+                if (value.isNotEmpty()) tc.primary.copy(alpha = 0.5f) else tc.line.copy(alpha = if (tc.isDark) 0.18f else 0.08f),
+                RoundedCornerShape(R_LG)
+            ),
+        shape = RoundedCornerShape(R_LG),
         color = tc.surface
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = Spacing.S4),
+                .padding(horizontal = Spacing.S3 + 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_search),
                 contentDescription = "Search",
-                tint = if (value.isNotEmpty()) tc.primary else tc.text2,
-                modifier = Modifier.size(20.dp)
+                tint = if (value.isNotEmpty()) tc.primary else tc.text3,
+                modifier = Modifier.size(18.dp)
             )
 
             Spacer(modifier = Modifier.width(Spacing.S3))
@@ -58,7 +62,7 @@ fun SearchBar(
                 if (value.isEmpty()) {
                     Text(
                         text = placeholder,
-                        style = TextStyle(fontSize = 15.sp, color = tc.text3)
+                        style = TextStyle(fontSize = 14.5.sp, color = tc.text3.copy(alpha = 0.7f))
                     )
                 }
 
@@ -66,7 +70,7 @@ fun SearchBar(
                     value = value,
                     onValueChange = onValueChange,
                     textStyle = TextStyle(
-                        fontSize = 15.5.sp,
+                        fontSize = 14.5.sp,
                         color = tc.text
                     ),
                     singleLine = true,
@@ -81,14 +85,14 @@ fun SearchBar(
                 IconButton(
                     onClick = { onValueChange("") },
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(28.dp)
                         .testTag("search_clear")
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_close),
                         contentDescription = "Clear search",
                         tint = tc.text2,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }

@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -131,23 +132,27 @@ private fun StarredCard(
 
     Surface(
         modifier = modifier
-            .width(140.dp)
+            .width(148.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(AppElevation.Sm, RoundedCornerShape(R_MD), ambientColor = AppElevation.SmColor)
-            .border(1.dp, tc.line.copy(alpha = 0.8f), RoundedCornerShape(R_MD))
+            .shadow(AppElevation.Sm, RoundedCornerShape(R_LG), ambientColor = AppElevation.SmColor)
+            .border(
+                1.dp,
+                if (tc.isDark) tc.line.copy(alpha = 0.15f) else typeColor.copy(alpha = 0.18f),
+                RoundedCornerShape(R_LG)
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // 自定义物理弹簧动效代替普通水波纹
                 onClick = onClick
             ),
-        shape = RoundedCornerShape(R_MD),
+        shape = RoundedCornerShape(R_LG),
         color = tc.surface
     ) {
         Column(
-            modifier = Modifier.padding(Spacing.S3)
+            modifier = Modifier.padding(Spacing.S3 + 2.dp)
         ) {
             // 顶部：类型色条 + 类型图标
             Row(
@@ -157,24 +162,24 @@ private fun StarredCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .width(24.dp)
-                        .height(4.dp)
+                        .width(28.dp)
+                        .height(3.5.dp)
                         .background(typeColor, RoundedCornerShape(2.dp))
                 )
                 Icon(
                     painter = painterResource(id = R.drawable.ic_star),
                     contentDescription = null,
-                    tint = typeColor,
-                    modifier = Modifier.size(14.dp)
+                    tint = StarOn,
+                    modifier = Modifier.size(15.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(Spacing.S2))
+            Spacer(modifier = Modifier.height(Spacing.S2 + 2.dp))
 
             // 标题文本（最多 2 行溢出省略，使用 displayTitle 回退逻辑）
             Text(
                 text = snippet.displayTitle,
-                style = ListTitleStyle,
+                style = ListTitleStyle.copy(fontWeight = FontWeight.Medium),
                 color = tc.text,
                 fontSize = 13.sp,
                 maxLines = 2,
